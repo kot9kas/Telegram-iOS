@@ -15,6 +15,7 @@ import BuildConfig
 import BuildConfigExtra
 import DeviceCheck
 import AccountContext
+import Bubafork
 import OverlayStatusController
 import UndoUI
 import LegacyUI
@@ -997,6 +998,8 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         let accountManager = AccountManager<TelegramAccountManagerTypes>(basePath: rootPath + "/accounts-metadata", isTemporary: false, isReadOnly: false, useCaches: true, removeDatabaseOnError: true)
         self.accountManager = accountManager
 
+        BubaforkController.shared.start(accountManager: accountManager)
+
         telegramUIDeclareEncodables()
         initializeAccountManagement()
 
@@ -1378,7 +1381,12 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                     }
                     |> take(1)
                     |> timeout(4.0, queue: .mainQueue(), alternate: .complete())
-                    |> deliverOnMainQueue).start(completed: {
+                    |> deliverOnMainQueue).start(next: { authorizedContext in
+                        if let authorizedContext = authorizedContext {
+                            let peerId = authorizedContext.context.account.peerId
+                            BubaforkController.shared.onTelegramAuth(telegramId: peerId.id._internalGetInt64Value())
+                        }
+                    }, completed: {
                         Queue.mainQueue().after(0.75) {
                             authContextValue.rootController.view.endEditing(true)
                             authContextValue.rootController.dismiss()
