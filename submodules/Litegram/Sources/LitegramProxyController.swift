@@ -115,9 +115,7 @@ public final class LitegramProxyController {
 
         let _ = updateProxySettingsInteractively(accountManager: accountManager) { settings in
             var settings = settings
-            if !settings.servers.contains(proxyServer) {
-                settings.servers.insert(proxyServer, at: 0)
-            }
+            settings.servers = [proxyServer]
             settings.activeServer = proxyServer
             settings.enabled = true
             return settings
