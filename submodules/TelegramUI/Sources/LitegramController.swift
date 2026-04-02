@@ -25,7 +25,9 @@ public final class LitegramController: ViewController {
     private var scrollNode: ASScrollNode?
     
     private var headerNode: ASDisplayNode?
-    private var headerAnimNode: AnimatedStickerNode?
+    private var connectedAnimNode: AnimatedStickerNode?
+    private var disconnectedAnimNode: AnimatedStickerNode?
+    private var activeAnimNode: AnimatedStickerNode?
     private var headerTitleNode: ASTextNode?
     private var headerSubtitleNode: ASTextNode?
     
@@ -148,9 +150,10 @@ public final class LitegramController: ViewController {
     override public func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-            guard let self = self, let anim = self.headerAnimNode else { return }
-            anim.visibility = true
-            anim.playOnce()
+            guard let self = self else { return }
+            self.connectedAnimNode?.visibility = true
+            self.disconnectedAnimNode?.visibility = true
+            self.activeAnimNode?.playOnce()
         }
     }
     
@@ -166,8 +169,10 @@ public final class LitegramController: ViewController {
         if self.animSetupPending {
             self.animSetupPending = false
             DispatchQueue.main.async { [weak self] in
-                self?.headerAnimNode?.visibility = true
-                self?.headerAnimNode?.playOnce()
+                guard let self = self else { return }
+                self.connectedAnimNode?.visibility = true
+                self.disconnectedAnimNode?.visibility = true
+                self.activeAnimNode?.playOnce()
             }
         }
     }
@@ -194,7 +199,21 @@ public final class LitegramController: ViewController {
         
         header.view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(headerTapped)))
         
-        self.headerAnimNode = nil
+        let pixelSize: Int = Int(80.0 * UIScreen.main.scale)
+        
+        let connAnim = DefaultAnimatedStickerNodeImpl()
+        connAnim.automaticallyLoadFirstFrame = true
+        connAnim.setup(source: AnimatedStickerNodeLocalFileSource(name: "change_number"), width: pixelSize, height: pixelSize, playbackMode: .once, mode: .direct(cachePathPrefix: nil))
+        connAnim.isHidden = true
+        header.addSubnode(connAnim)
+        self.connectedAnimNode = connAnim
+        
+        let discAnim = DefaultAnimatedStickerNodeImpl()
+        discAnim.automaticallyLoadFirstFrame = true
+        discAnim.setup(source: AnimatedStickerNodeLocalFileSource(name: "media_forbidden"), width: pixelSize, height: pixelSize, playbackMode: .once, mode: .direct(cachePathPrefix: nil))
+        discAnim.isHidden = true
+        header.addSubnode(discAnim)
+        self.disconnectedAnimNode = discAnim
         
         let title = ASTextNode()
         title.textAlignment = .center
@@ -315,8 +334,12 @@ public final class LitegramController: ViewController {
             
             let contentH = animSize + 8 + titleH + 2 + subtitleH
             let topPad = (headerH - contentH) / 2
-            self.headerAnimNode?.frame = CGRect(x: (cw - animSize) / 2, y: topPad, width: animSize, height: animSize)
-            self.headerAnimNode?.updateLayout(size: CGSize(width: animSize, height: animSize))
+            let animFrame = CGRect(x: (cw - animSize) / 2, y: topPad, width: animSize, height: animSize)
+            let animLayoutSize = CGSize(width: animSize, height: animSize)
+            self.connectedAnimNode?.frame = animFrame
+            self.connectedAnimNode?.updateLayout(size: animLayoutSize)
+            self.disconnectedAnimNode?.frame = animFrame
+            self.disconnectedAnimNode?.updateLayout(size: animLayoutSize)
             
             let ty = topPad + animSize + 8
             self.headerTitleNode?.frame = CGRect(x: 0, y: ty, width: cw, height: titleH)
@@ -380,7 +403,7 @@ public final class LitegramController: ViewController {
     // MARK: - Actions
     
     @objc private func headerTapped() {
-        self.headerAnimNode?.playOnce()
+        self.activeAnimNode?.playOnce()
     }
     
     @objc private func actionButtonTapped() {
@@ -466,35 +489,18 @@ public final class LitegramController: ViewController {
             .foregroundColor: UIColor.white.withAlphaComponent(0.85)
         ])
         
-        if animName != self.lastAnimName {
+        let isConnectedAnim = (animName == "change_number")
+        let targetNode = isConnectedAnim ? self.connectedAnimNode : self.disconnectedAnimNode
+        let otherNode = isConnectedAnim ? self.disconnectedAnimNode : self.connectedAnimNode
+        
+        if self.activeAnimNode !== targetNode || self.lastAnimName != animName {
             self.lastAnimName = animName
-            
-            self.headerAnimNode?.removeFromSupernode()
-            self.headerAnimNode = nil
-            
-            let newAnim = DefaultAnimatedStickerNodeImpl()
-            newAnim.automaticallyLoadFirstFrame = true
-            self.headerNode?.insertSubnode(newAnim, at: 1)
-            self.headerAnimNode = newAnim
-            
-            let pixelSize: Int = Int(80.0 * UIScreen.main.scale)
-            newAnim.setup(source: AnimatedStickerNodeLocalFileSource(name: animName), width: pixelSize, height: pixelSize, playbackMode: .once, mode: .direct(cachePathPrefix: nil))
-            
-            let animBoxSize: CGFloat = 80
-            if let cw = self.headerNode?.frame.width, cw > 0 {
-                let headerH = self.headerNode?.frame.height ?? 0
-                let contentH: CGFloat = animBoxSize + 8 + 34 + 2 + 20
-                let topPad = (headerH - contentH) / 2
-                newAnim.frame = CGRect(x: (cw - animBoxSize) / 2, y: topPad, width: animBoxSize, height: animBoxSize)
-                newAnim.updateLayout(size: CGSize(width: animBoxSize, height: animBoxSize))
-            }
-            
+            otherNode?.isHidden = true
+            targetNode?.isHidden = false
+            self.activeAnimNode = targetNode
             self.animSetupPending = true
-            DispatchQueue.main.async { [weak self] in
-                guard let self = self, let anim = self.headerAnimNode else { return }
-                anim.visibility = true
-                anim.playOnce()
-            }
+            targetNode?.visibility = true
+            targetNode?.playOnce()
         }
         
         self.serverValueNode?.attributedText = NSAttributedString(string: serverStr, attributes: [
