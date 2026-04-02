@@ -43,6 +43,7 @@ public final class LitegramController: ViewController {
     
     private var isConnecting = false
     private var lastAnimName: String?
+    private var didAppearOnce = false
     
     private static let perks: [(icon: String, color: UInt32, text: String)] = [
         ("lock.shield", 0xef6922, "Access blocked content"),
@@ -133,6 +134,14 @@ public final class LitegramController: ViewController {
         self.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: false), transition: .immediate)
     }
     
+    override public func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        if !self.didAppearOnce {
+            self.didAppearOnce = true
+        }
+        self.headerAnimNode?.playOnce()
+    }
+    
     override public func containerLayoutUpdated(_ layout: ContainerViewLayout, transition: ContainedViewLayoutTransition) {
         super.containerLayoutUpdated(layout, transition: transition)
         let navBarHeight = self.navigationLayout(layout: layout).navigationFrame.maxY
@@ -162,6 +171,8 @@ public final class LitegramController: ViewController {
         gradient.startPoint = CGPoint(x: 0, y: 0)
         gradient.endPoint = CGPoint(x: 1, y: 1)
         header.layer.insertSublayer(gradient, at: 0)
+        
+        header.view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(headerTapped)))
         
         let animNode = DefaultAnimatedStickerNodeImpl()
         header.addSubnode(animNode)
@@ -249,20 +260,26 @@ public final class LitegramController: ViewController {
         let cw = width - pad * 2
         var y: CGFloat = 12
         
-        let headerH: CGFloat = 200
+        let animSize: CGFloat = 80
+        let titleH: CGFloat = 34
+        let subtitleH: CGFloat = 20
+        let spacing: CGFloat = 4
+        let contentH: CGFloat = animSize + 12 + titleH + spacing + subtitleH
+        let headerH: CGFloat = contentH + 40
+        
         if let header = self.headerNode {
             header.frame = CGRect(x: pad, y: y, width: cw, height: headerH)
             if let g = header.layer.sublayers?.first as? CAGradientLayer {
                 g.frame = CGRect(origin: .zero, size: CGSize(width: cw, height: headerH))
             }
             
-            let animSize: CGFloat = 80
-            self.headerAnimNode?.frame = CGRect(x: (cw - animSize) / 2, y: 20, width: animSize, height: animSize)
+            let topPad = (headerH - contentH) / 2
+            self.headerAnimNode?.frame = CGRect(x: (cw - animSize) / 2, y: topPad, width: animSize, height: animSize)
             self.headerAnimNode?.updateLayout(size: CGSize(width: animSize, height: animSize))
             
-            let ty: CGFloat = 20 + animSize + 10
-            self.headerTitleNode?.frame = CGRect(x: 0, y: ty, width: cw, height: 34)
-            self.headerSubtitleNode?.frame = CGRect(x: 20, y: ty + 34, width: cw - 40, height: 40)
+            let ty = topPad + animSize + 12
+            self.headerTitleNode?.frame = CGRect(x: 0, y: ty, width: cw, height: titleH)
+            self.headerSubtitleNode?.frame = CGRect(x: 20, y: ty + titleH + spacing, width: cw - 40, height: subtitleH)
             
             y += headerH + 12
         }
@@ -308,6 +325,10 @@ public final class LitegramController: ViewController {
     }
     
     // MARK: - Actions
+    
+    @objc private func headerTapped() {
+        self.headerAnimNode?.playOnce()
+    }
     
     @objc private func actionButtonTapped() {
         guard !self.isConnecting else { return }
@@ -394,9 +415,10 @@ public final class LitegramController: ViewController {
         
         if animName != self.lastAnimName {
             self.lastAnimName = animName
-            let animSize: Int = Int(80.0 * UIScreen.main.scale)
-            self.headerAnimNode?.setup(source: AnimatedStickerNodeLocalFileSource(name: animName), width: animSize, height: animSize, playbackMode: .loop, mode: .direct(cachePathPrefix: nil))
+            let pixelSize: Int = Int(80.0 * UIScreen.main.scale)
+            self.headerAnimNode?.setup(source: AnimatedStickerNodeLocalFileSource(name: animName), width: pixelSize, height: pixelSize, playbackMode: .once, mode: .direct(cachePathPrefix: nil))
             self.headerAnimNode?.visibility = true
+            self.headerAnimNode?.playOnce()
         }
         
         self.serverValueNode?.attributedText = NSAttributedString(string: serverStr, attributes: [
