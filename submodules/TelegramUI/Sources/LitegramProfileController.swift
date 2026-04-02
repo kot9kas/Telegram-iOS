@@ -250,7 +250,9 @@ public final class LitegramController: ViewController {
             let by = iy + idH + idToBadge
             let badgeW: CGFloat = 80
             self.badgeBgNode?.frame = CGRect(x: (cw - badgeW) / 2, y: by, width: badgeW, height: badgeH)
-            self.badgeNode?.frame = CGRect(x: 0, y: 0, width: badgeW, height: badgeH)
+            let badgeTextH: CGFloat = 17
+            let badgeTextY = (badgeH - badgeTextH) / 2
+            self.badgeNode?.frame = CGRect(x: 0, y: badgeTextY, width: badgeW, height: badgeTextH)
             
             y += profileH + 24
         }
@@ -385,10 +387,5 @@ public final class LitegramController: ViewController {
             ])
         }
         
-        if let bgFrame = self.badgeBgNode?.frame {
-            let textH: CGFloat = 17
-            let ty = (bgFrame.height - textH) / 2
-            self.badgeNode?.frame = CGRect(x: 0, y: ty, width: bgFrame.width, height: textH)
-        }
     }
 }
