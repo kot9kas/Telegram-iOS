@@ -349,10 +349,12 @@ public final class LitegramController: ViewController {
         }
         
         let rowH: CGFloat = 48
+        let textH: CGFloat = 22
+        let textY: CGFloat = (rowH - textH) / 2
         if let sr = self.serverRowNode {
             sr.frame = CGRect(x: pad, y: y, width: cw, height: rowH)
-            self.serverTitleNode?.frame = CGRect(x: 16, y: 0, width: 80, height: rowH)
-            self.serverValueNode?.frame = CGRect(x: 96, y: 0, width: cw - 112, height: rowH)
+            self.serverTitleNode?.frame = CGRect(x: 16, y: textY, width: 80, height: textH)
+            self.serverValueNode?.frame = CGRect(x: 96, y: textY, width: cw - 112, height: textH)
             y += rowH + 16
         }
         
@@ -414,6 +416,17 @@ public final class LitegramController: ViewController {
         } else {
             self.isConnecting = true
             LitegramProxyController.shared.reconnect()
+            updateUI()
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 8.0) { [weak self] in
+                guard let self = self, self.isConnecting else { return }
+                self.isConnecting = false
+                self.updateUI()
+                let alert = UIAlertController(title: "Connection Failed", message: "Could not connect to proxy server. Please check your internet connection and try again.", preferredStyle: .alert)
+                alert.addAction(UIAlertAction(title: "OK", style: .default))
+                self.present(alert, animated: true)
+            }
+            return
         }
         updateUI()
     }
