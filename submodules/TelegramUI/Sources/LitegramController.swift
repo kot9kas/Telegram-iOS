@@ -12,7 +12,7 @@ import Litegram
 import AnimatedStickerNode
 import TelegramAnimatedStickerNode
 
-public final class LitegramController: ViewController {
+public final class LitegramConnectionController: ViewController {
     private let context: AccountContext
     private var presentationData: PresentationData
     private var presentationDataDisposable: Disposable?
@@ -73,16 +73,7 @@ public final class LitegramController: ViewController {
         super.init(navigationBarPresentationData: NavigationBarPresentationData(presentationData: self.presentationData))
         
         self.statusBar.statusBarStyle = self.presentationData.theme.rootController.statusBarStyle.style
-        self.navigationItem.title = "Litegram"
-        
-        self.tabBarItem.title = "Litegram"
-        let icon = UIImage(bundleImageName: "Chat List/Tabs/IconLitegram")
-        self.tabBarItem.image = icon
-        self.tabBarItem.selectedImage = icon
-        if !self.presentationData.reduceMotion {
-            self.tabBarItem.animationName = "TabLitegram"
-            self.tabBarItem.animationOffset = CGPoint(x: 0.0, y: UIScreenPixel)
-        }
+        self.navigationItem.title = "Protection"
         
         self.presentationDataDisposable = (context.sharedContext.presentationData
             |> deliverOnMainQueue).startStrict(next: { [weak self] presentationData in
@@ -92,13 +83,7 @@ public final class LitegramController: ViewController {
                 if previousTheme !== presentationData.theme {
                     self.updateTheme()
                 }
-                self.tabBarItem.title = "Litegram"
-                if !presentationData.reduceMotion {
-                    self.tabBarItem.animationName = "TabLitegram"
-                    self.tabBarItem.animationOffset = CGPoint(x: 0.0, y: UIScreenPixel)
-                } else {
-                    self.tabBarItem.animationName = nil
-                }
+                self.navigationItem.title = "Protection"
             })
         
         self.proxySettingsDisposable = (context.sharedContext.accountManager.sharedData(keys: [SharedDataKeys.proxySettings])
@@ -144,7 +129,6 @@ public final class LitegramController: ViewController {
         self.scrollNode = scrollNode
         
         setupNodes()
-        self.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: false), transition: .immediate)
     }
     
     override public func viewDidAppear(_ animated: Bool) {
