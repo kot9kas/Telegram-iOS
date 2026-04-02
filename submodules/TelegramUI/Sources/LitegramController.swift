@@ -212,7 +212,7 @@ public final class LitegramConnectionController: ViewController {
         
         let serverRow = ASDisplayNode()
         serverRow.backgroundColor = theme.list.itemBlocksBackgroundColor
-        serverRow.cornerRadius = 12
+        serverRow.cornerRadius = 11
         scrollNode?.addSubnode(serverRow)
         self.serverRowNode = serverRow
         
@@ -227,7 +227,7 @@ public final class LitegramConnectionController: ViewController {
         self.serverValueNode = serverValue
         
         let button = ASButtonNode()
-        button.cornerRadius = 12
+        button.cornerRadius = 11
         button.clipsToBounds = true
         button.addTarget(self, action: #selector(actionButtonTapped), forControlEvents: .touchUpInside)
         scrollNode?.addSubnode(button)
@@ -244,7 +244,7 @@ public final class LitegramConnectionController: ViewController {
         
         let perksContainer = ASDisplayNode()
         perksContainer.backgroundColor = theme.list.itemBlocksBackgroundColor
-        perksContainer.cornerRadius = 12
+        perksContainer.cornerRadius = 11
         perksContainer.clipsToBounds = true
         scrollNode?.addSubnode(perksContainer)
         self.perksContainerNode = perksContainer
@@ -301,8 +301,8 @@ public final class LitegramConnectionController: ViewController {
     // MARK: - Layout
     
     private func layoutNodes(width: CGFloat, bottomInset: CGFloat) {
-        let pad: CGFloat = 16
-        let cw = width - pad * 2
+        let sideInset: CGFloat = max(16.0, floor((width - 674.0) / 2.0))
+        let cw = width - sideInset * 2
         var y: CGFloat = 12
         
         let animSize: CGFloat = 80
@@ -311,7 +311,7 @@ public final class LitegramConnectionController: ViewController {
         let headerH: CGFloat = animSize + titleH + subtitleH + 52
         
         if let header = self.headerNode {
-            header.frame = CGRect(x: pad, y: y, width: cw, height: headerH)
+            header.frame = CGRect(x: sideInset, y: y, width: cw, height: headerH)
             if let g = header.layer.sublayers?.first as? CAGradientLayer {
                 g.frame = CGRect(origin: .zero, size: CGSize(width: cw, height: headerH))
             }
@@ -327,7 +327,7 @@ public final class LitegramConnectionController: ViewController {
             
             let ty = topPad + animSize + 8
             self.headerTitleNode?.frame = CGRect(x: 0, y: ty, width: cw, height: titleH)
-            self.headerSubtitleNode?.frame = CGRect(x: 20, y: ty + titleH + 2, width: cw - 40, height: subtitleH)
+            self.headerSubtitleNode?.frame = CGRect(x: 36, y: ty + titleH + 2, width: cw - 72, height: subtitleH)
             
             y += headerH + 12
         }
@@ -336,51 +336,53 @@ public final class LitegramConnectionController: ViewController {
         let textH: CGFloat = 22
         let textY: CGFloat = (rowH - textH) / 2
         if let sr = self.serverRowNode {
-            sr.frame = CGRect(x: pad, y: y, width: cw, height: rowH)
+            sr.frame = CGRect(x: sideInset, y: y, width: cw, height: rowH)
             self.serverTitleNode?.frame = CGRect(x: 16, y: textY, width: 80, height: textH)
             self.serverValueNode?.frame = CGRect(x: 96, y: textY, width: cw - 112, height: textH)
             y += rowH + 16
         }
         
         if let btn = self.connectButtonNode {
-            btn.frame = CGRect(x: pad, y: y, width: cw, height: 50)
+            btn.frame = CGRect(x: sideInset, y: y, width: cw, height: 50)
             y += 50 + 24
         }
         
-        self.perksHeaderNode?.frame = CGRect(x: pad + 16, y: y, width: cw, height: 18)
-        y += 26
+        self.perksHeaderNode?.frame = CGRect(x: sideInset + 16, y: y, width: cw, height: 18)
+        y += 7 + 18 + 7
         
         if let _ = self.perksContainerNode {
-            let perkH: CGFloat = 60
-            let sepH: CGFloat = 0.5
+            let perkRowH: CGFloat = 56
+            let sepH = 1.0 / UIScreen.main.scale
             let count = perkNodes.count
-            let totalH = CGFloat(count) * perkH + CGFloat(perkSepNodes.count) * sepH
-            self.perksContainerNode?.frame = CGRect(x: pad, y: y, width: cw, height: totalH)
+            let totalH = CGFloat(count) * perkRowH + CGFloat(perkSepNodes.count) * sepH
+            self.perksContainerNode?.frame = CGRect(x: sideInset, y: y, width: cw, height: totalH)
             
-            let iconSize: CGFloat = 30
-            let iconInset: CGFloat = 12
-            let textX: CGFloat = iconInset + iconSize + 12
-            let arrowSize: CGFloat = 14
+            let iconSize: CGFloat = 29
+            let iconInset: CGFloat = 16
+            let textX: CGFloat = iconInset + iconSize + 16
+            let arrowW: CGFloat = 7
+            let arrowH: CGFloat = 12
             
             var fy: CGFloat = 0
             for i in 0..<count {
                 let node = perkNodes[i]
                 
-                node.bg.frame = CGRect(x: iconInset, y: fy + (perkH - iconSize) / 2, width: iconSize, height: iconSize)
+                node.bg.frame = CGRect(x: iconInset, y: fy + (perkRowH - iconSize) / 2, width: iconSize, height: iconSize)
                 node.icon.frame = CGRect(x: 4, y: 4, width: iconSize - 8, height: iconSize - 8)
                 
-                node.title.frame = CGRect(x: textX, y: fy + 9, width: cw - textX - 30, height: 20)
-                node.subtitle.frame = CGRect(x: textX, y: fy + 9 + 20 + 2, width: cw - textX - 30, height: 16)
+                let perkTitleY = fy + 8
+                node.title.frame = CGRect(x: textX, y: perkTitleY, width: cw - textX - 34, height: 22)
+                node.subtitle.frame = CGRect(x: textX, y: perkTitleY + 22 + 1, width: cw - textX - 34, height: 16)
                 
-                node.arrow.frame = CGRect(x: cw - arrowSize - 16, y: fy + (perkH - arrowSize) / 2, width: arrowSize, height: arrowSize)
+                node.arrow.frame = CGRect(x: cw - 7 - arrowW, y: fy + (perkRowH - arrowH) / 2, width: arrowW, height: arrowH)
                 
-                fy += perkH
+                fy += perkRowH
                 if i < perkSepNodes.count {
-                    perkSepNodes[i].frame = CGRect(x: textX, y: fy, width: cw - textX, height: sepH)
+                    perkSepNodes[i].frame = CGRect(x: textX - 1, y: fy, width: cw - textX + 1 - 16, height: sepH)
                     fy += sepH
                 }
             }
-            y += totalH + 16
+            y += totalH + 24
         }
         
         self.scrollNode?.view.contentSize = CGSize(width: width, height: y + bottomInset + 20)
