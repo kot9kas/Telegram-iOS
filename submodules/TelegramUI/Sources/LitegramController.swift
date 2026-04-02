@@ -9,6 +9,8 @@ import AccountContext
 import AppBundle
 import TabBarUI
 import Litegram
+import AnimatedStickerNode
+import TelegramAnimatedStickerNode
 
 public final class LitegramController: ViewController {
     private let context: AccountContext
@@ -21,23 +23,39 @@ public final class LitegramController: ViewController {
     private var currentConnectionStatus: ConnectionStatus = .waitingForNetwork
     
     private var scrollNode: ASScrollNode?
+    
     private var headerNode: ASDisplayNode?
+    private var headerAnimationNode: AnimatedStickerNode?
+    private var headerTitleNode: ASTextNode?
+    private var headerSubtitleNode: ASTextNode?
     private var statusDotNode: ASDisplayNode?
     private var statusTextNode: ASTextNode?
-    private var subtitleTextNode: ASTextNode?
-    private var serverTitleNode: ASTextNode?
+    
     private var serverRowNode: ASDisplayNode?
+    private var serverTitleNode: ASTextNode?
     private var serverValueNode: ASTextNode?
-    private var planTitleNode: ASTextNode?
     private var planRowNode: ASDisplayNode?
+    private var planTitleNode: ASTextNode?
     private var planValueNode: ASTextNode?
+    
     private var actionButtonNode: ASButtonNode?
+    private var actionButtonGradient: CAGradientLayer?
+    
     private var featuresContainerNode: ASDisplayNode?
     private var featureRowNodes: [ASDisplayNode] = []
+    private var featureDotNodes: [ASDisplayNode] = []
     private var featureLabelNodes: [ASTextNode] = []
     private var featureSepNodes: [ASDisplayNode] = []
     
     private var isConnecting = false
+    
+    private static let featureColors: [UIColor] = [
+        UIColor(rgb: 0xef6922),
+        UIColor(rgb: 0xe54937),
+        UIColor(rgb: 0xab4ac4),
+        UIColor(rgb: 0x676bff),
+        UIColor(rgb: 0x3eb26d)
+    ]
     
     public init(context: AccountContext) {
         self.context = context
@@ -54,6 +72,7 @@ public final class LitegramController: ViewController {
         self.tabBarItem.selectedImage = icon
         if !self.presentationData.reduceMotion {
             self.tabBarItem.animationName = "TabLitegram"
+            self.tabBarItem.animationOffset = CGPoint(x: 0.0, y: UIScreenPixel)
         }
         
         self.presentationDataDisposable = (context.sharedContext.presentationData
@@ -69,6 +88,7 @@ public final class LitegramController: ViewController {
                 self.tabBarItem.title = "Litegram"
                 if !presentationData.reduceMotion {
                     self.tabBarItem.animationName = "TabLitegram"
+                    self.tabBarItem.animationOffset = CGPoint(x: 0.0, y: UIScreenPixel)
                 } else {
                     self.tabBarItem.animationName = nil
                 }
@@ -138,41 +158,67 @@ public final class LitegramController: ViewController {
     private func setupNodes() {
         let theme = self.presentationData.theme
         
+        // MARK: Header with gradient + Lottie animation
         let header = ASDisplayNode()
         header.clipsToBounds = true
-        header.cornerRadius = 12
+        header.cornerRadius = 16
         scrollNode?.addSubnode(header)
         self.headerNode = header
         
         let gradientLayer = CAGradientLayer()
         gradientLayer.colors = [
-            UIColor(red: 0xAE/255.0, green: 0x8B/255.0, blue: 0xA1/255.0, alpha: 1.0).cgColor,
-            UIColor(red: 0xF2/255.0, green: 0xEC/255.0, blue: 0xB6/255.0, alpha: 1.0).cgColor
+            UIColor(rgb: 0x6a94ff).cgColor,
+            UIColor(rgb: 0x9472fd).cgColor,
+            UIColor(rgb: 0xe26bd3).cgColor
         ]
+        gradientLayer.locations = [0.0, 0.5, 1.0]
         gradientLayer.startPoint = CGPoint(x: 0, y: 0)
         gradientLayer.endPoint = CGPoint(x: 1, y: 1)
         header.layer.insertSublayer(gradientLayer, at: 0)
         
-        let dot = ASDisplayNode()
-        dot.backgroundColor = UIColor.white.withAlphaComponent(0.5)
-        dot.cornerRadius = 5
-        header.addSubnode(dot)
-        self.statusDotNode = dot
+        let animationNode = DefaultAnimatedStickerNodeImpl()
+        animationNode.setup(source: AnimatedStickerNodeLocalFileSource(name: "TabLitegram"), width: 240, height: 240, playbackMode: .loop, mode: .direct(cachePathPrefix: nil))
+        animationNode.visibility = true
+        animationNode.setOverlayColor(.white, replace: true, animated: false)
+        header.addSubnode(animationNode)
+        self.headerAnimationNode = animationNode
+        
+        let headerTitle = ASTextNode()
+        headerTitle.attributedText = NSAttributedString(string: "Litegram", attributes: [
+            .font: UIFont.systemFont(ofSize: 28, weight: .bold),
+            .foregroundColor: UIColor.white
+        ])
+        header.addSubnode(headerTitle)
+        self.headerTitleNode = headerTitle
+        
+        let headerSubtitle = ASTextNode()
+        headerSubtitle.attributedText = NSAttributedString(string: "Secure proxy for unrestricted access", attributes: [
+            .font: UIFont.systemFont(ofSize: 15, weight: .regular),
+            .foregroundColor: UIColor.white.withAlphaComponent(0.85)
+        ])
+        headerSubtitle.maximumNumberOfLines = 2
+        header.addSubnode(headerSubtitle)
+        self.headerSubtitleNode = headerSubtitle
+        
+        // MARK: Status row
+        let statusDot = ASDisplayNode()
+        statusDot.backgroundColor = UIColor.white.withAlphaComponent(0.5)
+        statusDot.cornerRadius = 5
+        header.addSubnode(statusDot)
+        self.statusDotNode = statusDot
         
         let statusText = ASTextNode()
-        statusText.attributedText = NSAttributedString(string: "Disconnected", attributes: [.font: UIFont.systemFont(ofSize: 22, weight: .bold), .foregroundColor: UIColor.white])
+        statusText.attributedText = NSAttributedString(string: "Disconnected", attributes: [
+            .font: UIFont.systemFont(ofSize: 15, weight: .semibold),
+            .foregroundColor: UIColor.white
+        ])
         header.addSubnode(statusText)
         self.statusTextNode = statusText
         
-        let subtitle = ASTextNode()
-        subtitle.attributedText = NSAttributedString(string: "Secure proxy for unrestricted access", attributes: [.font: UIFont.systemFont(ofSize: 14, weight: .regular), .foregroundColor: UIColor.white.withAlphaComponent(0.85)])
-        subtitle.maximumNumberOfLines = 2
-        header.addSubnode(subtitle)
-        self.subtitleTextNode = subtitle
-        
+        // MARK: Info rows
         let serverRow = ASDisplayNode()
         serverRow.backgroundColor = theme.list.itemBlocksBackgroundColor
-        serverRow.cornerRadius = 10
+        serverRow.cornerRadius = 12
         scrollNode?.addSubnode(serverRow)
         self.serverRowNode = serverRow
         
@@ -188,7 +234,7 @@ public final class LitegramController: ViewController {
         
         let planRow = ASDisplayNode()
         planRow.backgroundColor = theme.list.itemBlocksBackgroundColor
-        planRow.cornerRadius = 10
+        planRow.cornerRadius = 12
         scrollNode?.addSubnode(planRow)
         self.planRowNode = planRow
         
@@ -202,17 +248,30 @@ public final class LitegramController: ViewController {
         planRow.addSubnode(planValue)
         self.planValueNode = planValue
         
+        // MARK: Action button with gradient
         let button = ASButtonNode()
         button.setTitle("Connect", with: UIFont.systemFont(ofSize: 17, weight: .semibold), with: .white, for: .normal)
-        button.backgroundColor = theme.list.itemAccentColor
-        button.cornerRadius = 10
+        button.cornerRadius = 12
+        button.clipsToBounds = true
         button.addTarget(self, action: #selector(actionButtonTapped), forControlEvents: .touchUpInside)
         scrollNode?.addSubnode(button)
         self.actionButtonNode = button
         
+        let btnGradient = CAGradientLayer()
+        btnGradient.colors = [
+            UIColor(rgb: 0x6a94ff).cgColor,
+            UIColor(rgb: 0x9472fd).cgColor,
+            UIColor(rgb: 0xe26bd3).cgColor
+        ]
+        btnGradient.startPoint = CGPoint(x: 0, y: 0.5)
+        btnGradient.endPoint = CGPoint(x: 1, y: 0.5)
+        button.layer.insertSublayer(btnGradient, at: 0)
+        self.actionButtonGradient = btnGradient
+        
+        // MARK: Features
         let featuresContainer = ASDisplayNode()
         featuresContainer.backgroundColor = theme.list.itemBlocksBackgroundColor
-        featuresContainer.cornerRadius = 10
+        featuresContainer.cornerRadius = 12
         featuresContainer.clipsToBounds = true
         scrollNode?.addSubnode(featuresContainer)
         self.featuresContainerNode = featuresContainer
@@ -229,6 +288,13 @@ public final class LitegramController: ViewController {
             let row = ASDisplayNode()
             featuresContainer.addSubnode(row)
             self.featureRowNodes.append(row)
+            
+            let dot = ASDisplayNode()
+            let color = Self.featureColors[i % Self.featureColors.count]
+            dot.backgroundColor = color
+            dot.cornerRadius = 4
+            row.addSubnode(dot)
+            self.featureDotNodes.append(dot)
             
             let label = ASTextNode()
             label.attributedText = NSAttributedString(string: text, attributes: [.font: UIFont.systemFont(ofSize: 16), .foregroundColor: theme.list.itemPrimaryTextColor])
@@ -251,49 +317,65 @@ public final class LitegramController: ViewController {
         self.displayNode.backgroundColor = theme.list.blocksBackgroundColor
         self.serverRowNode?.backgroundColor = theme.list.itemBlocksBackgroundColor
         self.planRowNode?.backgroundColor = theme.list.itemBlocksBackgroundColor
-        self.actionButtonNode?.backgroundColor = theme.list.itemAccentColor
         self.featuresContainerNode?.backgroundColor = theme.list.itemBlocksBackgroundColor
     }
     
     private func layoutNodes(width: CGFloat, bottomInset: CGFloat) {
         let padding: CGFloat = 16
         let contentWidth = width - padding * 2
-        var y: CGFloat = 16
+        var y: CGFloat = 12
         
+        let headerHeight: CGFloat = 220
         if let header = self.headerNode {
-            let headerFrame = CGRect(x: padding, y: y, width: contentWidth, height: 120)
+            let headerFrame = CGRect(x: padding, y: y, width: contentWidth, height: headerHeight)
             header.frame = headerFrame
             if let gradient = header.layer.sublayers?.first as? CAGradientLayer {
                 gradient.frame = CGRect(origin: .zero, size: headerFrame.size)
             }
-            self.statusDotNode?.frame = CGRect(x: 20, y: 24, width: 10, height: 10)
-            self.statusTextNode?.frame = CGRect(x: 36, y: 17, width: contentWidth - 56, height: 28)
-            self.subtitleTextNode?.frame = CGRect(x: 20, y: 52, width: contentWidth - 40, height: 50)
-            y += 120 + 12
+            
+            let animSize: CGFloat = 80
+            self.headerAnimationNode?.frame = CGRect(x: (contentWidth - animSize) / 2, y: 16, width: animSize, height: animSize)
+            self.headerAnimationNode?.updateLayout(size: CGSize(width: animSize, height: animSize))
+            
+            let titleY: CGFloat = 16 + animSize + 8
+            self.headerTitleNode?.frame = CGRect(x: 0, y: titleY, width: contentWidth, height: 34)
+            (self.headerTitleNode as? ASTextNode)?.textAlignment = .center
+            
+            let subtitleY = titleY + 34
+            self.headerSubtitleNode?.frame = CGRect(x: 20, y: subtitleY, width: contentWidth - 40, height: 22)
+            (self.headerSubtitleNode as? ASTextNode)?.textAlignment = .center
+            
+            let statusY = subtitleY + 28
+            self.statusDotNode?.frame = CGRect(x: contentWidth / 2 - 50, y: statusY + 5, width: 10, height: 10)
+            self.statusTextNode?.frame = CGRect(x: contentWidth / 2 - 35, y: statusY, width: contentWidth / 2 + 35, height: 20)
+            
+            y += headerHeight + 16
         }
         
-        let rowH: CGFloat = 44
+        let rowH: CGFloat = 48
         if let serverRow = self.serverRowNode {
             serverRow.frame = CGRect(x: padding, y: y, width: contentWidth, height: rowH)
-            self.serverTitleNode?.frame = CGRect(x: 16, y: 0, width: contentWidth * 0.4, height: rowH)
-            self.serverValueNode?.frame = CGRect(x: contentWidth * 0.4, y: 0, width: contentWidth * 0.6 - 16, height: rowH)
+            self.serverTitleNode?.frame = CGRect(x: 16, y: 0, width: contentWidth * 0.35, height: rowH)
+            self.serverValueNode?.frame = CGRect(x: contentWidth * 0.35, y: 0, width: contentWidth * 0.65 - 16, height: rowH)
             y += rowH + 8
         }
         
         if let planRow = self.planRowNode {
             planRow.frame = CGRect(x: padding, y: y, width: contentWidth, height: rowH)
-            self.planTitleNode?.frame = CGRect(x: 16, y: 0, width: contentWidth * 0.4, height: rowH)
-            self.planValueNode?.frame = CGRect(x: contentWidth * 0.4, y: 0, width: contentWidth * 0.6 - 16, height: rowH)
+            self.planTitleNode?.frame = CGRect(x: 16, y: 0, width: contentWidth * 0.35, height: rowH)
+            self.planValueNode?.frame = CGRect(x: contentWidth * 0.35, y: 0, width: contentWidth * 0.65 - 16, height: rowH)
             y += rowH + 16
         }
         
+        let buttonH: CGFloat = 50
         if let button = self.actionButtonNode {
-            button.frame = CGRect(x: padding, y: y, width: contentWidth, height: 50)
-            y += 50 + 16
+            button.frame = CGRect(x: padding, y: y, width: contentWidth, height: buttonH)
+            self.actionButtonGradient?.frame = CGRect(x: 0, y: 0, width: contentWidth, height: buttonH)
+            y += buttonH + 16
         }
         
         if let _ = self.featuresContainerNode {
-            let featureRowH: CGFloat = 44
+            let featureRowH: CGFloat = 48
             let sepH: CGFloat = 0.5
             let count = featureRowNodes.count
             let totalH = CGFloat(count) * featureRowH + CGFloat(featureSepNodes.count) * sepH
@@ -302,11 +384,12 @@ public final class LitegramController: ViewController {
             var fy: CGFloat = 0
             for i in 0..<count {
                 featureRowNodes[i].frame = CGRect(x: 0, y: fy, width: contentWidth, height: featureRowH)
-                featureLabelNodes[i].frame = CGRect(x: 16, y: 0, width: contentWidth - 32, height: featureRowH)
+                featureDotNodes[i].frame = CGRect(x: 16, y: (featureRowH - 8) / 2, width: 8, height: 8)
+                featureLabelNodes[i].frame = CGRect(x: 32, y: 0, width: contentWidth - 48, height: featureRowH)
                 fy += featureRowH
                 
                 if i < featureSepNodes.count {
-                    featureSepNodes[i].frame = CGRect(x: 16, y: fy, width: contentWidth - 16, height: sepH)
+                    featureSepNodes[i].frame = CGRect(x: 32, y: fy, width: contentWidth - 32, height: sepH)
                     fy += sepH
                 }
             }
@@ -329,12 +412,6 @@ public final class LitegramController: ViewController {
             self.actionButtonNode?.setTitle("Connecting...", with: UIFont.systemFont(ofSize: 17, weight: .semibold), with: .white, for: .normal)
             self.actionButtonNode?.alpha = 0.7
             LitegramProxyController.shared.reconnect()
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
-                self?.isConnecting = false
-                self?.actionButtonNode?.alpha = 1.0
-                self?.updateUI()
-            }
         }
     }
     
@@ -353,8 +430,10 @@ public final class LitegramController: ViewController {
         if isProxyEnabled {
             switch self.currentConnectionStatus {
             case .online:
+                self.isConnecting = false
+                self.actionButtonNode?.alpha = 1.0
                 statusString = "Connected"
-                dotColor = UIColor(red: 0x34/255.0, green: 0xC7/255.0, blue: 0x59/255.0, alpha: 1.0)
+                dotColor = UIColor(rgb: 0x34C759)
                 buttonTitle = "Disconnect"
             case .connecting:
                 statusString = "Connecting..."
@@ -376,27 +455,47 @@ public final class LitegramController: ViewController {
                 serverString = "—"
             }
         } else {
+            self.isConnecting = false
+            self.actionButtonNode?.alpha = 1.0
             statusString = "Disconnected"
             dotColor = UIColor.white.withAlphaComponent(0.5)
             serverString = "Not connected"
             buttonTitle = "Connect"
         }
         
-        self.statusTextNode?.attributedText = NSAttributedString(string: statusString, attributes: [.font: UIFont.systemFont(ofSize: 22, weight: .bold), .foregroundColor: UIColor.white])
+        self.statusTextNode?.attributedText = NSAttributedString(string: statusString, attributes: [
+            .font: UIFont.systemFont(ofSize: 15, weight: .semibold),
+            .foregroundColor: UIColor.white
+        ])
         self.statusDotNode?.backgroundColor = dotColor
         self.serverValueNode?.attributedText = NSAttributedString(string: serverString, attributes: [.font: UIFont.systemFont(ofSize: 16), .foregroundColor: theme.list.itemSecondaryTextColor])
         
-        let planStr = LitegramDeviceToken.hasAccessToken ? "Premium" : "Free"
-        self.planValueNode?.attributedText = NSAttributedString(string: planStr, attributes: [.font: UIFont.systemFont(ofSize: 16), .foregroundColor: theme.list.itemSecondaryTextColor])
+        self.planValueNode?.attributedText = NSAttributedString(string: "Free", attributes: [.font: UIFont.systemFont(ofSize: 16), .foregroundColor: theme.list.itemSecondaryTextColor])
         
-        if !self.isConnecting {
-            self.actionButtonNode?.setTitle(buttonTitle, with: UIFont.systemFont(ofSize: 17, weight: .semibold), with: .white, for: .normal)
-            
-            if isProxyEnabled {
-                self.actionButtonNode?.backgroundColor = UIColor(red: 0xFF/255.0, green: 0x3B/255.0, blue: 0x30/255.0, alpha: 1.0)
-            } else {
-                self.actionButtonNode?.backgroundColor = theme.list.itemAccentColor
-            }
+        self.actionButtonNode?.setTitle(buttonTitle, with: UIFont.systemFont(ofSize: 17, weight: .semibold), with: .white, for: .normal)
+        
+        if isProxyEnabled && buttonTitle != "Connect" {
+            self.actionButtonGradient?.colors = [
+                UIColor(rgb: 0xFF3B30).cgColor,
+                UIColor(rgb: 0xFF6B6B).cgColor
+            ]
+        } else {
+            self.actionButtonGradient?.colors = [
+                UIColor(rgb: 0x6a94ff).cgColor,
+                UIColor(rgb: 0x9472fd).cgColor,
+                UIColor(rgb: 0xe26bd3).cgColor
+            ]
         }
+    }
+}
+
+private extension UIColor {
+    convenience init(rgb: UInt32) {
+        self.init(
+            red: CGFloat((rgb >> 16) & 0xFF) / 255.0,
+            green: CGFloat((rgb >> 8) & 0xFF) / 255.0,
+            blue: CGFloat(rgb & 0xFF) / 255.0,
+            alpha: 1.0
+        )
     }
 }
