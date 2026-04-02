@@ -30,6 +30,7 @@ public final class LitegramController: ViewController {
     
     private var currentPeer: EnginePeer?
     private var currentSubscription: LitegramSubscriptionStatus = .none
+    private var lastLayout: ContainerViewLayout?
     
     private struct MenuItem {
         let iconName: String
@@ -123,6 +124,7 @@ public final class LitegramController: ViewController {
     
     override public func containerLayoutUpdated(_ layout: ContainerViewLayout, transition: ContainedViewLayoutTransition) {
         super.containerLayoutUpdated(layout, transition: transition)
+        self.lastLayout = layout
         let navBarHeight = self.navigationLayout(layout: layout).navigationFrame.maxY
         if let scrollNode = self.scrollNode {
             transition.updateFrame(node: scrollNode, frame: CGRect(x: 0, y: navBarHeight, width: layout.size.width, height: layout.size.height - navBarHeight))
@@ -387,5 +389,8 @@ public final class LitegramController: ViewController {
             ])
         }
         
+        if let layout = self.lastLayout {
+            layoutNodes(width: layout.size.width, safeLeft: layout.safeInsets.left, safeRight: layout.safeInsets.right, bottomInset: layout.intrinsicInsets.bottom)
+        }
     }
 }
