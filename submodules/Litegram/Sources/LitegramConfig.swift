@@ -1,6 +1,6 @@
 import Foundation
 
-public enum BubaforkConfig {
+public enum LitegramConfig {
     public static let apiBaseURL = "https://test.enderfall.net"
     public static let apiVersion = "v1"
     public static let platform = "ios"

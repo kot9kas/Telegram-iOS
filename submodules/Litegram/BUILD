@@ -1,8 +1,8 @@
 load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library")
 
 swift_library(
-    name = "Bubafork",
-    module_name = "Bubafork",
+    name = "Litegram",
+    module_name = "Litegram",
     srcs = glob([
         "Sources/**/*.swift",
     ]),

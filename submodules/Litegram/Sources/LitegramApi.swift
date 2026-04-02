@@ -1,6 +1,6 @@
 import Foundation
 
-public struct BubaforkServerInfo {
+public struct LitegramServerInfo {
     public let host: String
     public let port: Int
     public let secret: String
@@ -12,7 +12,7 @@ public struct BubaforkServerInfo {
     }
 }
 
-public struct BubaforkAuthResult {
+public struct LitegramAuthResult {
     public let accessToken: String
     public let userId: String
 
@@ -22,18 +22,18 @@ public struct BubaforkAuthResult {
     }
 }
 
-public final class BubaforkApi {
+public final class LitegramApi {
     private let session: URLSession
     public var accessToken: String?
 
     public init() {
         let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = BubaforkConfig.connectionTimeout
-        config.timeoutIntervalForResource = BubaforkConfig.connectionTimeout * 3
+        config.timeoutIntervalForRequest = LitegramConfig.connectionTimeout
+        config.timeoutIntervalForResource = LitegramConfig.connectionTimeout * 3
         self.session = URLSession(configuration: config)
     }
 
-    public func claimTempProxy(deviceToken: String, completion: @escaping (Result<BubaforkServerInfo, Error>) -> Void) {
+    public func claimTempProxy(deviceToken: String, completion: @escaping (Result<LitegramServerInfo, Error>) -> Void) {
         let body: [String: Any] = ["deviceToken": deviceToken]
         httpPost(path: "/proxy/public/claim", body: body) { result in
             switch result {
@@ -50,17 +50,17 @@ public final class BubaforkApi {
         }
     }
 
-    public func register(telegramId: String, deviceToken: String, completion: @escaping (Result<BubaforkAuthResult, Error>) -> Void) {
+    public func register(telegramId: String, deviceToken: String, completion: @escaping (Result<LitegramAuthResult, Error>) -> Void) {
         let body: [String: Any] = [
             "telegramId": telegramId,
             "deviceToken": deviceToken,
-            "platform": BubaforkConfig.platform
+            "platform": LitegramConfig.platform
         ]
         httpPost(path: "/auth/register", body: body) { [weak self] result in
             switch result {
             case let .success(json):
                 guard let token = json["accessToken"] as? String, !token.isEmpty else {
-                    completion(.failure(BubaforkApiError.noAccessToken))
+                    completion(.failure(LitegramApiError.noAccessToken))
                     return
                 }
                 self?.accessToken = token
@@ -69,18 +69,18 @@ public final class BubaforkApi {
                 if let user = json["user"] as? [String: Any] {
                     userId = "\(user["id"] ?? "")"
                 }
-                completion(.success(BubaforkAuthResult(accessToken: token, userId: userId)))
+                completion(.success(LitegramAuthResult(accessToken: token, userId: userId)))
             case let .failure(error):
                 completion(.failure(error))
             }
         }
     }
 
-    public func getProxyServers(completion: @escaping (Result<[BubaforkServerInfo], Error>) -> Void) {
+    public func getProxyServers(completion: @escaping (Result<[LitegramServerInfo], Error>) -> Void) {
         httpGet(path: "/proxy/servers") { result in
             switch result {
             case let .success(json):
-                var servers: [BubaforkServerInfo] = []
+                var servers: [LitegramServerInfo] = []
 
                 if let regular = json["regular"] as? [[String: Any]] {
                     for s in regular {
@@ -106,7 +106,7 @@ public final class BubaforkApi {
     // MARK: - Private
 
     private func httpGet(path: String, completion: @escaping (Result<[String: Any], Error>) -> Void) {
-        var request = URLRequest(url: BubaforkConfig.apiURL(path))
+        var request = URLRequest(url: LitegramConfig.apiURL(path))
         request.httpMethod = "GET"
         if let token = accessToken {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -115,7 +115,7 @@ public final class BubaforkApi {
     }
 
     private func httpPost(path: String, body: [String: Any], completion: @escaping (Result<[String: Any], Error>) -> Void) {
-        var request = URLRequest(url: BubaforkConfig.apiURL(path))
+        var request = URLRequest(url: LitegramConfig.apiURL(path))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let token = accessToken {
@@ -132,36 +132,36 @@ public final class BubaforkApi {
                 return
             }
             guard let data = data else {
-                completion(.failure(BubaforkApiError.noData))
+                completion(.failure(LitegramApiError.noData))
                 return
             }
             guard let httpResponse = response as? HTTPURLResponse else {
-                completion(.failure(BubaforkApiError.noData))
+                completion(.failure(LitegramApiError.noData))
                 return
             }
             guard (200..<300).contains(httpResponse.statusCode) else {
                 let body = String(data: data, encoding: .utf8) ?? ""
-                completion(.failure(BubaforkApiError.httpError(httpResponse.statusCode, body)))
+                completion(.failure(LitegramApiError.httpError(httpResponse.statusCode, body)))
                 return
             }
             guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                completion(.failure(BubaforkApiError.invalidJSON))
+                completion(.failure(LitegramApiError.invalidJSON))
                 return
             }
             completion(.success(json))
         }.resume()
     }
 
-    private static func parseServer(_ dict: [String: Any]) -> BubaforkServerInfo? {
+    private static func parseServer(_ dict: [String: Any]) -> LitegramServerInfo? {
         guard let host = dict["host"] as? String,
               let secret = dict["secret"] as? String else {
             return nil
         }
         let port = dict["port"] as? Int ?? 443
-        return BubaforkServerInfo(host: host, port: port, secret: secret)
+        return LitegramServerInfo(host: host, port: port, secret: secret)
     }
 
-    private static func parseFirstServer(_ json: [String: Any]) throws -> BubaforkServerInfo {
+    private static func parseFirstServer(_ json: [String: Any]) throws -> LitegramServerInfo {
         if let regular = json["regular"] as? [[String: Any]], let first = regular.first, let server = parseServer(first) {
             return server
         }
@@ -171,11 +171,11 @@ public final class BubaforkApi {
         if let server = parseServer(json) {
             return server
         }
-        throw BubaforkApiError.noServer
+        throw LitegramApiError.noServer
     }
 }
 
-public enum BubaforkApiError: Error, LocalizedError {
+public enum LitegramApiError: Error, LocalizedError {
     case noData
     case invalidJSON
     case httpError(Int, String)

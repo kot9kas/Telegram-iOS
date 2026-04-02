@@ -199,7 +199,7 @@ swift_library(
         "//submodules/QrCode:QrCode",
         "//submodules/WallpaperResources:WallpaperResources",
         "//submodules/AuthorizationUI:AuthorizationUI",
-        "//submodules/Bubafork:Bubafork",
+        "//submodules/Litegram:Litegram",
         "//submodules/CounterControllerTitleView:CounterControllerTitleView",
         "//submodules/GridMessageSelectionNode:GridMessageSelectionNode",
         "//submodules/InstantPageCache:InstantPageCache",

@@ -3,11 +3,11 @@ import Postbox
 import SwiftSignalKit
 import TelegramCore
 
-public final class BubaforkController {
-    public static let shared = BubaforkController()
+public final class LitegramProxyController {
+    public static let shared = LitegramProxyController()
 
-    private let api = BubaforkApi()
-    private var accountManager: AccountManager<TelegramAccountManagerTypes>?
+    private let api = LitegramApi()
+    private(set) public var accountManager: AccountManager<TelegramAccountManagerTypes>?
     private var started = false
 
     private init() {}
@@ -17,7 +17,7 @@ public final class BubaforkController {
         started = true
         self.accountManager = accountManager
 
-        if let token = BubaforkDeviceToken.getAccessToken() {
+        if let token = LitegramDeviceToken.getAccessToken() {
             api.accessToken = token
         }
 
@@ -29,28 +29,43 @@ public final class BubaforkController {
     public func onTelegramAuth(telegramId: Int64) {
         DispatchQueue.global(qos: .utility).async { [weak self] in
             guard let self = self else { return }
-            let deviceToken = BubaforkDeviceToken.getDeviceToken()
+            let deviceToken = LitegramDeviceToken.getDeviceToken()
             self.api.register(telegramId: "\(telegramId)", deviceToken: deviceToken) { [weak self] result in
                 guard let self = self else { return }
                 switch result {
                 case let .success(authResult):
-                    BubaforkDeviceToken.saveAccessToken(authResult.accessToken)
+                    LitegramDeviceToken.saveAccessToken(authResult.accessToken)
                     self.api.getProxyServers { [weak self] serversResult in
                         if case let .success(servers) = serversResult, let first = servers.first {
                             self?.applyProxy(server: first)
                         }
                     }
                 case let .failure(error):
-                    Logger.shared.log("Bubafork", "register failed: \(error.localizedDescription)")
+                    Logger.shared.log("Litegram", "register failed: \(error.localizedDescription)")
                 }
             }
         }
     }
 
+    public func reconnect() {
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            self?.connectProxy()
+        }
+    }
+
+    public func disconnect() {
+        guard let accountManager = self.accountManager else { return }
+        let _ = updateProxySettingsInteractively(accountManager: accountManager) { settings in
+            var settings = settings
+            settings.enabled = false
+            return settings
+        }.start()
+    }
+
     // MARK: - Private
 
     private func connectProxy() {
-        if BubaforkDeviceToken.hasAccessToken {
+        if LitegramDeviceToken.hasAccessToken {
             connectAuthenticated()
         } else {
             connectAnonymous()
@@ -73,21 +88,21 @@ public final class BubaforkController {
     }
 
     private func connectAnonymous() {
-        let deviceToken = BubaforkDeviceToken.getDeviceToken()
+        let deviceToken = LitegramDeviceToken.getDeviceToken()
         api.claimTempProxy(deviceToken: deviceToken) { [weak self] result in
             switch result {
             case let .success(server):
                 self?.applyProxy(server: server)
             case let .failure(error):
-                Logger.shared.log("Bubafork", "claimTempProxy failed: \(error.localizedDescription)")
+                Logger.shared.log("Litegram", "claimTempProxy failed: \(error.localizedDescription)")
             }
         }
     }
 
-    private func applyProxy(server: BubaforkServerInfo) {
+    private func applyProxy(server: LitegramServerInfo) {
         guard let accountManager = self.accountManager else { return }
         guard let secretData = dataFromHexString(server.secret) else {
-            Logger.shared.log("Bubafork", "invalid hex secret")
+            Logger.shared.log("Litegram", "invalid hex secret")
             return
         }
 
@@ -107,7 +122,7 @@ public final class BubaforkController {
             return settings
         }.start()
 
-        Logger.shared.log("Bubafork", "proxy applied")
+        Logger.shared.log("Litegram", "proxy applied")
     }
 }
 

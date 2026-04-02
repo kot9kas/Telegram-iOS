@@ -1,7 +1,7 @@
 import Foundation
 
-public final class BubaforkDeviceToken {
-    private static let suiteName = "bubafork"
+public final class LitegramDeviceToken {
+    private static let suiteName = "litegram"
     private static let keyDeviceToken = "device_token"
     private static let keyAccessToken = "access_token"
 
