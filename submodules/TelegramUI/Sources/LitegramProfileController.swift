@@ -29,6 +29,7 @@ public final class LitegramController: ViewController {
     private var menuSectionNode: ASDisplayNode?
     
     private var currentPeer: EnginePeer?
+    private var currentSubscription: LitegramSubscriptionStatus = .none
     
     private struct MenuItem {
         let iconName: String
@@ -85,6 +86,7 @@ public final class LitegramController: ViewController {
                 if self.isNodeLoaded {
                     self.updateProfile()
                 }
+                self.fetchSubscriptionStatus()
             })
     }
     
@@ -295,6 +297,23 @@ public final class LitegramController: ViewController {
         self.push(connectionController)
     }
     
+    private func fetchSubscriptionStatus() {
+        let api = LitegramProxyController.shared.api
+        guard api.accessToken != nil else { return }
+        api.getUserProfile { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                switch result {
+                case let .success(profile):
+                    self.currentSubscription = profile.subscriptionStatus
+                    self.updateProfile()
+                case .failure:
+                    break
+                }
+            }
+        }
+    }
+    
     // MARK: - Update
     
     private func rebuildMenuColors() {
@@ -348,25 +367,28 @@ public final class LitegramController: ViewController {
             .foregroundColor: theme.list.itemSecondaryTextColor
         ])
         
-        let isPremium: Bool
-        if case let .user(user) = peer {
-            isPremium = user.isPremium
-        } else {
-            isPremium = false
-        }
+        let sub = self.currentSubscription
+        let badgeText = sub.displayName
+        let badgeFont = UIFont.systemFont(ofSize: 13, weight: .semibold)
         
-        if isPremium {
+        if sub.isActive {
             self.badgeBgNode?.backgroundColor = UIColor(red: 0.42, green: 0.25, blue: 0.82, alpha: 1.0)
-            self.badgeNode?.attributedText = NSAttributedString(string: "Premium", attributes: [
-                .font: UIFont.systemFont(ofSize: 13, weight: .semibold),
+            self.badgeNode?.attributedText = NSAttributedString(string: badgeText, attributes: [
+                .font: badgeFont,
                 .foregroundColor: UIColor.white
             ])
         } else {
             self.badgeBgNode?.backgroundColor = theme.list.itemBlocksSeparatorColor
-            self.badgeNode?.attributedText = NSAttributedString(string: "Free", attributes: [
-                .font: UIFont.systemFont(ofSize: 13, weight: .semibold),
+            self.badgeNode?.attributedText = NSAttributedString(string: badgeText, attributes: [
+                .font: badgeFont,
                 .foregroundColor: theme.list.itemSecondaryTextColor
             ])
+        }
+        
+        if let bgFrame = self.badgeBgNode?.frame {
+            let textH: CGFloat = 17
+            let ty = (bgFrame.height - textH) / 2
+            self.badgeNode?.frame = CGRect(x: 0, y: ty, width: bgFrame.width, height: textH)
         }
     }
 }

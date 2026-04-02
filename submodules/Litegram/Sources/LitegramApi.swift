@@ -26,6 +26,35 @@ public struct LitegramAuthResult {
     }
 }
 
+public enum LitegramSubscriptionStatus: String {
+    case none = "none"
+    case trial = "trial"
+    case active = "active"
+    case expired = "expired"
+    case cancelled = "cancelled"
+    
+    public var displayName: String {
+        switch self {
+        case .none: return "Free"
+        case .trial: return "Trial"
+        case .active: return "Active"
+        case .expired: return "Expired"
+        case .cancelled: return "Cancelled"
+        }
+    }
+    
+    public var isActive: Bool {
+        return self == .active || self == .trial
+    }
+}
+
+public struct LitegramUserProfile {
+    public let id: String
+    public let telegramId: String
+    public let subscriptionStatus: LitegramSubscriptionStatus
+    public let subscriptionExpiresAt: String?
+}
+
 public final class LitegramApi {
     private let session: URLSession
     public var accessToken: String?
@@ -74,6 +103,27 @@ public final class LitegramApi {
                     userId = "\(user["id"] ?? "")"
                 }
                 completion(.success(LitegramAuthResult(accessToken: token, userId: userId)))
+            case let .failure(error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    public func getUserProfile(completion: @escaping (Result<LitegramUserProfile, Error>) -> Void) {
+        httpGet(path: "/user/me") { result in
+            switch result {
+            case let .success(json):
+                let id = "\(json["id"] ?? "")"
+                let telegramId = "\(json["telegramId"] ?? "")"
+                let statusStr = json["subscriptionStatus"] as? String ?? "none"
+                let status = LitegramSubscriptionStatus(rawValue: statusStr) ?? .none
+                let expiresAt = json["subscriptionExpiresAt"] as? String
+                completion(.success(LitegramUserProfile(
+                    id: id,
+                    telegramId: telegramId,
+                    subscriptionStatus: status,
+                    subscriptionExpiresAt: expiresAt
+                )))
             case let .failure(error):
                 completion(.failure(error))
             }

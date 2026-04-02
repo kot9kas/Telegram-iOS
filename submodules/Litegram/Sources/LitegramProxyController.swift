@@ -6,7 +6,7 @@ import TelegramCore
 public final class LitegramProxyController {
     public static let shared = LitegramProxyController()
 
-    private let api = LitegramApi()
+    public let api = LitegramApi()
     private(set) public var accountManager: AccountManager<TelegramAccountManagerTypes>?
     private var started = false
     public private(set) var lastConnectedServer: LitegramServerInfo?
