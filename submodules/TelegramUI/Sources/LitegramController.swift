@@ -37,20 +37,31 @@ public final class LitegramController: ViewController {
     
     private var perksHeaderNode: ASTextNode?
     private var perksContainerNode: ASDisplayNode?
-    private var perkIconNodes: [ASDisplayNode] = []
-    private var perkLabelNodes: [ASTextNode] = []
+    private var perkNodes: [(bg: ASDisplayNode, icon: ASImageNode, title: ASTextNode, subtitle: ASTextNode, arrow: ASImageNode)] = []
     private var perkSepNodes: [ASDisplayNode] = []
     
     private var isConnecting = false
     private var lastAnimName: String?
-    private var didAppearOnce = false
+    private var animSetupPending = false
     
-    private static let perks: [(icon: String, color: UInt32, text: String)] = [
-        ("lock.shield", 0xef6922, "Access blocked content"),
-        ("eye.slash", 0xe54937, "Enhanced privacy protection"),
-        ("bolt", 0xab4ac4, "Fast and stable connection"),
-        ("speedometer", 0x676bff, "No speed limitations"),
-        ("arrow.triangle.2.circlepath", 0x3eb26d, "Auto-reconnect support")
+    private static let gradientColors: [UIColor] = [
+        UIColor(rgb: 0xef6922),
+        UIColor(rgb: 0xe54937),
+        UIColor(rgb: 0xdb374b),
+        UIColor(rgb: 0xab4ac4),
+        UIColor(rgb: 0x676bff),
+        UIColor(rgb: 0x4492ff),
+        UIColor(rgb: 0x3eb26d)
+    ]
+    
+    private static let perks: [(icon: String, title: String, subtitle: String)] = [
+        ("Premium/Perk/Speed", "Fast and stable", "High-speed proxy with zero throttling"),
+        ("Premium/Perk/NoForward", "Enhanced privacy", "Your traffic is encrypted end-to-end"),
+        ("Premium/Perk/NoAds", "Access blocked content", "Bypass regional restrictions seamlessly"),
+        ("Premium/Perk/Limits", "No speed limits", "Unlimited bandwidth for all your needs"),
+        ("Premium/Perk/Chat", "Auto-reconnect", "Stays connected even on unstable networks"),
+        ("Premium/Perk/Status", "Multiple servers", "Choose from servers across the globe"),
+        ("Premium/Perk/Translation", "Easy to use", "One-tap connect, no configuration needed")
     ]
     
     public init(context: AccountContext) {
@@ -136,10 +147,11 @@ public final class LitegramController: ViewController {
     
     override public func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        if !self.didAppearOnce {
-            self.didAppearOnce = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.headerAnimNode?.visibility = true
+            self.headerAnimNode?.playOnce()
         }
-        self.headerAnimNode?.playOnce()
     }
     
     override public func containerLayoutUpdated(_ layout: ContainerViewLayout, transition: ContainedViewLayoutTransition) {
@@ -150,6 +162,14 @@ public final class LitegramController: ViewController {
             transition.updateFrame(node: scrollNode, frame: CGRect(x: 0, y: navBarHeight, width: layout.size.width, height: layout.size.height - navBarHeight))
         }
         layoutNodes(width: layout.size.width, bottomInset: bottomInset)
+        
+        if self.animSetupPending {
+            self.animSetupPending = false
+            DispatchQueue.main.async { [weak self] in
+                self?.headerAnimNode?.visibility = true
+                self?.headerAnimNode?.playOnce()
+            }
+        }
     }
     
     // MARK: - Setup
@@ -175,6 +195,7 @@ public final class LitegramController: ViewController {
         header.view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(headerTapped)))
         
         let animNode = DefaultAnimatedStickerNodeImpl()
+        animNode.automaticallyLoadFirstFrame = true
         header.addSubnode(animNode)
         self.headerAnimNode = animNode
         
@@ -212,7 +233,7 @@ public final class LitegramController: ViewController {
         self.connectButtonNode = button
         
         let perksHeader = ASTextNode()
-        perksHeader.attributedText = NSAttributedString(string: "FEATURES", attributes: [
+        perksHeader.attributedText = NSAttributedString(string: "WHAT'S INCLUDED", attributes: [
             .font: UIFont.systemFont(ofSize: 13, weight: .medium),
             .foregroundColor: theme.list.itemSecondaryTextColor,
             .kern: 0.5
@@ -228,19 +249,42 @@ public final class LitegramController: ViewController {
         self.perksContainerNode = perksContainer
         
         for (i, perk) in Self.perks.enumerated() {
-            let iconBg = ASDisplayNode()
-            iconBg.backgroundColor = UIColor(rgb: perk.color)
-            iconBg.cornerRadius = 7
-            perksContainer.addSubnode(iconBg)
-            self.perkIconNodes.append(iconBg)
+            let color = Self.gradientColors[i % Self.gradientColors.count]
             
-            let label = ASTextNode()
-            label.attributedText = NSAttributedString(string: perk.text, attributes: [
-                .font: UIFont.systemFont(ofSize: 16),
+            let bg = ASDisplayNode()
+            bg.backgroundColor = color
+            bg.cornerRadius = 7
+            perksContainer.addSubnode(bg)
+            
+            let iconNode = ASImageNode()
+            iconNode.contentMode = .scaleAspectFit
+            iconNode.displaysAsynchronously = false
+            if let img = UIImage(bundleImageName: perk.icon)?.withRenderingMode(.alwaysTemplate) {
+                iconNode.image = img
+            }
+            iconNode.tintColor = .white
+            bg.addSubnode(iconNode)
+            
+            let titleNode = ASTextNode()
+            titleNode.attributedText = NSAttributedString(string: perk.title, attributes: [
+                .font: UIFont.systemFont(ofSize: 16, weight: .regular),
                 .foregroundColor: theme.list.itemPrimaryTextColor
             ])
-            perksContainer.addSubnode(label)
-            self.perkLabelNodes.append(label)
+            perksContainer.addSubnode(titleNode)
+            
+            let subtitleNode = ASTextNode()
+            subtitleNode.attributedText = NSAttributedString(string: perk.subtitle, attributes: [
+                .font: UIFont.systemFont(ofSize: 13),
+                .foregroundColor: theme.list.itemSecondaryTextColor
+            ])
+            perksContainer.addSubnode(subtitleNode)
+            
+            let arrow = ASImageNode()
+            arrow.displaysAsynchronously = false
+            arrow.image = UIImage(bundleImageName: "Item List/DisclosureArrow")
+            perksContainer.addSubnode(arrow)
+            
+            self.perkNodes.append((bg: bg, icon: iconNode, title: titleNode, subtitle: subtitleNode, arrow: arrow))
             
             if i < Self.perks.count - 1 {
                 let sep = ASDisplayNode()
@@ -263,9 +307,7 @@ public final class LitegramController: ViewController {
         let animSize: CGFloat = 80
         let titleH: CGFloat = 34
         let subtitleH: CGFloat = 20
-        let spacing: CGFloat = 4
-        let contentH: CGFloat = animSize + 12 + titleH + spacing + subtitleH
-        let headerH: CGFloat = contentH + 40
+        let headerH: CGFloat = animSize + titleH + subtitleH + 52
         
         if let header = self.headerNode {
             header.frame = CGRect(x: pad, y: y, width: cw, height: headerH)
@@ -273,13 +315,14 @@ public final class LitegramController: ViewController {
                 g.frame = CGRect(origin: .zero, size: CGSize(width: cw, height: headerH))
             }
             
+            let contentH = animSize + 8 + titleH + 2 + subtitleH
             let topPad = (headerH - contentH) / 2
             self.headerAnimNode?.frame = CGRect(x: (cw - animSize) / 2, y: topPad, width: animSize, height: animSize)
             self.headerAnimNode?.updateLayout(size: CGSize(width: animSize, height: animSize))
             
-            let ty = topPad + animSize + 12
+            let ty = topPad + animSize + 8
             self.headerTitleNode?.frame = CGRect(x: 0, y: ty, width: cw, height: titleH)
-            self.headerSubtitleNode?.frame = CGRect(x: 20, y: ty + titleH + spacing, width: cw - 40, height: subtitleH)
+            self.headerSubtitleNode?.frame = CGRect(x: 20, y: ty + titleH + 2, width: cw - 40, height: subtitleH)
             
             y += headerH + 12
         }
@@ -301,20 +344,32 @@ public final class LitegramController: ViewController {
         y += 26
         
         if let _ = self.perksContainerNode {
-            let perkH: CGFloat = 52
+            let perkH: CGFloat = 60
             let sepH: CGFloat = 0.5
-            let count = perkIconNodes.count
+            let count = perkNodes.count
             let totalH = CGFloat(count) * perkH + CGFloat(perkSepNodes.count) * sepH
             self.perksContainerNode?.frame = CGRect(x: pad, y: y, width: cw, height: totalH)
             
+            let iconSize: CGFloat = 30
+            let iconInset: CGFloat = 12
+            let textX: CGFloat = iconInset + iconSize + 12
+            let arrowSize: CGFloat = 14
+            
             var fy: CGFloat = 0
             for i in 0..<count {
-                let iconSize: CGFloat = 30
-                perkIconNodes[i].frame = CGRect(x: 12, y: (perkH - iconSize) / 2 + fy, width: iconSize, height: iconSize)
-                perkLabelNodes[i].frame = CGRect(x: 52, y: fy, width: cw - 68, height: perkH)
+                let node = perkNodes[i]
+                
+                node.bg.frame = CGRect(x: iconInset, y: fy + (perkH - iconSize) / 2, width: iconSize, height: iconSize)
+                node.icon.frame = CGRect(x: 4, y: 4, width: iconSize - 8, height: iconSize - 8)
+                
+                node.title.frame = CGRect(x: textX, y: fy + 9, width: cw - textX - 30, height: 20)
+                node.subtitle.frame = CGRect(x: textX, y: fy + 9 + 20 + 2, width: cw - textX - 30, height: 16)
+                
+                node.arrow.frame = CGRect(x: cw - arrowSize - 16, y: fy + (perkH - arrowSize) / 2, width: arrowSize, height: arrowSize)
+                
                 fy += perkH
                 if i < perkSepNodes.count {
-                    perkSepNodes[i].frame = CGRect(x: 52, y: fy, width: cw - 52, height: sepH)
+                    perkSepNodes[i].frame = CGRect(x: textX, y: fy, width: cw - textX, height: sepH)
                     fy += sepH
                 }
             }
@@ -417,8 +472,12 @@ public final class LitegramController: ViewController {
             self.lastAnimName = animName
             let pixelSize: Int = Int(80.0 * UIScreen.main.scale)
             self.headerAnimNode?.setup(source: AnimatedStickerNodeLocalFileSource(name: animName), width: pixelSize, height: pixelSize, playbackMode: .once, mode: .direct(cachePathPrefix: nil))
-            self.headerAnimNode?.visibility = true
-            self.headerAnimNode?.playOnce()
+            self.animSetupPending = true
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                self.headerAnimNode?.visibility = true
+                self.headerAnimNode?.playOnce()
+            }
         }
         
         self.serverValueNode?.attributedText = NSAttributedString(string: serverStr, attributes: [
