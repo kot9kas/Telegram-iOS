@@ -147,10 +147,10 @@ public final class LitegramController: ViewController {
     
     override public func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            self.headerAnimNode?.visibility = true
-            self.headerAnimNode?.playOnce()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            guard let self = self, let anim = self.headerAnimNode else { return }
+            anim.visibility = true
+            anim.playOnce()
         }
     }
     
@@ -194,10 +194,7 @@ public final class LitegramController: ViewController {
         
         header.view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(headerTapped)))
         
-        let animNode = DefaultAnimatedStickerNodeImpl()
-        animNode.automaticallyLoadFirstFrame = true
-        header.addSubnode(animNode)
-        self.headerAnimNode = animNode
+        self.headerAnimNode = nil
         
         let title = ASTextNode()
         title.textAlignment = .center
@@ -222,6 +219,7 @@ public final class LitegramController: ViewController {
         self.serverTitleNode = serverTitle
         
         let serverValue = ASTextNode()
+        serverValue.textAlignment = .right
         serverRow.addSubnode(serverValue)
         self.serverValueNode = serverValue
         
@@ -470,13 +468,32 @@ public final class LitegramController: ViewController {
         
         if animName != self.lastAnimName {
             self.lastAnimName = animName
+            
+            self.headerAnimNode?.removeFromSupernode()
+            self.headerAnimNode = nil
+            
+            let newAnim = DefaultAnimatedStickerNodeImpl()
+            newAnim.automaticallyLoadFirstFrame = true
+            self.headerNode?.insertSubnode(newAnim, at: 1)
+            self.headerAnimNode = newAnim
+            
             let pixelSize: Int = Int(80.0 * UIScreen.main.scale)
-            self.headerAnimNode?.setup(source: AnimatedStickerNodeLocalFileSource(name: animName), width: pixelSize, height: pixelSize, playbackMode: .once, mode: .direct(cachePathPrefix: nil))
+            newAnim.setup(source: AnimatedStickerNodeLocalFileSource(name: animName), width: pixelSize, height: pixelSize, playbackMode: .once, mode: .direct(cachePathPrefix: nil))
+            
+            let animBoxSize: CGFloat = 80
+            if let cw = self.headerNode?.frame.width, cw > 0 {
+                let headerH = self.headerNode?.frame.height ?? 0
+                let contentH: CGFloat = animBoxSize + 8 + 34 + 2 + 20
+                let topPad = (headerH - contentH) / 2
+                newAnim.frame = CGRect(x: (cw - animBoxSize) / 2, y: topPad, width: animBoxSize, height: animBoxSize)
+                newAnim.updateLayout(size: CGSize(width: animBoxSize, height: animBoxSize))
+            }
+            
             self.animSetupPending = true
             DispatchQueue.main.async { [weak self] in
-                guard let self = self else { return }
-                self.headerAnimNode?.visibility = true
-                self.headerAnimNode?.playOnce()
+                guard let self = self, let anim = self.headerAnimNode else { return }
+                anim.visibility = true
+                anim.playOnce()
             }
         }
         
