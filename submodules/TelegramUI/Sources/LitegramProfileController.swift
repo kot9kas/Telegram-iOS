@@ -159,7 +159,7 @@ public final class LitegramController: ViewController {
         self.idNode = idNode
         
         let badgeBg = ASDisplayNode()
-        badgeBg.cornerRadius = 12
+        badgeBg.cornerRadius = 13
         profileSection.addSubnode(badgeBg)
         self.badgeBgNode = badgeBg
         
@@ -250,11 +250,15 @@ public final class LitegramController: ViewController {
             self.idNode?.frame = CGRect(x: 36, y: iy, width: cw - 72, height: idH)
             
             let by = iy + idH + idToBadge
-            let badgeW: CGFloat = 80
-            self.badgeBgNode?.frame = CGRect(x: (cw - badgeW) / 2, y: by, width: badgeW, height: badgeH)
-            let badgeTextH: CGFloat = 17
-            let badgeTextY = (badgeH - badgeTextH) / 2
-            self.badgeNode?.frame = CGRect(x: 0, y: badgeTextY, width: badgeW, height: badgeTextH)
+            let badgeTextSize = self.badgeNode?.measure(CGSize(width: cw, height: badgeH)) ?? CGSize(width: 40, height: 16)
+            let badgeW = max(60, badgeTextSize.width + 24)
+            self.badgeBgNode?.frame = CGRect(x: floor((cw - badgeW) / 2), y: by, width: badgeW, height: badgeH)
+            self.badgeNode?.frame = CGRect(
+                x: floor((badgeW - badgeTextSize.width) / 2),
+                y: floor((badgeH - badgeTextSize.height) / 2),
+                width: badgeTextSize.width,
+                height: badgeTextSize.height
+            )
             
             y += profileH + 24
         }
