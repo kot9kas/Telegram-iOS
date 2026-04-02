@@ -339,11 +339,11 @@ public final class LitegramController: ViewController {
             
             let titleY: CGFloat = 16 + animSize + 8
             self.headerTitleNode?.frame = CGRect(x: 0, y: titleY, width: contentWidth, height: 34)
-            (self.headerTitleNode as? ASTextNode)?.textAlignment = .center
+            self.headerTitleNode?.textAlignment = .center
             
             let subtitleY = titleY + 34
             self.headerSubtitleNode?.frame = CGRect(x: 20, y: subtitleY, width: contentWidth - 40, height: 22)
-            (self.headerSubtitleNode as? ASTextNode)?.textAlignment = .center
+            self.headerSubtitleNode?.textAlignment = .center
             
             let statusY = subtitleY + 28
             self.statusDotNode?.frame = CGRect(x: contentWidth / 2 - 50, y: statusY + 5, width: 10, height: 10)
