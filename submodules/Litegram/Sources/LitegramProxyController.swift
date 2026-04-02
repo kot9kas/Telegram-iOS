@@ -9,6 +9,7 @@ public final class LitegramProxyController {
     private let api = LitegramApi()
     private(set) public var accountManager: AccountManager<TelegramAccountManagerTypes>?
     private var started = false
+    public private(set) var lastConnectedServer: LitegramServerInfo?
 
     private init() {}
 
@@ -122,6 +123,7 @@ public final class LitegramProxyController {
             return settings
         }.start()
 
+        self.lastConnectedServer = server
         Logger.shared.log("Litegram", "proxy applied")
     }
 }

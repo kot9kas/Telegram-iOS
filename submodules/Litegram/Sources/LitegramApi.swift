@@ -4,11 +4,15 @@ public struct LitegramServerInfo {
     public let host: String
     public let port: Int
     public let secret: String
+    public let name: String
+    public let country: String
 
-    public init(host: String, port: Int, secret: String) {
+    public init(host: String, port: Int, secret: String, name: String = "", country: String = "") {
         self.host = host
         self.port = port
         self.secret = secret
+        self.name = name
+        self.country = country
     }
 }
 
@@ -158,7 +162,9 @@ public final class LitegramApi {
             return nil
         }
         let port = dict["port"] as? Int ?? 443
-        return LitegramServerInfo(host: host, port: port, secret: secret)
+        let name = dict["name"] as? String ?? ""
+        let country = dict["country"] as? String ?? ""
+        return LitegramServerInfo(host: host, port: port, secret: secret, name: name, country: country)
     }
 
     private static func parseFirstServer(_ json: [String: Any]) throws -> LitegramServerInfo {
