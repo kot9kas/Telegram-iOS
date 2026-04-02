@@ -8,7 +8,6 @@ import TelegramPresentationData
 import AccountContext
 import AppBundle
 import TabBarUI
-import SearchUI
 import Litegram
 
 public final class LitegramController: ViewController {
@@ -119,13 +118,7 @@ public final class LitegramController: ViewController {
         
         setupNodes()
         
-        let searchContentNode = NavigationBarSearchContentNode(theme: self.presentationData.theme, placeholder: self.presentationData.strings.Common_Search, activate: { [weak self] in
-            self?.activateSearch()
-        })
-        self.navigationBar?.setContentNode(searchContentNode, animated: false)
-    }
-    
-    private func activateSearch() {
+        self.updateTabBarSearchState(ViewController.TabBarSearchState(isActive: false), transition: .immediate)
     }
     
     override public func containerLayoutUpdated(_ layout: ContainerViewLayout, transition: ContainedViewLayoutTransition) {
