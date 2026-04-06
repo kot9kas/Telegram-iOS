@@ -1011,7 +1011,7 @@ public func themePickerController(context: AccountContext, focusOnItemTag: Theme
         }
         availableThemes.append(contentsOf: cloudThemes)
         
-        let chatThemes = cloudThemes.filter { $0.emoticon != nil }
+        let chatThemes = cloudThemes
         
         let nightMode = nightModePreview || presentationData.autoNightModeTriggered
         
