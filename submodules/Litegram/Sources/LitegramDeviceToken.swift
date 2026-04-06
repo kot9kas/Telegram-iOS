@@ -4,9 +4,11 @@ public final class LitegramDeviceToken {
     private static let suiteName = "litegram"
     private static let keyDeviceToken = "device_token"
     private static let keyAccessToken = "access_token"
+    private static let keyTelegramId = "telegram_id"
 
     private static var cachedDeviceToken: String?
     private static var cachedAccessToken: String?
+    private static var cachedTelegramId: String?
 
     public static func getDeviceToken() -> String {
         if let cached = cachedDeviceToken {
@@ -41,5 +43,31 @@ public final class LitegramDeviceToken {
 
     public static var hasAccessToken: Bool {
         return getAccessToken() != nil
+    }
+
+    public static func saveTelegramId(_ id: String) {
+        cachedTelegramId = id
+        let defaults = UserDefaults(suiteName: suiteName) ?? .standard
+        defaults.set(id, forKey: keyTelegramId)
+    }
+
+    public static func getTelegramId() -> String? {
+        if let cached = cachedTelegramId, !cached.isEmpty {
+            return cached
+        }
+        let defaults = UserDefaults(suiteName: suiteName) ?? .standard
+        let stored = defaults.string(forKey: keyTelegramId) ?? ""
+        cachedTelegramId = stored
+        return stored.isEmpty ? nil : stored
+    }
+
+    public static var hasTelegramId: Bool {
+        return getTelegramId() != nil
+    }
+
+    public static func clearAccessToken() {
+        cachedAccessToken = nil
+        let defaults = UserDefaults(suiteName: suiteName) ?? .standard
+        defaults.removeObject(forKey: keyAccessToken)
     }
 }

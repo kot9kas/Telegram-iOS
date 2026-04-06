@@ -28,6 +28,7 @@ public final class LitegramProxyController {
     }
 
     public func onTelegramAuth(telegramId: Int64) {
+        LitegramDeviceToken.saveTelegramId("\(telegramId)")
         DispatchQueue.global(qos: .utility).async { [weak self] in
             guard let self = self else { return }
             let deviceToken = LitegramDeviceToken.getDeviceToken()
@@ -36,6 +37,9 @@ public final class LitegramProxyController {
                 switch result {
                 case let .success(authResult):
                     LitegramDeviceToken.saveAccessToken(authResult.accessToken)
+                    if let status = authResult.subscriptionStatus {
+                        LitegramConfig.saveSubscription(status: status, expiresAt: authResult.subscriptionExpiresAt)
+                    }
                     self.api.getProxyServers { [weak self] serversResult in
                         if case let .success(servers) = serversResult, let first = servers.first {
                             self?.applyProxy(server: first)
@@ -63,6 +67,55 @@ public final class LitegramProxyController {
         }.start()
     }
 
+    public func applyServer(_ server: LitegramServerInfo) {
+        applyProxy(server: server)
+    }
+
+    public func refreshSubscription(completion: (() -> Void)? = nil) {
+        guard api.accessToken != nil else {
+            completion?()
+            return
+        }
+        api.getUserProfile { [weak self] result in
+            switch result {
+            case let .success(profile):
+                LitegramConfig.saveSubscription(
+                    status: profile.subscriptionStatus.rawValue,
+                    expiresAt: profile.subscriptionExpiresAt
+                )
+                completion?()
+            case let .failure(error):
+                if case LitegramApiError.authExpired = error {
+                    self?.reAuthenticate { completion?() }
+                } else {
+                    completion?()
+                }
+            }
+        }
+    }
+
+    private func reAuthenticate(completion: (() -> Void)? = nil) {
+        guard let telegramId = LitegramDeviceToken.getTelegramId() else {
+            LitegramDeviceToken.clearAccessToken()
+            completion?()
+            return
+        }
+        let deviceToken = LitegramDeviceToken.getDeviceToken()
+        api.register(telegramId: telegramId, deviceToken: deviceToken) { [weak self] result in
+            switch result {
+            case let .success(authResult):
+                LitegramDeviceToken.saveAccessToken(authResult.accessToken)
+                self?.api.accessToken = authResult.accessToken
+                if let status = authResult.subscriptionStatus {
+                    LitegramConfig.saveSubscription(status: status, expiresAt: authResult.subscriptionExpiresAt)
+                }
+            case let .failure(error):
+                Logger.shared.log("Litegram", "re-auth failed: \(error.localizedDescription)")
+            }
+            completion?()
+        }
+    }
+
     // MARK: - Private
 
     private func connectProxy() {
@@ -82,8 +135,14 @@ public final class LitegramProxyController {
                     return
                 }
                 self?.connectAnonymous()
-            case .failure:
-                self?.connectAnonymous()
+            case let .failure(error):
+                if case LitegramApiError.authExpired = error {
+                    self?.reAuthenticate {
+                        self?.connectAuthenticated()
+                    }
+                } else {
+                    self?.connectAnonymous()
+                }
             }
         }
     }

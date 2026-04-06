@@ -19,11 +19,23 @@ public struct LitegramServerInfo {
 public struct LitegramAuthResult {
     public let accessToken: String
     public let userId: String
+    public let subscriptionStatus: String?
+    public let subscriptionExpiresAt: String?
 
-    public init(accessToken: String, userId: String) {
+    public init(accessToken: String, userId: String, subscriptionStatus: String? = nil, subscriptionExpiresAt: String? = nil) {
         self.accessToken = accessToken
         self.userId = userId
+        self.subscriptionStatus = subscriptionStatus
+        self.subscriptionExpiresAt = subscriptionExpiresAt
     }
+}
+
+public struct LitegramAdInfo {
+    public let id: String
+    public let title: String
+    public let description: String
+    public let imageUrl: String?
+    public let linkUrl: String?
 }
 
 public enum LitegramSubscriptionStatus: String {
@@ -99,10 +111,19 @@ public final class LitegramApi {
                 self?.accessToken = token
 
                 var userId = ""
+                var subStatus: String?
+                var subExpires: String?
                 if let user = json["user"] as? [String: Any] {
                     userId = "\(user["id"] ?? "")"
+                    subStatus = user["subscriptionStatus"] as? String
+                    subExpires = user["subscriptionExpiresAt"] as? String
                 }
-                completion(.success(LitegramAuthResult(accessToken: token, userId: userId)))
+                completion(.success(LitegramAuthResult(
+                    accessToken: token,
+                    userId: userId,
+                    subscriptionStatus: subStatus,
+                    subscriptionExpiresAt: subExpires
+                )))
             case let .failure(error):
                 completion(.failure(error))
             }
@@ -157,6 +178,29 @@ public final class LitegramApi {
         }
     }
 
+    public func getActiveAd(completion: @escaping (Result<LitegramAdInfo?, Error>) -> Void) {
+        httpGet(path: "/advertising/active") { result in
+            switch result {
+            case let .success(json):
+                guard !json.isEmpty else {
+                    completion(.success(nil))
+                    return
+                }
+                let id = "\(json["id"] ?? "")"
+                let title = json["title"] as? String ?? ""
+                let desc = json["description"] as? String ?? ""
+                let imageUrl = json["imageUrl"] as? String
+                let linkUrl = json["linkUrl"] as? String
+                completion(.success(LitegramAdInfo(
+                    id: id, title: title, description: desc,
+                    imageUrl: imageUrl, linkUrl: linkUrl
+                )))
+            case let .failure(error):
+                completion(.failure(error))
+            }
+        }
+    }
+
     // MARK: - Private
 
     private func httpGet(path: String, completion: @escaping (Result<[String: Any], Error>) -> Void) {
@@ -191,6 +235,10 @@ public final class LitegramApi {
             }
             guard let httpResponse = response as? HTTPURLResponse else {
                 completion(.failure(LitegramApiError.noData))
+                return
+            }
+            if httpResponse.statusCode == 401 {
+                completion(.failure(LitegramApiError.authExpired))
                 return
             }
             guard (200..<300).contains(httpResponse.statusCode) else {
@@ -237,6 +285,7 @@ public enum LitegramApiError: Error, LocalizedError {
     case httpError(Int, String)
     case noAccessToken
     case noServer
+    case authExpired
 
     public var errorDescription: String? {
         switch self {
@@ -250,6 +299,8 @@ public enum LitegramApiError: Error, LocalizedError {
             return "No access token in response"
         case .noServer:
             return "No server in response"
+        case .authExpired:
+            return "JWT token expired (401)"
         }
     }
 }
