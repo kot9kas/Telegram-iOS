@@ -5,6 +5,7 @@ import AsyncDisplayKit
 import SwiftSignalKit
 import TelegramCore
 import TelegramPresentationData
+import TelegramUIPreferences
 import AccountContext
 import AppBundle
 import TabBarUI
@@ -16,6 +17,7 @@ public final class LitegramController: ViewController {
     private var presentationData: PresentationData
     private var presentationDataDisposable: Disposable?
     private var peerDisposable: Disposable?
+    private var themeDisposable: Disposable?
 
     private var scrollNode: ASScrollNode?
 
@@ -116,6 +118,7 @@ public final class LitegramController: ViewController {
     deinit {
         self.presentationDataDisposable?.dispose()
         self.peerDisposable?.dispose()
+        self.themeDisposable?.dispose()
     }
 
     private func updateTheme() {
@@ -142,6 +145,7 @@ public final class LitegramController: ViewController {
 
     override public func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        applyDefaultThemeIfNeeded()
         tryShowAd()
     }
 
@@ -418,6 +422,34 @@ public final class LitegramController: ViewController {
     @objc private func tryAllFeaturesTapped() {
         let connectionController = LitegramConnectionController(context: self.context)
         self.push(connectionController)
+    }
+
+    private func applyDefaultThemeIfNeeded() {
+        guard !LitegramConfig.hasAppliedDefaultTheme else { return }
+        LitegramConfig.hasAppliedDefaultTheme = true
+
+        let slug = LitegramConfig.defaultThemeSlug
+        let context = self.context
+
+        self.themeDisposable = (getTheme(account: context.account, slug: slug)
+        |> deliverOnMainQueue).startStrict(next: { theme in
+            let cloudTheme = PresentationCloudTheme(
+                theme: theme,
+                resolvedWallpaper: nil,
+                creatorAccountId: nil
+            )
+            let _ = applyTheme(
+                accountManager: context.sharedContext.accountManager,
+                account: context.account,
+                theme: theme
+            ).startStandalone()
+            let _ = updatePresentationThemeSettingsInteractively(
+                accountManager: context.sharedContext.accountManager,
+                { settings in
+                    return settings.withUpdatedTheme(.cloud(cloudTheme))
+                }
+            ).startStandalone()
+        })
     }
 
     private func fetchSubscriptionStatus() {

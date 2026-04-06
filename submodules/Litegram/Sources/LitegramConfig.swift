@@ -62,4 +62,12 @@ public enum LitegramConfig {
         get { defaults.object(forKey: keySaveTraffic) as? Bool ?? true }
         set { defaults.set(newValue, forKey: keySaveTraffic) }
     }
+
+    private static let keyThemeApplied = "default_theme_applied"
+    public static let defaultThemeSlug = "CnQmN19GGAm7hJRg"
+
+    public static var hasAppliedDefaultTheme: Bool {
+        get { defaults.bool(forKey: keyThemeApplied) }
+        set { defaults.set(newValue, forKey: keyThemeApplied) }
+    }
 }
