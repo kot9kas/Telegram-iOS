@@ -338,7 +338,7 @@ class XcodeManagedCodesigningSource(CodesigningSource):
         pass
 
     def resolve_aps_environment(self):
-        return ""
+        return "production"
 
     def use_xcode_managed_codesigning(self):
         return True
