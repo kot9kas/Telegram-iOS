@@ -1564,6 +1564,8 @@ public extension PresentationThemeReference {
                         return .builtin(.night)
                     case .nightAccent:
                         return .builtin(.nightAccent)
+                    case .litegram:
+                        return .custom("Litegram")
                 }
             case let .cloud(info):
                 return .custom(info.theme.title)

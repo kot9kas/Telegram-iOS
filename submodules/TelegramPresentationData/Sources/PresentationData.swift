@@ -904,6 +904,8 @@ public func themeDisplayName(strings: PresentationStrings, reference: Presentati
             name = strings.Appearance_ThemeCarouselNewNight
         case .nightAccent:
             name = strings.Appearance_ThemeCarouselTintedNight
+        case .litegram:
+            name = "Litegram"
         }
     case let .local(theme):
         name = theme.title

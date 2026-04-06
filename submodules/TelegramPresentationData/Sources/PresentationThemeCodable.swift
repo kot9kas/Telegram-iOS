@@ -2045,6 +2045,8 @@ extension PresentationBuiltinThemeReference: @retroactive Codable {
                     self = .nightAccent
                 case "night":
                     self = .night
+                case "litegram":
+                    self = .litegram
                 default:
                     self = .dayClassic
             }
@@ -2064,6 +2066,8 @@ extension PresentationBuiltinThemeReference: @retroactive Codable {
                 try container.encode("nighttinted")
             case .night:
                 try container.encode("night")
+            case .litegram:
+                try container.encode("litegram")
         }
     }
 }
