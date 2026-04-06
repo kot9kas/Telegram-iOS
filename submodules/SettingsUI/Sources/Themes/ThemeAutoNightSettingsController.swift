@@ -575,7 +575,7 @@ public func themeAutoNightSettingsController(context: AccountContext) -> ViewCon
         
         let cloudThemes: [PresentationThemeReference] = cloudThemes.map { .cloud(PresentationCloudTheme(theme: $0, resolvedWallpaper: nil, creatorAccountId: $0.isCreator ? context.account.id : nil)) }
         
-        var availableThemes: [PresentationThemeReference] = cloudThemes
+        let availableThemes: [PresentationThemeReference] = cloudThemes
         
         let controllerState = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(presentationData.strings.AutoNightTheme_Title), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
         let listState = ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: themeAutoNightSettingsControllerEntries(theme: presentationData.theme, strings: presentationData.strings, settings: settings, switchSetting: stagingSettings ?? settings.automaticThemeSwitchSetting, availableThemes: availableThemes, dateTimeFormat: presentationData.dateTimeFormat), style: .blocks, animateChanges: false)
