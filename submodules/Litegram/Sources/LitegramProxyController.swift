@@ -60,8 +60,10 @@ public final class LitegramProxyController {
 
     public func disconnect() {
         guard let accountManager = self.accountManager else { return }
+        self.lastConnectedServer = nil
         let _ = updateProxySettingsInteractively(accountManager: accountManager) { settings in
             var settings = settings
+            settings.activeServer = nil
             settings.enabled = false
             return settings
         }.start()
@@ -174,7 +176,6 @@ public final class LitegramProxyController {
 
         let _ = updateProxySettingsInteractively(accountManager: accountManager) { settings in
             var settings = settings
-            settings.servers = [proxyServer]
             settings.activeServer = proxyServer
             settings.enabled = true
             return settings
