@@ -57,6 +57,13 @@ public final class LitegramController: ViewController {
             title: "Protection",
             subtitle: "Proxy settings and connection",
             action: #selector(protectionTapped)
+        ),
+        MenuItem(
+            iconName: "Chat/Context Menu/Delete",
+            iconBgColor: UIColor(red: 0.90, green: 0.30, blue: 0.30, alpha: 1.0),
+            title: "Удалённые сообщения",
+            subtitle: "Сохранённые удалённые сообщения",
+            action: #selector(deletedMessagesTapped)
         )
     ]
 
@@ -419,6 +426,11 @@ public final class LitegramController: ViewController {
     @objc private func protectionTapped() {
         let connectionController = LitegramConnectionController(context: self.context)
         self.push(connectionController)
+    }
+
+    @objc private func deletedMessagesTapped() {
+        let controller = LitegramDeletedMessagesController(context: self.context)
+        self.push(controller)
     }
 
     @objc private func saveTrafficToggled(_ sender: UISwitch) {

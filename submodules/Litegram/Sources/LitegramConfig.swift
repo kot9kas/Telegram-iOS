@@ -71,6 +71,13 @@ public enum LitegramConfig {
         set { defaults.set(newValue, forKey: keyThemeApplied) }
     }
 
+    private static let keySaveDeleted = "save_deleted_messages"
+
+    public static var isSaveDeletedMessagesEnabled: Bool {
+        get { defaults.object(forKey: keySaveDeleted) as? Bool ?? true }
+        set { defaults.set(newValue, forKey: keySaveDeleted) }
+    }
+
     private static let keySelectedServer = "selected_server_host"
 
     public static var selectedServerHost: String? {
