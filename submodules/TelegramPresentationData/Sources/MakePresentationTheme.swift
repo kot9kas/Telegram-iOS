@@ -7,6 +7,14 @@ import TelegramCore
 public func makeDefaultPresentationTheme(reference: PresentationBuiltinThemeReference, extendingThemeReference: PresentationThemeReference? = nil, serviceBackgroundColor: UIColor?, preview: Bool = false) -> PresentationTheme {
     let theme: PresentationTheme
     switch reference {
+        case .litegram:
+            if let url = Bundle.main.url(forResource: "litegram-theme", withExtension: "txt"),
+               let data = try? Data(contentsOf: url),
+               let litegramTheme = makePresentationTheme(data: data) {
+                theme = litegramTheme
+            } else {
+                theme = makeDefaultDarkTintedPresentationTheme(extendingThemeReference: extendingThemeReference, preview: preview)
+            }
         case .dayClassic:
             theme = makeDefaultDayPresentationTheme(extendingThemeReference: extendingThemeReference, serviceBackgroundColor: serviceBackgroundColor, day: false, preview: preview)
         case .day:
@@ -24,6 +32,8 @@ public func customizePresentationTheme(_ theme: PresentationTheme, editing: Bool
         return theme
     }
     switch theme.referenceTheme {
+        case .litegram:
+            return theme
         case .day, .dayClassic:
             return customizeDefaultDayTheme(theme: theme, editing: editing, title: title, accentColor: accentColor, outgoingAccentColor: outgoingAccentColor, backgroundColors: backgroundColors, bubbleColors: bubbleColors, animateBubbleColors: animateBubbleColors ?? false, wallpaper: wallpaper, serviceBackgroundColor: nil)
         case .night:
