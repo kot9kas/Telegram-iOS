@@ -428,20 +428,43 @@ public final class LitegramController: ViewController {
         guard !LitegramConfig.hasAppliedDefaultTheme else { return }
         LitegramConfig.hasAppliedDefaultTheme = true
 
-        let slug = LitegramConfig.defaultThemeSlug
+        let slugs = LitegramConfig.defaultThemeSlugs
+        guard let primarySlug = slugs.first else { return }
         let context = self.context
 
-        self.themeDisposable = (getTheme(account: context.account, slug: slug)
-        |> deliverOnMainQueue).startStrict(next: { theme in
+        let primarySignal = getTheme(account: context.account, slug: primarySlug)
+            |> map { Optional($0) }
+            |> `catch` { _ -> Signal<TelegramTheme?, NoError> in .single(nil) }
+
+        var signals: [Signal<TelegramTheme?, NoError>] = [primarySignal]
+        for slug in slugs.dropFirst() {
+            let s = getTheme(account: context.account, slug: slug)
+                |> map { Optional($0) }
+                |> `catch` { _ -> Signal<TelegramTheme?, NoError> in .single(nil) }
+            signals.append(s)
+        }
+
+        self.themeDisposable = (combineLatest(signals)
+        |> deliverOnMainQueue).startStrict(next: { themes in
+            for theme in themes {
+                guard let theme = theme else { continue }
+                let _ = saveThemeInteractively(
+                    account: context.account,
+                    accountManager: context.sharedContext.accountManager,
+                    theme: theme
+                ).startStandalone()
+            }
+
+            guard let primary = themes.first, let primary = primary else { return }
             let cloudTheme = PresentationCloudTheme(
-                theme: theme,
+                theme: primary,
                 resolvedWallpaper: nil,
                 creatorAccountId: nil
             )
             let _ = applyTheme(
                 accountManager: context.sharedContext.accountManager,
                 account: context.account,
-                theme: theme
+                theme: primary
             ).startStandalone()
             let _ = updatePresentationThemeSettingsInteractively(
                 accountManager: context.sharedContext.accountManager,

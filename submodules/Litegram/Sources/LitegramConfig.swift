@@ -64,7 +64,7 @@ public enum LitegramConfig {
     }
 
     private static let keyThemeApplied = "default_theme_applied"
-    public static let defaultThemeSlug = "CnQmN19GGAm7hJRg"
+    public static let defaultThemeSlugs = ["CnQmN19GGAm7hJRg", "UVfCBD0qw76lPMyM"]
 
     public static var hasAppliedDefaultTheme: Bool {
         get { defaults.bool(forKey: keyThemeApplied) }
