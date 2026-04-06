@@ -1003,28 +1003,15 @@ public func themePickerController(context: AccountContext, focusOnItemTag: Theme
             rightNavigationButton = nil
         }
         
-        var defaultThemes: [PresentationThemeReference] = []
-        if presentationData.autoNightModeTriggered {
-            defaultThemes.append(contentsOf: [.builtin(.nightAccent), .builtin(.night)])
-        } else {
-            defaultThemes.append(contentsOf: [
-                .builtin(.dayClassic),
-                .builtin(.nightAccent),
-                .builtin(.day),
-                .builtin(.night)
-            ])
-        }
-        
         let cloudThemes: [PresentationThemeReference] = cloudThemes.map { .cloud(PresentationCloudTheme(theme: $0, resolvedWallpaper: nil, creatorAccountId: $0.isCreator ? context.account.id : nil)) }.filter { !removedThemeIndexes.contains($0.index) }
         
-        var availableThemes = defaultThemes
-        if defaultThemes.first(where: { $0.index == themeReference.index }) == nil && cloudThemes.first(where: { $0.index == themeReference.index }) == nil {
+        var availableThemes: [PresentationThemeReference] = []
+        if cloudThemes.first(where: { $0.index == themeReference.index }) == nil {
             availableThemes.append(themeReference)
         }
         availableThemes.append(contentsOf: cloudThemes)
         
-        var chatThemes = cloudThemes.filter { $0.emoticon != nil }
-        chatThemes.insert(.builtin(.dayClassic), at: 0)
+        let chatThemes = cloudThemes.filter { $0.emoticon != nil }
         
         let nightMode = nightModePreview || presentationData.autoNightModeTriggered
         
