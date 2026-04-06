@@ -63,11 +63,24 @@ public enum LitegramConfig {
         set { defaults.set(newValue, forKey: keySaveTraffic) }
     }
 
-    private static let keyThemeApplied = "default_theme_applied"
-    public static let defaultThemeSlugs = ["CnQmN19GGAm7hJRg", "UVfCBD0qw76lPMyM"]
+    private static let keyThemeApplied = "default_theme_applied_v2"
+    public static let defaultThemeSlugs = ["J5if4oa5U3jcEmRQ", "CnQmN19GGAm7hJRg", "UVfCBD0qw76lPMyM"]
 
     public static var hasAppliedDefaultTheme: Bool {
         get { defaults.bool(forKey: keyThemeApplied) }
         set { defaults.set(newValue, forKey: keyThemeApplied) }
+    }
+
+    private static let keySelectedServer = "selected_server_host"
+
+    public static var selectedServerHost: String? {
+        get { defaults.string(forKey: keySelectedServer) }
+        set {
+            if let v = newValue {
+                defaults.set(v, forKey: keySelectedServer)
+            } else {
+                defaults.removeObject(forKey: keySelectedServer)
+            }
+        }
     }
 }

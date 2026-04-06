@@ -194,13 +194,14 @@ public final class LitegramConnectionController: ViewController {
                 guard let self = self else { return }
                 if case let .success(servers) = result, !servers.isEmpty {
                     self.availableServers = servers
+                    if let savedHost = LitegramConfig.selectedServerHost,
+                       let idx = servers.firstIndex(where: { $0.host == savedHost }) {
+                        self.selectedServerIndex = idx
+                    }
                     if self.isNodeLoaded {
                         self.rebuildServerRows()
                         self.updateUI()
-                        if let layout = self.view.superview {
-                            let _ = layout
-                            self.view.setNeedsLayout()
-                        }
+                        self.view.setNeedsLayout()
                     }
                 }
             }
@@ -550,6 +551,7 @@ public final class LitegramConnectionController: ViewController {
         selectedServerIndex = tag
 
         let server = availableServers[tag]
+        LitegramConfig.selectedServerHost = server.host
         LitegramProxyController.shared.applyServer(server)
     }
 

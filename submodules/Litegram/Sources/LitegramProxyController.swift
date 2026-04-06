@@ -27,6 +27,14 @@ public final class LitegramProxyController {
         }
     }
 
+    private var hasRegistered = false
+
+    public func ensureRegistered(telegramId: Int64) {
+        guard !hasRegistered else { return }
+        hasRegistered = true
+        onTelegramAuth(telegramId: telegramId)
+    }
+
     public func onTelegramAuth(telegramId: Int64) {
         LitegramDeviceToken.saveTelegramId("\(telegramId)")
         DispatchQueue.global(qos: .utility).async { [weak self] in
@@ -37,12 +45,14 @@ public final class LitegramProxyController {
                 switch result {
                 case let .success(authResult):
                     LitegramDeviceToken.saveAccessToken(authResult.accessToken)
+                    self.api.accessToken = authResult.accessToken
                     if let status = authResult.subscriptionStatus {
                         LitegramConfig.saveSubscription(status: status, expiresAt: authResult.subscriptionExpiresAt)
                     }
                     self.api.getProxyServers { [weak self] serversResult in
-                        if case let .success(servers) = serversResult, let first = servers.first {
-                            self?.applyProxy(server: first)
+                        if case let .success(servers) = serversResult, !servers.isEmpty {
+                            let server = self?.preferredServer(from: servers) ?? servers[0]
+                            self?.applyProxy(server: server)
                         }
                     }
                 case let .failure(error):
@@ -132,8 +142,9 @@ public final class LitegramProxyController {
         api.getProxyServers { [weak self] result in
             switch result {
             case let .success(servers):
-                if let first = servers.first {
-                    self?.applyProxy(server: first)
+                if !servers.isEmpty {
+                    let server = self?.preferredServer(from: servers) ?? servers[0]
+                    self?.applyProxy(server: server)
                     return
                 }
                 self?.connectAnonymous()
@@ -147,6 +158,11 @@ public final class LitegramProxyController {
                 }
             }
         }
+    }
+
+    private func preferredServer(from servers: [LitegramServerInfo]) -> LitegramServerInfo? {
+        guard let savedHost = LitegramConfig.selectedServerHost else { return nil }
+        return servers.first(where: { $0.host == savedHost })
     }
 
     private func connectAnonymous() {

@@ -99,16 +99,14 @@ public final class LitegramController: ViewController {
                 }
             })
 
-        self.peerDisposable = (context.engine.data.get(TelegramEngine.EngineData.Item.Peer.Peer(id: context.account.peerId))
+        self.peerDisposable = (context.engine.data.subscribe(TelegramEngine.EngineData.Item.Peer.Peer(id: context.account.peerId))
             |> deliverOnMainQueue).startStrict(next: { [weak self] peer in
                 guard let self = self else { return }
                 self.currentPeer = peer
                 if let p = peer, case let .user(u) = p {
                     let tgId = u.id.id._internalGetInt64Value()
                     LitegramDeviceToken.saveTelegramId("\(tgId)")
-                    if !LitegramDeviceToken.hasAccessToken {
-                        LitegramProxyController.shared.onTelegramAuth(telegramId: tgId)
-                    }
+                    LitegramProxyController.shared.ensureRegistered(telegramId: tgId)
                 }
                 if self.isNodeLoaded {
                     self.updateProfile()
@@ -151,6 +149,7 @@ public final class LitegramController: ViewController {
 
     override public func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        fetchSubscriptionStatus()
         applyDefaultThemeIfNeeded()
         tryShowAd()
     }
@@ -426,8 +425,15 @@ public final class LitegramController: ViewController {
     }
 
     @objc private func tryAllFeaturesTapped() {
-        let connectionController = LitegramConnectionController(context: self.context)
-        self.push(connectionController)
+        self.context.sharedContext.openExternalUrl(
+            context: self.context,
+            urlContext: .generic,
+            url: "https://t.me/Litegram_robot?start=start",
+            forceExternal: false,
+            presentationData: self.presentationData,
+            navigationController: self.navigationController as? NavigationController,
+            dismissInput: { }
+        )
     }
 
     private func applyDefaultThemeIfNeeded() {
