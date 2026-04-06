@@ -113,6 +113,8 @@ public final class LitegramController: ViewController {
                 }
                 self.fetchSubscriptionStatus()
             })
+
+        applyDefaultThemeIfNeeded()
     }
 
     required public init(coder aDecoder: NSCoder) {
@@ -150,7 +152,6 @@ public final class LitegramController: ViewController {
     override public func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         fetchSubscriptionStatus()
-        applyDefaultThemeIfNeeded()
         tryShowAd()
     }
 
