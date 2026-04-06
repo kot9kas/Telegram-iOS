@@ -46,6 +46,7 @@ class BazelCommandLine:
         self.show_actions = False
         self.enable_sandbox = False
         self.disable_provisioning_profiles = False
+        self.disable_extensions = False
         self.profile_swift = False
 
         self.common_args = [
@@ -132,6 +133,9 @@ class BazelCommandLine:
 
     def set_disable_provisioning_profiles(self):
         self.disable_provisioning_profiles = True
+
+    def set_disable_extensions(self):
+        self.disable_extensions = True
 
     def set_profile_swift(self, value):
         self.profile_swift = value
@@ -276,6 +280,9 @@ class BazelCommandLine:
 
         if self.disable_provisioning_profiles:
             combined_arguments += ['--//Telegram:disableProvisioningProfiles']
+
+        if self.disable_extensions:
+            combined_arguments += ['--//Telegram:disableExtensions']
 
         combined_arguments += self.common_args
         combined_arguments += self.common_build_args
@@ -608,6 +615,9 @@ def build(bazel, arguments):
         arguments=arguments,
         additional_codesigning_output_path=None
     )
+
+    if arguments.xcodeManagedCodesigning:
+        bazel_command_line.set_disable_extensions()
 
     bazel_command_line.set_configuration(arguments.configuration)
     bazel_command_line.set_build_number(arguments.buildNumber)
