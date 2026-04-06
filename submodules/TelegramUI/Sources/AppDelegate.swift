@@ -1059,8 +1059,20 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             }
         }
         
-        let sharedContextSignal = currentPresentationDataAndSettings(accountManager: accountManager, systemUserInterfaceStyle: systemUserInterfaceStyle)
-        |> map { initialPresentationDataAndSettings -> (AccountManager, InitialPresentationDataAndSettings) in
+        let litegramThemeSetup: Signal<Void, NoError>
+        if !LitegramConfig.hasAppliedDefaultTheme {
+            litegramThemeSetup = updatePresentationThemeSettingsInteractively(accountManager: accountManager) { settings in
+                return settings.withUpdatedTheme(.builtin(.day))
+            }
+        } else {
+            litegramThemeSetup = .single(Void())
+        }
+
+        let sharedContextSignal = litegramThemeSetup
+        |> mapToSignal { _ in
+            return currentPresentationDataAndSettings(accountManager: accountManager, systemUserInterfaceStyle: systemUserInterfaceStyle)
+        }
+        |> map { initialPresentationDataAndSettings -> (AccountManager<TelegramAccountManagerTypes>, InitialPresentationDataAndSettings) in
             return (accountManager, initialPresentationDataAndSettings)
         }
         |> deliverOnMainQueue
