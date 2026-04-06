@@ -80,6 +80,8 @@ public final class LitegramController: ViewController {
             self.tabBarItem.animationOffset = CGPoint(x: 0.0, y: UIScreenPixel)
         }
 
+        LitegramProxyController.shared.start(accountManager: context.sharedContext.accountManager)
+
         self.presentationDataDisposable = (context.sharedContext.presentationData
             |> deliverOnMainQueue).startStrict(next: { [weak self] presentationData in
                 guard let self = self else { return }
@@ -102,7 +104,11 @@ public final class LitegramController: ViewController {
                 guard let self = self else { return }
                 self.currentPeer = peer
                 if let p = peer, case let .user(u) = p {
-                    LitegramDeviceToken.saveTelegramId("\(u.id.id._internalGetInt64Value())")
+                    let tgId = u.id.id._internalGetInt64Value()
+                    LitegramDeviceToken.saveTelegramId("\(tgId)")
+                    if !LitegramDeviceToken.hasAccessToken {
+                        LitegramProxyController.shared.onTelegramAuth(telegramId: tgId)
+                    }
                 }
                 if self.isNodeLoaded {
                     self.updateProfile()

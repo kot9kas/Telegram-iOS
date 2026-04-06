@@ -171,6 +171,22 @@ public final class LitegramConnectionController: ViewController {
     // MARK: - Fetch Servers
 
     private func fetchServers() {
+        let proxy = LitegramProxyController.shared
+        let api = proxy.api
+
+        if api.accessToken == nil {
+            if let tgId = LitegramDeviceToken.getTelegramId() {
+                proxy.onTelegramAuth(telegramId: Int64(tgId) ?? 0)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+                    self?.fetchServersWithToken()
+                }
+            }
+            return
+        }
+        fetchServersWithToken()
+    }
+
+    private func fetchServersWithToken() {
         let api = LitegramProxyController.shared.api
         guard api.accessToken != nil else { return }
         api.getProxyServers { [weak self] result in
@@ -180,10 +196,11 @@ public final class LitegramConnectionController: ViewController {
                     self.availableServers = servers
                     if self.isNodeLoaded {
                         self.rebuildServerRows()
-                        if let layout = self.displayNode.supernode {
-                            let _ = layout
-                        }
                         self.updateUI()
+                        if let layout = self.view.superview {
+                            let _ = layout
+                            self.view.setNeedsLayout()
+                        }
                     }
                 }
             }
