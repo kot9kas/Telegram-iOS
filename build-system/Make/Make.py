@@ -616,7 +616,7 @@ def build(bazel, arguments):
         additional_codesigning_output_path=None
     )
 
-    if arguments.xcodeManagedCodesigning:
+    if arguments.xcodeManagedCodesigning or (hasattr(arguments, 'disableExtensions') and arguments.disableExtensions):
         bazel_command_line.set_disable_extensions()
 
     bazel_command_line.set_configuration(arguments.configuration)
@@ -1007,6 +1007,12 @@ if __name__ == '__main__':
         action='store_true',
         default=False,
         help='Enable sandbox.',
+    )
+    buildParser.add_argument(
+        '--disableExtensions',
+        action='store_true',
+        default=False,
+        help='Build without app extensions.',
     )
     buildParser.add_argument(
         '--outputBuildArtifactsPath',
