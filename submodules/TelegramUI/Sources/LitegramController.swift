@@ -240,7 +240,7 @@ public final class LitegramConnectionController: ViewController {
         } else {
             self.selectedServerIndex = 0
         }
-        if self.isNodeLoaded {
+        if self.serverSectionNode != nil {
             self.rebuildServerRows()
             self.updateUI()
             self.view.setNeedsLayout()
@@ -447,6 +447,9 @@ public final class LitegramConnectionController: ViewController {
             self.rebuildServerRows()
         } else {
             self.applyServersFromActiveProxyIfNeeded()
+            if !self.availableServers.isEmpty {
+                self.rebuildServerRows()
+            }
         }
 
         updateUI()
