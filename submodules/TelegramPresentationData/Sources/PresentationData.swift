@@ -149,6 +149,11 @@ public func dictFromLocalization(_ value: Localization) -> [String: String] {
                 dict["\(key)_any"] = other
         }
     }
+    for (key, value) in dict {
+        if value.contains("Telegram") {
+            dict[key] = value.replacingOccurrences(of: "Telegram", with: "Litegram")
+        }
+    }
     return dict
 }
 
