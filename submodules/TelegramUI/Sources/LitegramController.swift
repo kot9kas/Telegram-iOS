@@ -52,6 +52,7 @@ public final class LitegramConnectionController: ViewController {
     private var animSetupPending = false
     private var authObserver: NSObjectProtocol?
     private var fetchRetryWorkItem: DispatchWorkItem?
+    private var lastServerDebugSignature: String?
 
     private static let gradientColors: [UIColor] = [
         UIColor(red: 0.94, green: 0.41, blue: 0.13, alpha: 1.0),
@@ -97,6 +98,20 @@ public final class LitegramConnectionController: ViewController {
             |> deliverOnMainQueue).startStrict(next: { [weak self] sharedData in
                 guard let self = self else { return }
                 self.currentProxySettings = sharedData.entries[SharedDataKeys.proxySettings]?.get(ProxySettings.self) ?? ProxySettings.defaultSettings
+                // #region agent log
+                self.debugLog(
+                    runId: "repro-1",
+                    hypothesisId: "H4",
+                    location: "LitegramController.swift:proxySettingsDisposable",
+                    message: "proxy settings update",
+                    data: [
+                        "enabled": self.currentProxySettings?.enabled ?? false,
+                        "hasActiveServer": self.currentProxySettings?.activeServer != nil,
+                        "activeHost": self.currentProxySettings?.activeServer?.host ?? "",
+                        "availableServersCount": self.availableServers.count
+                    ]
+                )
+                // #endregion
                 self.applyServersFromActiveProxyIfNeeded()
                 self.updateUI()
             })
@@ -192,6 +207,19 @@ public final class LitegramConnectionController: ViewController {
 
         self.fetchRetryWorkItem?.cancel()
         let cachedServers = LitegramConfig.getCachedServers()
+        // #region agent log
+        self.debugLog(
+            runId: "repro-1",
+            hypothesisId: "H2",
+            location: "LitegramController.swift:fetchServers",
+            message: "fetchServers start",
+            data: [
+                "hasToken": api.accessToken != nil,
+                "cachedServersCount": cachedServers.count,
+                "hasActiveServer": self.currentProxySettings?.activeServer != nil
+            ]
+        )
+        // #endregion
         if !cachedServers.isEmpty {
             self.applyServers(cachedServers)
         } else {
@@ -216,10 +244,35 @@ public final class LitegramConnectionController: ViewController {
             DispatchQueue.main.async {
                 guard let self = self else { return }
                 if case let .success(servers) = result, !servers.isEmpty {
+                    // #region agent log
+                    self.debugLog(
+                        runId: "repro-1",
+                        hypothesisId: "H2",
+                        location: "LitegramController.swift:fetchServersWithToken",
+                        message: "api servers success",
+                        data: ["serversCount": servers.count]
+                    )
+                    // #endregion
                     self.fetchRetryWorkItem?.cancel()
                     LitegramConfig.saveCachedServers(servers)
                     self.applyServers(servers)
                 } else {
+                    // #region agent log
+                    let reason: String
+                    switch result {
+                    case .success:
+                        reason = "empty_success"
+                    case .failure:
+                        reason = "failure"
+                    }
+                    self.debugLog(
+                        runId: "repro-1",
+                        hypothesisId: "H2",
+                        location: "LitegramController.swift:fetchServersWithToken",
+                        message: "api servers fallback path",
+                        data: ["reason": reason, "cachedCount": LitegramConfig.getCachedServers().count]
+                    )
+                    // #endregion
                     let cached = LitegramConfig.getCachedServers()
                     if !cached.isEmpty {
                         self.applyServers(cached)
@@ -241,6 +294,20 @@ public final class LitegramConnectionController: ViewController {
             self.selectedServerIndex = 0
         }
         if self.serverSectionNode != nil {
+            // #region agent log
+            self.debugLog(
+                runId: "repro-1",
+                hypothesisId: "H1",
+                location: "LitegramController.swift:applyServers",
+                message: "applyServers",
+                data: [
+                    "serversCount": servers.count,
+                    "firstHost": servers.first?.host ?? "",
+                    "serverSectionExists": self.serverSectionNode != nil,
+                    "isNodeLoaded": self.isNodeLoaded
+                ]
+            )
+            // #endregion
             self.rebuildServerRows()
             self.updateUI()
             self.view.setNeedsLayout()
@@ -503,6 +570,19 @@ public final class LitegramConnectionController: ViewController {
 
             serverRowNodes.append((container: container, flag: flag, name: nameNode, check: check, sep: sep))
         }
+        
+        // #region agent log
+        self.debugLog(
+            runId: "repro-1",
+            hypothesisId: "H3",
+            location: "LitegramController.swift:rebuildServerRows",
+            message: "rows rebuilt",
+            data: [
+                "availableServersCount": self.availableServers.count,
+                "rowNodesCount": self.serverRowNodes.count
+            ]
+        )
+        // #endregion
     }
 
     private func countryFlag(_ code: String) -> String {
@@ -585,6 +665,25 @@ public final class LitegramConnectionController: ViewController {
         } else {
             self.serverHeaderNode?.frame = .zero
             self.serverSectionNode?.frame = CGRect(x: sideInset, y: y, width: cw, height: 0)
+        }
+        
+        let signature = "\(availableServers.count)|\(serverRowNodes.count)|\(Int(self.serverSectionNode?.frame.height ?? 0))"
+        if signature != self.lastServerDebugSignature {
+            self.lastServerDebugSignature = signature
+            // #region agent log
+            self.debugLog(
+                runId: "repro-1",
+                hypothesisId: "H3",
+                location: "LitegramController.swift:layoutNodes",
+                message: "server layout snapshot",
+                data: [
+                    "availableServersCount": self.availableServers.count,
+                    "rowNodesCount": self.serverRowNodes.count,
+                    "serverSectionHeight": self.serverSectionNode?.frame.height ?? 0,
+                    "serverHeaderHidden": self.serverHeaderNode?.frame == .zero
+                ]
+            )
+            // #endregion
         }
 
         if let btn = self.connectButtonNode {
@@ -771,5 +870,34 @@ public final class LitegramConnectionController: ViewController {
 
         self.connectButtonNode?.setTitle(btnTitle, with: UIFont.systemFont(ofSize: 17, weight: .semibold), with: .white, for: .normal)
         self.connectButtonNode?.backgroundColor = btnColor
+    }
+    
+    private func debugLog(
+        runId: String,
+        hypothesisId: String,
+        location: String,
+        message: String,
+        data: [String: Any]
+    ) {
+        guard let url = URL(string: "http://127.0.0.1:7748/ingest/e6d1595d-3e23-4700-905a-6ebc4c266571") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("fff99e", forHTTPHeaderField: "X-Debug-Session-Id")
+        
+        var payload: [String: Any] = [
+            "sessionId": "fff99e",
+            "runId": runId,
+            "hypothesisId": hypothesisId,
+            "location": location,
+            "message": message,
+            "data": data,
+            "timestamp": Int(Date().timeIntervalSince1970 * 1000.0)
+        ]
+        payload["id"] = "log_\(payload["timestamp"] ?? 0)_\(UUID().uuidString)"
+        
+        guard let body = try? JSONSerialization.data(withJSONObject: payload, options: []) else { return }
+        request.httpBody = body
+        URLSession.shared.dataTask(with: request).resume()
     }
 }
