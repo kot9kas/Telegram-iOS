@@ -53,6 +53,7 @@ public final class LitegramConnectionController: ViewController {
     private var authObserver: NSObjectProtocol?
     private var fetchRetryWorkItem: DispatchWorkItem?
     private var lastServerDebugSignature: String?
+    private let debugControllerInstanceId: String = UUID().uuidString
 
     private static let gradientColors: [UIColor] = [
         UIColor(red: 0.94, green: 0.41, blue: 0.13, alpha: 1.0),
@@ -82,6 +83,17 @@ public final class LitegramConnectionController: ViewController {
 
         self.statusBar.statusBarStyle = self.presentationData.theme.rootController.statusBarStyle.style
         self.navigationItem.title = "Protection"
+        // #region agent log
+        self.debugLog(
+            runId: "repro-2",
+            hypothesisId: "H5",
+            location: "LitegramController.swift:init",
+            message: "controller init",
+            data: [
+                "controllerInstanceId": self.debugControllerInstanceId
+            ]
+        )
+        // #endregion
 
         self.presentationDataDisposable = (context.sharedContext.presentationData
             |> deliverOnMainQueue).startStrict(next: { [weak self] presentationData in
@@ -139,6 +151,17 @@ public final class LitegramConnectionController: ViewController {
     }
 
     deinit {
+        // #region agent log
+        self.debugLog(
+            runId: "repro-2",
+            hypothesisId: "H5",
+            location: "LitegramController.swift:deinit",
+            message: "controller deinit",
+            data: [
+                "controllerInstanceId": self.debugControllerInstanceId
+            ]
+        )
+        // #endregion
         self.presentationDataDisposable?.dispose()
         self.proxySettingsDisposable?.dispose()
         self.connectionStatusDisposable?.dispose()
@@ -170,6 +193,17 @@ public final class LitegramConnectionController: ViewController {
 
     override public func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        // #region agent log
+        self.debugLog(
+            runId: "repro-2",
+            hypothesisId: "H5",
+            location: "LitegramController.swift:viewDidAppear",
+            message: "view did appear",
+            data: [
+                "controllerInstanceId": self.debugControllerInstanceId
+            ]
+        )
+        // #endregion
         fetchServers()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
             guard let self = self else { return }
@@ -672,15 +706,19 @@ public final class LitegramConnectionController: ViewController {
             self.lastServerDebugSignature = signature
             // #region agent log
             self.debugLog(
-                runId: "repro-1",
-                hypothesisId: "H3",
+                runId: "repro-2",
+                hypothesisId: "H6",
                 location: "LitegramController.swift:layoutNodes",
                 message: "server layout snapshot",
                 data: [
+                    "controllerInstanceId": self.debugControllerInstanceId,
                     "availableServersCount": self.availableServers.count,
                     "rowNodesCount": self.serverRowNodes.count,
                     "serverSectionHeight": self.serverSectionNode?.frame.height ?? 0,
-                    "serverHeaderHidden": self.serverHeaderNode?.frame == .zero
+                    "serverHeaderHidden": self.serverHeaderNode?.frame == .zero,
+                    "serverSectionHidden": self.serverSectionNode?.isHidden ?? false,
+                    "serverSectionAlpha": self.serverSectionNode?.alpha ?? -1,
+                    "serverSectionSubnodes": self.serverSectionNode?.subnodes?.count ?? 0
                 ]
             )
             // #endregion
