@@ -7050,6 +7050,11 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         
         self.didAppear = true
         
+        self.chatDisplayNode.historyNode.didScrollWithOffset = { [weak self] _, _, _, _ in
+            self?.updateDeletedMessageTrashIcons()
+        }
+        self.updateDeletedMessageTrashIcons()
+        
         self.chatDisplayNode.historyNode.experimentalSnapScrollToItem = false
         self.chatDisplayNode.historyNode.canReadHistory.set(self.computedCanReadHistoryPromise.get())
         self.chatDisplayNode.historyNode.areContentAnimationsEnabled = true
