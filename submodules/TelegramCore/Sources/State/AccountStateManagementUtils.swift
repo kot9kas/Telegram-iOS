@@ -3776,56 +3776,6 @@ private func optimizedOperations(_ operations: [AccountStateMutationOperation]) 
     var currentAddScheduledMessages: OptimizeAddMessagesState?
     var currentAddQuickReplyMessages: OptimizeAddMessagesState?
     
-    let deletedMessageMarkerPrefix = "🗑 Удалено: "
-    let deletedMessageMarkerOnly = "🗑 Удалено"
-    func shouldKeepIncomingDeletedMessages() -> Bool {
-        if let isEnabled = LitegramDeletedMessagesHook.isEnabled {
-            return isEnabled()
-        }
-        return false
-    }
-    func markIncomingMessageAsDeleted(_ id: MessageId) -> Bool {
-        guard shouldKeepIncomingDeletedMessages() else { return false }
-        guard let message = transaction.getMessage(id), message.flags.contains(.Incoming) else { return false }
-        
-        transaction.updateMessage(id, update: { currentMessage in
-            var storeForwardInfo: StoreMessageForwardInfo?
-            if let forwardInfo = currentMessage.forwardInfo {
-                storeForwardInfo = StoreMessageForwardInfo(forwardInfo)
-            }
-            
-            if currentMessage.text.hasPrefix(deletedMessageMarkerPrefix) || currentMessage.text == deletedMessageMarkerOnly {
-                return .skip
-            }
-            
-            let updatedText: String
-            if currentMessage.text.isEmpty {
-                updatedText = deletedMessageMarkerOnly
-            } else {
-                updatedText = deletedMessageMarkerPrefix + currentMessage.text
-            }
-            
-            return .update(StoreMessage(
-                id: currentMessage.id,
-                customStableId: nil,
-                globallyUniqueId: currentMessage.globallyUniqueId,
-                groupingKey: currentMessage.groupingKey,
-                threadId: currentMessage.threadId,
-                timestamp: currentMessage.timestamp,
-                flags: StoreMessageFlags(currentMessage.flags),
-                tags: currentMessage.tags,
-                globalTags: currentMessage.globalTags,
-                localTags: currentMessage.localTags,
-                forwardInfo: storeForwardInfo,
-                authorId: currentMessage.author?.id,
-                text: updatedText,
-                attributes: currentMessage.attributes,
-                media: currentMessage.media
-            ))
-        })
-        return true
-    }
-    
     for operation in operations {
         switch operation {
         case .DeleteMessages, .DeleteMessagesWithGlobalIds, .EditMessage, .UpdateMessagePoll, .UpdateMessageReactions, .UpdateMedia, .MergeApiChats, .MergeApiUsers, .MergePeerPresences, .UpdatePeer, .ReadInbox, .ReadOutbox, .ReadGroupFeedInbox, .ResetReadState, .ResetIncomingReadState, .UpdatePeerChatUnreadMark, .ResetMessageTagSummary, .UpdateNotificationSettings, .UpdateGlobalNotificationSettings, .UpdateSecretChat, .AddSecretMessages, .ReadSecretOutbox, .AddPeerInputActivity, .AddPeerLiveTypingDraftUpdate, .UpdateCachedPeerData, .UpdatePinnedItemIds, .UpdatePinnedSavedItemIds, .UpdatePinnedTopic, .UpdatePinnedTopicOrder, .ReadMessageContents, .UpdateMessageImpressionCount, .UpdateMessageForwardsCount, .UpdateInstalledStickerPacks, .UpdateRecentGifs, .UpdateChatInputState, .UpdateCall, .AddCallSignalingData, .UpdateLangPack, .UpdateMinAvailableMessage, .UpdateIsContact, .UpdatePeerChatInclusion, .UpdatePeersNearby, .UpdateTheme, .SyncChatListFilters, .UpdateChatListFilter, .UpdateChatListFilterOrder, .UpdateReadThread, .UpdateMessagesPinned, .UpdateGroupCallParticipants, .UpdateGroupCall, .UpdateGroupCallChainBlocks, .UpdateGroupCallMessage, .UpdateGroupCallOpaqueMessage, .UpdateAutoremoveTimeout, .UpdateAttachMenuBots, .UpdateAudioTranscription, .UpdateConfig, .UpdateExtendedMedia, .ResetForumTopic, .UpdateStory, .UpdateReadStories, .UpdateStoryStealthMode, .UpdateStorySentReaction, .UpdateNewAuthorization, .UpdateWallpaper, .UpdateStarsBalance, .UpdateStarsRevenueStatus, .UpdateStarsReactionsDefaultPrivacy, .ReportMessageDelivery, .UpdateMonoForumNoPaidException, .UpdateStarGiftAuctionState, .UpdateStarGiftAuctionMyState, .UpdateEmojiGameInfo:
@@ -4165,6 +4115,51 @@ func replayFinalState(
     }
     
     var isPremiumUpdated = false
+    
+    let deletedMessageMarkerPrefix = "🗑 Удалено: "
+    let deletedMessageMarkerOnly = "🗑 Удалено"
+    let shouldKeepIncomingDeletedMessages: () -> Bool = {
+        if let isEnabled = LitegramDeletedMessagesHook.isEnabled {
+            return isEnabled()
+        }
+        return false
+    }
+    let markIncomingMessageAsDeleted: (MessageId) -> Bool = { id in
+        guard shouldKeepIncomingDeletedMessages() else { return false }
+        guard let message = transaction.getMessage(id), message.flags.contains(.Incoming) else { return false }
+        
+        transaction.updateMessage(id, update: { currentMessage in
+            var storeForwardInfo: StoreMessageForwardInfo?
+            if let forwardInfo = currentMessage.forwardInfo {
+                storeForwardInfo = StoreMessageForwardInfo(forwardInfo)
+            }
+            
+            if currentMessage.text.hasPrefix(deletedMessageMarkerPrefix) || currentMessage.text == deletedMessageMarkerOnly {
+                return .skip
+            }
+            
+            let updatedText: String = currentMessage.text.isEmpty ? deletedMessageMarkerOnly : (deletedMessageMarkerPrefix + currentMessage.text)
+            
+            return .update(StoreMessage(
+                id: currentMessage.id,
+                customStableId: nil,
+                globallyUniqueId: currentMessage.globallyUniqueId,
+                groupingKey: currentMessage.groupingKey,
+                threadId: currentMessage.threadId,
+                timestamp: currentMessage.timestamp,
+                flags: StoreMessageFlags(currentMessage.flags),
+                tags: currentMessage.tags,
+                globalTags: currentMessage.globalTags,
+                localTags: currentMessage.localTags,
+                forwardInfo: storeForwardInfo,
+                authorId: currentMessage.author?.id,
+                text: updatedText,
+                attributes: currentMessage.attributes,
+                media: currentMessage.media
+            ))
+        })
+        return true
+    }
     
     for operation in optimizedOperations(finalState.state.operations) {
         switch operation {
