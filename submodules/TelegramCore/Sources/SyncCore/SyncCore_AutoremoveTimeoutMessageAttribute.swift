@@ -137,26 +137,6 @@ public extension Message {
     }
     
     var containsSecretMedia: Bool {
-        guard let timeout = self.minAutoremoveOrClearTimeout else {
-            return false
-        }
-        if timeout > 1 * 60 && timeout != viewOnceTimeout {
-            return false
-        }
-        
-        for media in self.media {
-            switch media {
-                case _ as TelegramMediaImage:
-                    return true
-                case let file as TelegramMediaFile:
-                    if file.isVideo || file.isAnimated || file.isVoice || file.isMusic {
-                        return true
-                    }
-                default:
-                    break
-            }
-        }
-        
         return false
     }
     
