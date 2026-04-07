@@ -443,6 +443,12 @@ public final class LitegramConnectionController: ViewController {
             }
         }
 
+        if !self.availableServers.isEmpty {
+            self.rebuildServerRows()
+        } else {
+            self.applyServersFromActiveProxyIfNeeded()
+        }
+
         updateUI()
     }
 
