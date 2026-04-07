@@ -50,7 +50,7 @@
 "PUSH_MESSAGE_STICKER" = "%1$@|sent you a %2$@sticker";
 "PUSH_CHAT_MESSAGE_STICKER" = "%2$@|%1$@ sent a %3$@sticker";
 
-"PUSH_CONTACT_JOINED" = "%1$@|joined Telegram!";
+"PUSH_CONTACT_JOINED" = "%1$@|joined Litegram!";
 
 "PUSH_CHANNEL_MESSAGE_TEXT" = "%1$@|%2$@";
 "PUSH_CHANNEL_MESSAGE_NOTEXT" = "%1$@|posted a message";
@@ -205,7 +205,7 @@
 "PUSH_PINNED_GIF" = "%1$@|pinned a GIF";
 "PUSH_PINNED_PAID_MEDIA" = "%1$@|pinned a paid post for %2$@";
 
-"PUSH_CONTACT_JOINED" = "%1$@|joined Telegram!";
+"PUSH_CONTACT_JOINED" = "%1$@|joined Litegram!";
 
 "PUSH_AUTH_UNKNOWN" = "New login|from unrecognized device %1$@";
 "PUSH_AUTH_REGION" = "New login|from unrecognized device %1$@, location: %2$@";
@@ -401,23 +401,23 @@
 "Date.ChatDateHeaderYear" = "%1$@ %2$@, %3$@";
 
 // Tour
-"Tour.Title1" = "Telegram";
+"Tour.Title1" = "Litegram";
 "Tour.Text1" = "The world's **fastest** messaging app.\nIt is **free** and **secure**.";
 
 "Tour.Title2" = "Fast";
-"Tour.Text2" = "**Telegram** delivers messages\nfaster than any other application.";
+"Tour.Text2" = "**Litegram** delivers messages\nfaster than any other application.";
 
 "Tour.Title3" = "Powerful";
-"Tour.Text3" = "**Telegram** has no limits on\nthe size of your media and chats.";
+"Tour.Text3" = "**Litegram** has no limits on\nthe size of your media and chats.";
 
 "Tour.Title4" = "Secure";
-"Tour.Text4" = "**Telegram** keeps your messages\nsafe from hacker attacks.";
+"Tour.Text4" = "**Litegram** keeps your messages\nsafe from hacker attacks.";
 
 "Tour.Title5" = "Cloud-Based";
-"Tour.Text5" = "**Telegram** lets you access your\nmessages from multiple devices.";
+"Tour.Text5" = "**Litegram** lets you access your\nmessages from multiple devices.";
 
 "Tour.Title6" = "Free";
-"Tour.Text6" = "**Telegram** provides free unlimited\ncloud storage for chats and media.";
+"Tour.Text6" = "**Litegram** provides free unlimited\ncloud storage for chats and media.";
 
 "Tour.StartButton" = "Start Messaging";
 
@@ -1772,7 +1772,7 @@
 
 "Group.Management.AddModeratorHelp" = "You can add admins to help you manage your group.";
 
-"Watch.AppName" = "Telegram";
+"Watch.AppName" = "Litegram";
 "Watch.Compose.AddContact" = "Choose Contact";
 "Watch.Compose.CreateMessage" = "Create Message";
 "Watch.Compose.CurrentLocation" = "Current Location";
@@ -2260,7 +2260,7 @@ Unused sets are archived when you add more.";
 
 "Widget.AuthRequired" = "Log in to Telegram";
 "Widget.NoUsers" = "Start messaging to see your friends here";
-"Widget.GalleryTitle" = "Telegram";
+"Widget.GalleryTitle" = "Litegram";
 "Widget.GalleryDescription" = "Select chats";
 
 "ShareMenu.CopyShareLinkGame" = "Copy link to game";
@@ -2289,7 +2289,7 @@ Unused sets are archived when you add more.";
 
 "Call.EncryptionKey.Title" = "Encryption Key";
 
-"Application.Name" = "Telegram";
+"Application.Name" = "Litegram";
 "DialogList.Pin" = "Pin";
 "DialogList.Unpin" = "Unpin";
 "DialogList.PinLimitError" = "Sorry, you can pin no more than %@ chats to the top.";
@@ -10143,7 +10143,7 @@ Sorry for the inconvenience.";
 "NameColor.ChatPreview.ReplyText.Channel" = "Reply to your channel message";
 "NameColor.ChatPreview.MessageText.Account" = "Your name and replies to your messages will be shown in the selected color.";
 "NameColor.ChatPreview.MessageText.Channel" = "The name of your channek and replies to its messages will be shown in the selected color.";
-"NameColor.ChatPreview.LinkSite" = "Telegram";
+"NameColor.ChatPreview.LinkSite" = "Litegram";
 "NameColor.ChatPreview.LinkTitle" = "Link Preview";
 "NameColor.ChatPreview.LinkText" = "Your selected color will also tint the link preview.";
 "NameColor.ChatPreview.Description.Account" = "You can choose an individual color to tint your name, the links you send, and replies to your messages.";
@@ -10825,7 +10825,7 @@ Sorry for the inconvenience.";
 
 "Channel.Appearance.ExampleReplyText" = "Reply to your channel";
 "Channel.Appearance.ExampleText" = "The color you select will be used for the channel's name";
-"Channel.Appearance.ExampleLinkWebsite" = "Telegram";
+"Channel.Appearance.ExampleLinkWebsite" = "Litegram";
 "Channel.Appearance.ExampleLinkTitle" = "Link Preview";
 "Channel.Appearance.ExampleLinkText" = "This preview will also be tinted.";
 
@@ -12557,7 +12557,7 @@ Sorry for the inconvenience.";
 "Browser.ContextMenu.CopyLink" = "Copy Link";
 "Browser.ContextMenu.Share" = "Share";
 
-"WebBrowser.Telegram" = "Telegram";
+"WebBrowser.Telegram" = "Litegram";
 
 "Monetization.Proceeds.Ton.Info" = "TON from your total balance can be used for ads or withdrawn as rewards 3 days after they are earned.";
 "Monetization.Proceeds.Stars.Info" = "Stars from your total balance can be used for ads or withdrawn as rewards 21 days after they are earned.";
@@ -15107,7 +15107,7 @@ Error: %8$@";
 "Gift.UnavailableAction.Text" = "Transfer this gift to your Telegram account on Fragment to unlock this action.";
 "Gift.UnavailableAction.OpenFragment" = "Open Fragment";
 
-"Gift.Unique.Telegram" = "Telegram";
+"Gift.Unique.Telegram" = "Litegram";
 
 "VoiceChat.ContextEnableMessages" = "Enable Messages";
 "VoiceChat.ContextDisableMessages" = "Disable Messages";
