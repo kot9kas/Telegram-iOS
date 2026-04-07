@@ -53,8 +53,15 @@ public final class LitegramProxyController {
                     }
                     self.api.getProxyServers { [weak self] serversResult in
                         if case let .success(servers) = serversResult, !servers.isEmpty {
+                            LitegramConfig.saveCachedServers(servers)
                             let server = self?.preferredServer(from: servers) ?? servers[0]
                             self?.applyProxy(server: server)
+                        } else {
+                            let cached = LitegramConfig.getCachedServers()
+                            if !cached.isEmpty {
+                                let server = self?.preferredServer(from: cached) ?? cached[0]
+                                self?.applyProxy(server: server)
+                            }
                         }
                     }
                 case let .failure(error):
@@ -146,18 +153,31 @@ public final class LitegramProxyController {
             switch result {
             case let .success(servers):
                 if !servers.isEmpty {
+                    LitegramConfig.saveCachedServers(servers)
                     let server = self?.preferredServer(from: servers) ?? servers[0]
                     self?.applyProxy(server: server)
                     return
                 }
-                self?.connectAnonymous()
+                let cached = LitegramConfig.getCachedServers()
+                if !cached.isEmpty {
+                    let server = self?.preferredServer(from: cached) ?? cached[0]
+                    self?.applyProxy(server: server)
+                } else {
+                    self?.connectAnonymous()
+                }
             case let .failure(error):
                 if case LitegramApiError.authExpired = error {
                     self?.reAuthenticate {
                         self?.connectAuthenticated()
                     }
                 } else {
-                    self?.connectAnonymous()
+                    let cached = LitegramConfig.getCachedServers()
+                    if !cached.isEmpty {
+                        let server = self?.preferredServer(from: cached) ?? cached[0]
+                        self?.applyProxy(server: server)
+                    } else {
+                        self?.connectAnonymous()
+                    }
                 }
             }
         }
@@ -173,9 +193,15 @@ public final class LitegramProxyController {
         api.claimTempProxy(deviceToken: deviceToken) { [weak self] result in
             switch result {
             case let .success(server):
+                LitegramConfig.saveCachedServers([server])
                 self?.applyProxy(server: server)
             case let .failure(error):
                 Logger.shared.log("Litegram", "claimTempProxy failed: \(error.localizedDescription)")
+                let cached = LitegramConfig.getCachedServers()
+                if !cached.isEmpty {
+                    let server = self?.preferredServer(from: cached) ?? cached[0]
+                    self?.applyProxy(server: server)
+                }
             }
         }
     }

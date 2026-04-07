@@ -14,6 +14,7 @@ public enum LitegramConfig {
     private static let keySubStatus = "sub_status"
     private static let keySubExpires = "sub_expires"
     private static let keySaveTraffic = "save_traffic"
+    private static let keyCachedServers = "cached_proxy_servers_v1"
 
     private static var defaults: UserDefaults { UserDefaults(suiteName: suiteName) ?? .standard }
 
@@ -90,5 +91,15 @@ public enum LitegramConfig {
                 defaults.removeObject(forKey: keySelectedServer)
             }
         }
+    }
+
+    public static func saveCachedServers(_ servers: [LitegramServerInfo]) {
+        guard let data = try? JSONEncoder().encode(servers) else { return }
+        defaults.set(data, forKey: keyCachedServers)
+    }
+
+    public static func getCachedServers() -> [LitegramServerInfo] {
+        guard let data = defaults.data(forKey: keyCachedServers) else { return [] }
+        return (try? JSONDecoder().decode([LitegramServerInfo].self, from: data)) ?? []
     }
 }

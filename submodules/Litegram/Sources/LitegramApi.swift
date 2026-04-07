@@ -1,6 +1,6 @@
 import Foundation
 
-public struct LitegramServerInfo {
+public struct LitegramServerInfo: Codable, Equatable {
     public let host: String
     public let port: Int
     public let secret: String

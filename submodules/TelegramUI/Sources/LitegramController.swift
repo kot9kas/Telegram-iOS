@@ -190,6 +190,7 @@ public final class LitegramConnectionController: ViewController {
         let api = proxy.api
 
         self.fetchRetryWorkItem?.cancel()
+        self.applyServers(LitegramConfig.getCachedServers())
 
         if api.accessToken == nil, let tgId = LitegramDeviceToken.getTelegramId(), let tgValue = Int64(tgId) {
             proxy.ensureRegistered(telegramId: tgValue)
@@ -210,18 +211,31 @@ public final class LitegramConnectionController: ViewController {
                 guard let self = self else { return }
                 if case let .success(servers) = result, !servers.isEmpty {
                     self.fetchRetryWorkItem?.cancel()
-                    self.availableServers = servers
-                    if let savedHost = LitegramConfig.selectedServerHost,
-                       let idx = servers.firstIndex(where: { $0.host == savedHost }) {
-                        self.selectedServerIndex = idx
-                    }
-                    if self.isNodeLoaded {
-                        self.rebuildServerRows()
-                        self.updateUI()
-                        self.view.setNeedsLayout()
+                    LitegramConfig.saveCachedServers(servers)
+                    self.applyServers(servers)
+                } else {
+                    let cached = LitegramConfig.getCachedServers()
+                    if !cached.isEmpty {
+                        self.applyServers(cached)
                     }
                 }
             }
+        }
+    }
+
+    private func applyServers(_ servers: [LitegramServerInfo]) {
+        guard !servers.isEmpty else { return }
+        self.availableServers = servers
+        if let savedHost = LitegramConfig.selectedServerHost,
+           let idx = servers.firstIndex(where: { $0.host == savedHost }) {
+            self.selectedServerIndex = idx
+        } else {
+            self.selectedServerIndex = 0
+        }
+        if self.isNodeLoaded {
+            self.rebuildServerRows()
+            self.updateUI()
+            self.view.setNeedsLayout()
         }
     }
 
