@@ -66,13 +66,13 @@ public final class LitegramConnectionController: ViewController, UITableViewData
     ]
 
     private static let perks: [(icon: String, title: String, subtitle: String)] = [
-        ("Premium/Perk/Speed", "Fast and stable", "High-speed proxy with zero throttling"),
-        ("Premium/Perk/NoForward", "Enhanced privacy", "Your traffic is encrypted end-to-end"),
-        ("Premium/Perk/NoAds", "Access blocked content", "Bypass regional restrictions seamlessly"),
-        ("Premium/Perk/Limits", "No speed limits", "Unlimited bandwidth for all your needs"),
-        ("Premium/Perk/Chat", "Auto-reconnect", "Stays connected even on unstable networks"),
-        ("Premium/Perk/Status", "Multiple servers", "Choose from servers across the globe"),
-        ("Premium/Perk/Translation", "Easy to use", "One-tap connect, no configuration needed")
+        ("Premium/Perk/Speed", "Быстрый и стабильный", "Высокоскоростной прокси без ограничений"),
+        ("Premium/Perk/NoForward", "Усиленная приватность", "Ваш трафик зашифрован от начала до конца"),
+        ("Premium/Perk/NoAds", "Доступ к заблокированному", "Обход региональных ограничений"),
+        ("Premium/Perk/Limits", "Без лимитов скорости", "Безлимитная пропускная способность"),
+        ("Premium/Perk/Chat", "Автопереподключение", "Остаётся на связи даже при нестабильной сети"),
+        ("Premium/Perk/Status", "Множество серверов", "Выбирайте серверы по всему миру"),
+        ("Premium/Perk/Translation", "Простота использования", "Подключение в одно нажатие")
     ]
 
     public init(context: AccountContext) {
@@ -82,7 +82,7 @@ public final class LitegramConnectionController: ViewController, UITableViewData
         super.init(navigationBarPresentationData: NavigationBarPresentationData(presentationData: self.presentationData))
 
         self.statusBar.statusBarStyle = self.presentationData.theme.rootController.statusBarStyle.style
-        self.navigationItem.title = "Protection"
+        self.navigationItem.title = "Защита"
 
         self.presentationDataDisposable = (context.sharedContext.presentationData
             |> deliverOnMainQueue).startStrict(next: { [weak self] presentationData in
@@ -92,7 +92,7 @@ public final class LitegramConnectionController: ViewController, UITableViewData
                 if previousTheme !== presentationData.theme {
                     self.updateTheme()
                 }
-                self.navigationItem.title = "Protection"
+                self.navigationItem.title = "Защита"
             })
 
         self.proxySettingsDisposable = (context.sharedContext.accountManager.sharedData(keys: [SharedDataKeys.proxySettings])
@@ -623,8 +623,8 @@ public final class LitegramConnectionController: ViewController, UITableViewData
                 guard let self = self, self.isConnecting else { return }
                 self.isConnecting = false
                 self.updateUI()
-                let alert = UIAlertController(title: "Connection Failed", message: "Could not connect to proxy server. Please check your internet connection and try again.", preferredStyle: .alert)
-                alert.addAction(UIAlertAction(title: "OK", style: .default))
+                let alert = UIAlertController(title: "Ошибка подключения", message: "Не удалось подключиться к прокси-серверу. Проверьте интернет-соединение и попробуйте снова.", preferredStyle: .alert)
+                alert.addAction(UIAlertAction(title: "ОК", style: .default))
                 self.present(alert, animated: true)
             }
             return
@@ -650,36 +650,36 @@ public final class LitegramConnectionController: ViewController, UITableViewData
             switch self.currentConnectionStatus {
             case .online:
                 self.isConnecting = false
-                titleStr = "Connected"
-                subtitleStr = "Connected securely via proxy"
+                titleStr = "Подключено"
+                subtitleStr = "Безопасное соединение через прокси"
                 animName = "change_number"
-                btnTitle = "Disconnect"
+                btnTitle = "Отключить"
                 btnColor = UIColor(red: 1.0, green: 0.23, blue: 0.19, alpha: 1.0)
             case .connecting:
-                titleStr = "Connecting..."
-                subtitleStr = "Establishing secure connection"
+                titleStr = "Подключение..."
+                subtitleStr = "Устанавливаем безопасное соединение"
                 animName = "media_forbidden"
-                btnTitle = "Connecting..."
+                btnTitle = "Подключение..."
                 btnColor = theme.list.itemAccentColor.withAlphaComponent(0.6)
             case .updating:
-                titleStr = "Updating..."
-                subtitleStr = "Refreshing connection"
+                titleStr = "Обновление..."
+                subtitleStr = "Обновляем соединение"
                 animName = "change_number"
-                btnTitle = "Disconnect"
+                btnTitle = "Отключить"
                 btnColor = UIColor(red: 1.0, green: 0.23, blue: 0.19, alpha: 1.0)
             case .waitingForNetwork:
-                titleStr = "Waiting for network..."
-                subtitleStr = "No internet connection"
+                titleStr = "Ожидание сети..."
+                subtitleStr = "Нет интернет-соединения"
                 animName = "media_forbidden"
-                btnTitle = "Disconnect"
+                btnTitle = "Отключить"
                 btnColor = UIColor(red: 1.0, green: 0.23, blue: 0.19, alpha: 1.0)
             }
         } else {
             self.isConnecting = false
-            titleStr = "Disconnected"
-            subtitleStr = "Tap Connect to enable proxy"
+            titleStr = "Отключено"
+            subtitleStr = "Нажмите Подключить для включения прокси"
             animName = "media_forbidden"
-            btnTitle = "Connect"
+            btnTitle = "Подключить"
             btnColor = UIColor(red: 0.42, green: 0.25, blue: 0.82, alpha: 1.0)
         }
 
@@ -702,7 +702,7 @@ public final class LitegramConnectionController: ViewController, UITableViewData
             ])
         } else {
             self.headerBadgeBg?.backgroundColor = UIColor.black.withAlphaComponent(0.3)
-            self.headerBadgeNode?.attributedText = NSAttributedString(string: "Free", attributes: [
+            self.headerBadgeNode?.attributedText = NSAttributedString(string: "Бесплатно", attributes: [
                 .font: badgeFont, .foregroundColor: UIColor.white.withAlphaComponent(0.8)
             ])
         }

@@ -53,8 +53,8 @@ public final class LitegramController: ViewController {
         MenuItem(
             iconName: "Settings/Menu/Proxy",
             iconBgColor: UIColor(red: 0.25, green: 0.70, blue: 0.42, alpha: 1.0),
-            title: "Protection",
-            subtitle: "Proxy settings and connection",
+            title: "Защита",
+            subtitle: "Настройки прокси и подключение",
             action: #selector(protectionTapped)
         )
     ]
@@ -215,7 +215,7 @@ public final class LitegramController: ViewController {
         self.saveTrafficSectionNode = saveTrafficSection
 
         let stTitle = ASTextNode()
-        stTitle.attributedText = NSAttributedString(string: "Save Traffic", attributes: [
+        stTitle.attributedText = NSAttributedString(string: "Экономия трафика", attributes: [
             .font: UIFont.systemFont(ofSize: 17),
             .foregroundColor: theme.list.itemPrimaryTextColor
         ])
@@ -223,7 +223,7 @@ public final class LitegramController: ViewController {
         self.saveTrafficTitleNode = stTitle
 
         let stSubtitle = ASTextNode()
-        stSubtitle.attributedText = NSAttributedString(string: "Compress images and media", attributes: [
+        stSubtitle.attributedText = NSAttributedString(string: "Сжатие изображений и медиа", attributes: [
             .font: UIFont.systemFont(ofSize: 13),
             .foregroundColor: theme.list.itemSecondaryTextColor
         ])
@@ -460,12 +460,12 @@ public final class LitegramController: ViewController {
         let alert = UIAlertController(title: ad.title, message: ad.description, preferredStyle: .alert)
 
         if let link = ad.linkUrl, let url = URL(string: link) {
-            alert.addAction(UIAlertAction(title: "Open", style: .default) { _ in
+            alert.addAction(UIAlertAction(title: "Открыть", style: .default) { _ in
                 UIApplication.shared.open(url)
             })
         }
 
-        alert.addAction(UIAlertAction(title: "Close", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Закрыть", style: .cancel))
         self.present(alert, animated: true)
         LitegramAdManager.shared.markAdShown()
     }
@@ -477,11 +477,11 @@ public final class LitegramController: ViewController {
         self.saveTrafficSectionNode?.backgroundColor = theme.list.itemBlocksBackgroundColor
         self.menuSectionNode?.backgroundColor = theme.list.itemBlocksBackgroundColor
 
-        self.saveTrafficTitleNode?.attributedText = NSAttributedString(string: "Save Traffic", attributes: [
+        self.saveTrafficTitleNode?.attributedText = NSAttributedString(string: "Экономия трафика", attributes: [
             .font: UIFont.systemFont(ofSize: 17),
             .foregroundColor: theme.list.itemPrimaryTextColor
         ])
-        self.saveTrafficSubtitleNode?.attributedText = NSAttributedString(string: "Compress images and media", attributes: [
+        self.saveTrafficSubtitleNode?.attributedText = NSAttributedString(string: "Сжатие изображений и медиа", attributes: [
             .font: UIFont.systemFont(ofSize: 13),
             .foregroundColor: theme.list.itemSecondaryTextColor
         ])
@@ -541,7 +541,7 @@ public final class LitegramController: ViewController {
             ])
         } else {
             self.badgeBgNode?.backgroundColor = UIColor.black.withAlphaComponent(0.3)
-            self.badgeNode?.attributedText = NSAttributedString(string: "Free", attributes: [
+            self.badgeNode?.attributedText = NSAttributedString(string: "Бесплатно", attributes: [
                 .font: badgeFont,
                 .foregroundColor: UIColor.white.withAlphaComponent(0.8)
             ])
