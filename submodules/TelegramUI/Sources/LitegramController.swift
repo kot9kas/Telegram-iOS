@@ -12,59 +12,7 @@ import Litegram
 import AnimatedStickerNode
 import TelegramAnimatedStickerNode
 
-private final class LitegramServerRowNode: ASCellNode {
-    private let flagNode = ASTextNode()
-    private let titleNode = ASTextNode()
-    private let checkNode = ASImageNode()
-    private let separatorNode = ASDisplayNode()
-    private let hasSeparator: Bool
-
-    init(theme: PresentationTheme, title: String, countryCode: String, isSelected: Bool, hasSeparator: Bool) {
-        self.hasSeparator = hasSeparator
-        super.init()
-
-        self.automaticallyManagesSubnodes = true
-        self.backgroundColor = theme.list.itemBlocksBackgroundColor
-        self.selectionStyle = .none
-
-        self.flagNode.attributedText = NSAttributedString(
-            string: LitegramConnectionController.countryFlagStatic(countryCode),
-            attributes: [.font: UIFont.systemFont(ofSize: 22)]
-        )
-        self.titleNode.attributedText = NSAttributedString(
-            string: title,
-            attributes: [
-                .font: UIFont.systemFont(ofSize: 17),
-                .foregroundColor: theme.list.itemPrimaryTextColor
-            ]
-        )
-        self.checkNode.displaysAsynchronously = false
-        self.checkNode.image = UIImage(bundleImageName: "Chat/Context Menu/Check")
-        self.checkNode.isHidden = !isSelected
-        self.separatorNode.backgroundColor = theme.list.itemBlocksSeparatorColor
-        self.separatorNode.isHidden = !hasSeparator
-    }
-
-    override func layout() {
-        super.layout()
-        let bounds = self.bounds
-        self.flagNode.frame = CGRect(x: 16, y: floor((bounds.height - 28) / 2), width: 28, height: 28)
-        self.titleNode.frame = CGRect(x: 52, y: floor((bounds.height - 22) / 2), width: max(0, bounds.width - 52 - 40), height: 22)
-        self.checkNode.frame = CGRect(x: bounds.width - 30, y: floor((bounds.height - 16) / 2), width: 16, height: 16)
-        if self.hasSeparator {
-            let sepH = 1.0 / UIScreen.main.scale
-            self.separatorNode.frame = CGRect(x: 52, y: bounds.height - sepH, width: max(0, bounds.width - 52 - 16), height: sepH)
-        }
-    }
-
-    override func layoutSpecThatFits(_ constrainedSize: ASSizeRange) -> ASLayoutSpec {
-        let spec = ASAbsoluteLayoutSpec()
-        spec.children = [self.flagNode, self.titleNode, self.checkNode, self.separatorNode]
-        return ASInsetLayoutSpec(insets: .zero, child: spec)
-    }
-}
-
-public final class LitegramConnectionController: ViewController, ASTableDataSource, ASTableDelegate {
+public final class LitegramConnectionController: ViewController, UITableViewDataSource, UITableViewDelegate {
     private let context: AccountContext
     private var presentationData: PresentationData
     private var presentationDataDisposable: Disposable?
@@ -88,7 +36,7 @@ public final class LitegramConnectionController: ViewController, ASTableDataSour
 
     private var serverSectionNode: ASDisplayNode?
     private var serverHeaderNode: ASTextNode?
-    private var serversTableNode: ASTableNode?
+    private var serversTableView: UITableView?
     private var availableServers: [LitegramServerInfo] = []
     private var selectedServerIndex: Int = 0
 
@@ -106,7 +54,8 @@ public final class LitegramConnectionController: ViewController, ASTableDataSour
     private var fetchRetryWorkItem: DispatchWorkItem?
     private var lastServerDebugSignature: String?
     private let debugControllerInstanceId: String = UUID().uuidString
-    private let serverRowHeight: CGFloat = 48
+    private let serverRowHeight: CGFloat = 48.0
+    private static let serverCellReuseId = "LitegramServerCell"
 
     private static let gradientColors: [UIColor] = [
         UIColor(red: 0.94, green: 0.41, blue: 0.13, alpha: 1.0),
@@ -519,13 +468,18 @@ public final class LitegramConnectionController: ViewController, ASTableDataSour
         scrollNode?.addSubnode(serverSection)
         self.serverSectionNode = serverSection
 
-        let serversTable = ASTableNode(style: .plain)
-        serversTable.view.separatorStyle = .none
+        let serversTable = UITableView(frame: .zero, style: .plain)
         serversTable.backgroundColor = .clear
+        serversTable.separatorStyle = .none
+        serversTable.showsVerticalScrollIndicator = false
+        serversTable.alwaysBounceVertical = false
         serversTable.dataSource = self
         serversTable.delegate = self
-        serverSection.addSubnode(serversTable)
-        self.serversTableNode = serversTable
+        serversTable.rowHeight = self.serverRowHeight
+        serversTable.estimatedRowHeight = self.serverRowHeight
+        serversTable.register(UITableViewCell.self, forCellReuseIdentifier: Self.serverCellReuseId)
+        serverSection.view.addSubview(serversTable)
+        self.serversTableView = serversTable
 
         let serverHeader = ASTextNode()
         serverHeader.attributedText = NSAttributedString(string: "SERVERS", attributes: [
@@ -618,7 +572,7 @@ public final class LitegramConnectionController: ViewController, ASTableDataSour
     }
 
     private func rebuildServerRows() {
-        self.serversTableNode?.reloadData()
+        self.serversTableView?.reloadData()
         
         // #region agent log
         self.debugLog(
@@ -628,17 +582,13 @@ public final class LitegramConnectionController: ViewController, ASTableDataSour
             message: "rows rebuilt",
             data: [
                 "availableServersCount": self.availableServers.count,
-                    "rowNodesCount": self.availableServers.count
+                "rowNodesCount": self.availableServers.count
             ]
         )
         // #endregion
     }
 
     private func countryFlag(_ code: String) -> String {
-        return Self.countryFlagStatic(code)
-    }
-
-    fileprivate static func countryFlagStatic(_ code: String) -> String {
         guard code.count == 2 else { return "🌍" }
         let base: UInt32 = 0x1F1E6
         let aVal: UInt32 = 65
@@ -700,12 +650,12 @@ public final class LitegramConnectionController: ViewController, ASTableDataSour
             let sepH = 1.0 / UIScreen.main.scale
             let totalH = CGFloat(availableServers.count) * self.serverRowHeight + CGFloat(max(0, availableServers.count - 1)) * sepH
             self.serverSectionNode?.frame = CGRect(x: sideInset, y: y, width: cw, height: totalH)
-            self.serversTableNode?.frame = CGRect(x: 0, y: 0, width: cw, height: totalH)
+            self.serversTableView?.frame = CGRect(x: 0, y: 0, width: cw, height: totalH)
             y += totalH + 16
         } else {
             self.serverHeaderNode?.frame = .zero
             self.serverSectionNode?.frame = CGRect(x: sideInset, y: y, width: cw, height: 0)
-            self.serversTableNode?.frame = .zero
+            self.serversTableView?.frame = .zero
         }
         
         let signature = "\(availableServers.count)|\(availableServers.count)|\(Int(self.serverSectionNode?.frame.height ?? 0))"
@@ -789,7 +739,7 @@ public final class LitegramConnectionController: ViewController, ASTableDataSour
         let server = self.availableServers[index]
         LitegramConfig.selectedServerHost = server.host
         LitegramProxyController.shared.applyServer(server)
-        self.serversTableNode?.reloadData()
+        self.serversTableView?.reloadData()
     }
 
     @objc private func actionButtonTapped() {
@@ -912,39 +862,54 @@ public final class LitegramConnectionController: ViewController, ASTableDataSour
         self.connectButtonNode?.backgroundColor = btnColor
     }
 
-    public func numberOfSections(in tableNode: ASTableNode) -> Int {
+    public func numberOfSections(in tableView: UITableView) -> Int {
         return 1
     }
 
-    public func tableNode(_ tableNode: ASTableNode, numberOfRowsInSection section: Int) -> Int {
+    public func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return self.availableServers.count
     }
 
-    public func tableNode(_ tableNode: ASTableNode, constrainedSizeForRowAt indexPath: IndexPath) -> ASSizeRange {
-        let width = max(0, tableNode.bounds.width)
-        let height = self.serverRowHeight + (indexPath.row < self.availableServers.count - 1 ? (1.0 / UIScreen.main.scale) : 0)
-        let size = CGSize(width: width, height: height)
-        return ASSizeRange(min: size, max: size)
-    }
-
-    public func tableNode(_ tableNode: ASTableNode, nodeBlockForRowAt indexPath: IndexPath) -> ASCellNodeBlock {
+    public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let theme = self.presentationData.theme
         let server = self.availableServers[indexPath.row]
         let isSelected = indexPath.row == self.selectedServerIndex
-        let hasSeparator = indexPath.row < self.availableServers.count - 1
         let label = server.name.isEmpty ? server.host : "\(server.name) (\(server.country.uppercased()))"
-        let theme = self.presentationData.theme
-        return {
-            return LitegramServerRowNode(
-                theme: theme,
-                title: label,
-                countryCode: server.country,
-                isSelected: isSelected,
-                hasSeparator: hasSeparator
-            )
+
+        let cell = tableView.dequeueReusableCell(withIdentifier: Self.serverCellReuseId, for: indexPath)
+        cell.backgroundColor = theme.list.itemBlocksBackgroundColor
+        cell.selectionStyle = .none
+        cell.contentView.subviews.forEach { $0.removeFromSuperview() }
+
+        let flagLabel = UILabel(frame: CGRect(x: 16, y: 10, width: 28, height: 28))
+        flagLabel.font = UIFont.systemFont(ofSize: 22)
+        flagLabel.text = countryFlag(server.country)
+        flagLabel.backgroundColor = .clear
+        cell.contentView.addSubview(flagLabel)
+
+        let titleLabel = UILabel(frame: CGRect(x: 52, y: 13, width: max(0, tableView.bounds.width - 92), height: 22))
+        titleLabel.font = UIFont.systemFont(ofSize: 17)
+        titleLabel.textColor = theme.list.itemPrimaryTextColor
+        titleLabel.text = label
+        titleLabel.backgroundColor = .clear
+        cell.contentView.addSubview(titleLabel)
+
+        let checkView = UIImageView(frame: CGRect(x: max(0, tableView.bounds.width - 30), y: 16, width: 16, height: 16))
+        checkView.image = UIImage(bundleImageName: "Chat/Context Menu/Check")
+        checkView.isHidden = !isSelected
+        cell.contentView.addSubview(checkView)
+
+        if indexPath.row < self.availableServers.count - 1 {
+            let sepH = 1.0 / UIScreen.main.scale
+            let sep = UIView(frame: CGRect(x: 52, y: self.serverRowHeight - sepH, width: max(0, tableView.bounds.width - 68), height: sepH))
+            sep.backgroundColor = theme.list.itemBlocksSeparatorColor
+            cell.contentView.addSubview(sep)
         }
+
+        return cell
     }
 
-    public func tableNode(_ tableNode: ASTableNode, didSelectRowAt indexPath: IndexPath) {
+    public func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         self.selectServer(at: indexPath.row)
     }
     
