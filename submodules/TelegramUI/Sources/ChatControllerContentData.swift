@@ -910,12 +910,8 @@ extension ChatControllerImpl {
                                 peerVerification = cachedChannelData.verification
                             }
                         }
-                        if let cachedUserData = peerView.cachedData as? CachedUserData {
-                            copyProtectionEnabled = cachedUserData.flags.contains(.copyProtectionEnabled) || cachedUserData.flags.contains(.myCopyProtectionEnabled)
-                            myCopyProtectionEnabled = cachedUserData.flags.contains(.myCopyProtectionEnabled)
-                        } else {
-                            copyProtectionEnabled = peer.isCopyProtectionEnabled
-                        }
+                        copyProtectionEnabled = false
+                        myCopyProtectionEnabled = false
                         if let cachedGroupData = peerView.cachedData as? CachedGroupData {
                             if !cachedGroupData.botInfos.isEmpty {
                                 hasBots = true
@@ -1407,7 +1403,7 @@ extension ChatControllerImpl {
                     var alwaysShowGiftButton = false
                     var disallowedGifts: TelegramDisallowedGifts?
                     if let peer = peerView.peers[peerView.peerId] {
-                        copyProtectionEnabled = peer.isCopyProtectionEnabled
+                        copyProtectionEnabled = false
                         if let cachedData = peerView.cachedData as? CachedUserData {
                             contactStatus = ChatContactStatus(canAddContact: !peerView.peerIsContact, peerStatusSettings: cachedData.peerStatusSettings, invitedBy: nil, managingBot: managingBot)
                             if case let .known(value) = cachedData.businessIntro {
