@@ -97,6 +97,7 @@ public final class LitegramConnectionController: ViewController {
             |> deliverOnMainQueue).startStrict(next: { [weak self] sharedData in
                 guard let self = self else { return }
                 self.currentProxySettings = sharedData.entries[SharedDataKeys.proxySettings]?.get(ProxySettings.self) ?? ProxySettings.defaultSettings
+                self.applyServersFromActiveProxyIfNeeded()
                 self.updateUI()
             })
 
@@ -190,7 +191,12 @@ public final class LitegramConnectionController: ViewController {
         let api = proxy.api
 
         self.fetchRetryWorkItem?.cancel()
-        self.applyServers(LitegramConfig.getCachedServers())
+        let cachedServers = LitegramConfig.getCachedServers()
+        if !cachedServers.isEmpty {
+            self.applyServers(cachedServers)
+        } else {
+            self.applyServersFromActiveProxyIfNeeded()
+        }
 
         if api.accessToken == nil, let tgId = LitegramDeviceToken.getTelegramId(), let tgValue = Int64(tgId) {
             proxy.ensureRegistered(telegramId: tgValue)
@@ -217,6 +223,8 @@ public final class LitegramConnectionController: ViewController {
                     let cached = LitegramConfig.getCachedServers()
                     if !cached.isEmpty {
                         self.applyServers(cached)
+                    } else {
+                        self.applyServersFromActiveProxyIfNeeded()
                     }
                 }
             }
@@ -237,6 +245,41 @@ public final class LitegramConnectionController: ViewController {
             self.updateUI()
             self.view.setNeedsLayout()
         }
+    }
+
+    private func applyServersFromActiveProxyIfNeeded() {
+        guard self.availableServers.isEmpty else { return }
+        guard let active = self.currentProxySettings?.activeServer else { return }
+        
+        let secret = self.extractMtpSecretHex(from: active.connection)
+        let fallback = LitegramServerInfo(
+            host: active.host,
+            port: Int(active.port),
+            secret: secret ?? "",
+            name: active.host,
+            country: ""
+        )
+        self.applyServers([fallback])
+    }
+
+    private func extractMtpSecretHex(from connection: Any) -> String? {
+        func dataToHex(_ data: Data) -> String {
+            data.map { String(format: "%02x", $0) }.joined()
+        }
+        
+        let mirror = Mirror(reflecting: connection)
+        for child in mirror.children {
+            if let data = child.value as? Data {
+                return dataToHex(data)
+            }
+            let nested = Mirror(reflecting: child.value)
+            for inner in nested.children {
+                if let data = inner.value as? Data {
+                    return dataToHex(data)
+                }
+            }
+        }
+        return nil
     }
 
     private func scheduleFetchRetry(attempt: Int) {
