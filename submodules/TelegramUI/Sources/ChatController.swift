@@ -7709,7 +7709,9 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     }
     
     private func isDeletedMessageMarkerText(_ text: String) -> Bool {
-        return text.hasPrefix("🗑︎ ")
+        return text.hasPrefix("\u{2063}LG_DEL\u{2063}")
+            || text == "\u{2063}LG_DEL\u{2063}"
+            || text.hasPrefix("🗑︎ ")
             || text == "🗑︎"
             || text.hasPrefix("🗑 ")
             || text == "🗑"

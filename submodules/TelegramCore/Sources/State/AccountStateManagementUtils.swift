@@ -4116,8 +4116,8 @@ func replayFinalState(
     
     var isPremiumUpdated = false
     
-    let deletedMessageMarkerPrefix = "🗑︎ "
-    let deletedMessageMarkerOnly = "🗑︎"
+    let deletedMessageMarkerPrefix = "\u{2063}LG_DEL\u{2063}"
+    let deletedMessageMarkerOnly = "\u{2063}LG_DEL\u{2063}"
     let previousDeletedMessageMarkerPrefix = "🗑 "
     let previousDeletedMessageMarkerOnly = "🗑"
     let legacyDeletedMessageMarkerPrefix = "🗑 Удалено: "
