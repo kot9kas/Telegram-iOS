@@ -12,7 +12,59 @@ import Litegram
 import AnimatedStickerNode
 import TelegramAnimatedStickerNode
 
-public final class LitegramConnectionController: ViewController {
+private final class LitegramServerRowNode: ASCellNode {
+    private let flagNode = ASTextNode()
+    private let titleNode = ASTextNode()
+    private let checkNode = ASImageNode()
+    private let separatorNode = ASDisplayNode()
+    private let hasSeparator: Bool
+
+    init(theme: PresentationTheme, title: String, countryCode: String, isSelected: Bool, hasSeparator: Bool) {
+        self.hasSeparator = hasSeparator
+        super.init()
+
+        self.automaticallyManagesSubnodes = true
+        self.backgroundColor = theme.list.itemBlocksBackgroundColor
+        self.selectionStyle = .none
+
+        self.flagNode.attributedText = NSAttributedString(
+            string: LitegramConnectionController.countryFlagStatic(countryCode),
+            attributes: [.font: UIFont.systemFont(ofSize: 22)]
+        )
+        self.titleNode.attributedText = NSAttributedString(
+            string: title,
+            attributes: [
+                .font: UIFont.systemFont(ofSize: 17),
+                .foregroundColor: theme.list.itemPrimaryTextColor
+            ]
+        )
+        self.checkNode.displaysAsynchronously = false
+        self.checkNode.image = UIImage(bundleImageName: "Chat/Context Menu/Check")
+        self.checkNode.isHidden = !isSelected
+        self.separatorNode.backgroundColor = theme.list.itemBlocksSeparatorColor
+        self.separatorNode.isHidden = !hasSeparator
+    }
+
+    override func layout() {
+        super.layout()
+        let bounds = self.bounds
+        self.flagNode.frame = CGRect(x: 16, y: floor((bounds.height - 28) / 2), width: 28, height: 28)
+        self.titleNode.frame = CGRect(x: 52, y: floor((bounds.height - 22) / 2), width: max(0, bounds.width - 52 - 40), height: 22)
+        self.checkNode.frame = CGRect(x: bounds.width - 30, y: floor((bounds.height - 16) / 2), width: 16, height: 16)
+        if self.hasSeparator {
+            let sepH = 1.0 / UIScreen.main.scale
+            self.separatorNode.frame = CGRect(x: 52, y: bounds.height - sepH, width: max(0, bounds.width - 52 - 16), height: sepH)
+        }
+    }
+
+    override func layoutSpecThatFits(_ constrainedSize: ASSizeRange) -> ASLayoutSpec {
+        let spec = ASAbsoluteLayoutSpec()
+        spec.children = [self.flagNode, self.titleNode, self.checkNode, self.separatorNode]
+        return ASInsetLayoutSpec(insets: .zero, child: spec)
+    }
+}
+
+public final class LitegramConnectionController: ViewController, ASTableDataSource, ASTableDelegate {
     private let context: AccountContext
     private var presentationData: PresentationData
     private var presentationDataDisposable: Disposable?
@@ -36,7 +88,7 @@ public final class LitegramConnectionController: ViewController {
 
     private var serverSectionNode: ASDisplayNode?
     private var serverHeaderNode: ASTextNode?
-    private var serverRowNodes: [(container: ASDisplayNode, flag: ASTextNode, name: ASTextNode, check: ASImageNode, sep: ASDisplayNode?)] = []
+    private var serversTableNode: ASTableNode?
     private var availableServers: [LitegramServerInfo] = []
     private var selectedServerIndex: Int = 0
 
@@ -54,6 +106,7 @@ public final class LitegramConnectionController: ViewController {
     private var fetchRetryWorkItem: DispatchWorkItem?
     private var lastServerDebugSignature: String?
     private let debugControllerInstanceId: String = UUID().uuidString
+    private let serverRowHeight: CGFloat = 48
 
     private static let gradientColors: [UIColor] = [
         UIColor(red: 0.94, green: 0.41, blue: 0.13, alpha: 1.0),
@@ -466,6 +519,14 @@ public final class LitegramConnectionController: ViewController {
         scrollNode?.addSubnode(serverSection)
         self.serverSectionNode = serverSection
 
+        let serversTable = ASTableNode(style: .plain)
+        serversTable.view.separatorStyle = .none
+        serversTable.backgroundColor = .clear
+        serversTable.dataSource = self
+        serversTable.delegate = self
+        serverSection.addSubnode(serversTable)
+        self.serversTableNode = serversTable
+
         let serverHeader = ASTextNode()
         serverHeader.attributedText = NSAttributedString(string: "SERVERS", attributes: [
             .font: UIFont.systemFont(ofSize: 13, weight: .medium),
@@ -557,53 +618,7 @@ public final class LitegramConnectionController: ViewController {
     }
 
     private func rebuildServerRows() {
-        for row in serverRowNodes {
-            row.container.removeFromSupernode()
-            row.sep?.removeFromSupernode()
-        }
-        serverRowNodes.removeAll()
-
-        guard let serverSection = self.serverSectionNode else { return }
-        let theme = self.presentationData.theme
-
-        for (i, server) in availableServers.enumerated() {
-            let container = ASDisplayNode()
-            let tapIndex = i
-            container.view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(serverRowTapped(_:))))
-            container.view.tag = tapIndex
-            serverSection.addSubnode(container)
-
-            let flag = ASTextNode()
-            let emoji = countryFlag(server.country)
-            flag.attributedText = NSAttributedString(string: emoji, attributes: [
-                .font: UIFont.systemFont(ofSize: 22)
-            ])
-            container.addSubnode(flag)
-
-            let nameNode = ASTextNode()
-            let label = server.name.isEmpty ? server.host : "\(server.name) (\(server.country.uppercased()))"
-            nameNode.attributedText = NSAttributedString(string: label, attributes: [
-                .font: UIFont.systemFont(ofSize: 17),
-                .foregroundColor: theme.list.itemPrimaryTextColor
-            ])
-            container.addSubnode(nameNode)
-
-            let check = ASImageNode()
-            check.displaysAsynchronously = false
-            check.image = UIImage(bundleImageName: "Chat/Context Menu/Check")
-            check.isHidden = (i != selectedServerIndex)
-            container.addSubnode(check)
-
-            var sep: ASDisplayNode? = nil
-            if i < availableServers.count - 1 {
-                let s = ASDisplayNode()
-                s.backgroundColor = theme.list.itemBlocksSeparatorColor
-                serverSection.addSubnode(s)
-                sep = s
-            }
-
-            serverRowNodes.append((container: container, flag: flag, name: nameNode, check: check, sep: sep))
-        }
+        self.serversTableNode?.reloadData()
         
         // #region agent log
         self.debugLog(
@@ -613,13 +628,17 @@ public final class LitegramConnectionController: ViewController {
             message: "rows rebuilt",
             data: [
                 "availableServersCount": self.availableServers.count,
-                "rowNodesCount": self.serverRowNodes.count
+                    "rowNodesCount": self.availableServers.count
             ]
         )
         // #endregion
     }
 
     private func countryFlag(_ code: String) -> String {
+        return Self.countryFlagStatic(code)
+    }
+
+    fileprivate static func countryFlagStatic(_ code: String) -> String {
         guard code.count == 2 else { return "🌍" }
         let base: UInt32 = 0x1F1E6
         let aVal: UInt32 = 65
@@ -678,30 +697,18 @@ public final class LitegramConnectionController: ViewController {
             self.serverHeaderNode?.frame = CGRect(x: sideInset + 16, y: y, width: cw, height: 18)
             y += 18 + 7
 
-            let rowH: CGFloat = 48
             let sepH = 1.0 / UIScreen.main.scale
-            let totalH = CGFloat(serverRowNodes.count) * rowH + CGFloat(max(0, serverRowNodes.count - 1)) * sepH
+            let totalH = CGFloat(availableServers.count) * self.serverRowHeight + CGFloat(max(0, availableServers.count - 1)) * sepH
             self.serverSectionNode?.frame = CGRect(x: sideInset, y: y, width: cw, height: totalH)
-
-            var fy: CGFloat = 0
-            for (i, row) in serverRowNodes.enumerated() {
-                row.container.frame = CGRect(x: 0, y: fy, width: cw, height: rowH)
-                row.flag.frame = CGRect(x: 16, y: (rowH - 28) / 2, width: 28, height: 28)
-                row.name.frame = CGRect(x: 52, y: (rowH - 22) / 2, width: cw - 52 - 40, height: 22)
-                row.check.frame = CGRect(x: cw - 30, y: (rowH - 16) / 2, width: 16, height: 16)
-                fy += rowH
-                if let sep = row.sep, i < serverRowNodes.count - 1 {
-                    sep.frame = CGRect(x: 52, y: fy, width: cw - 52 - 16, height: sepH)
-                    fy += sepH
-                }
-            }
+            self.serversTableNode?.frame = CGRect(x: 0, y: 0, width: cw, height: totalH)
             y += totalH + 16
         } else {
             self.serverHeaderNode?.frame = .zero
             self.serverSectionNode?.frame = CGRect(x: sideInset, y: y, width: cw, height: 0)
+            self.serversTableNode?.frame = .zero
         }
         
-        let signature = "\(availableServers.count)|\(serverRowNodes.count)|\(Int(self.serverSectionNode?.frame.height ?? 0))"
+        let signature = "\(availableServers.count)|\(availableServers.count)|\(Int(self.serverSectionNode?.frame.height ?? 0))"
         if signature != self.lastServerDebugSignature {
             self.lastServerDebugSignature = signature
             // #region agent log
@@ -713,7 +720,7 @@ public final class LitegramConnectionController: ViewController {
                 data: [
                     "controllerInstanceId": self.debugControllerInstanceId,
                     "availableServersCount": self.availableServers.count,
-                    "rowNodesCount": self.serverRowNodes.count,
+                    "rowNodesCount": self.availableServers.count,
                     "serverSectionHeight": self.serverSectionNode?.frame.height ?? 0,
                     "serverHeaderHidden": self.serverHeaderNode?.frame == .zero,
                     "serverSectionHidden": self.serverSectionNode?.isHidden ?? false,
@@ -776,18 +783,13 @@ public final class LitegramConnectionController: ViewController {
         self.activeAnimNode?.playOnce()
     }
 
-    @objc private func serverRowTapped(_ gesture: UITapGestureRecognizer) {
-        guard let tag = gesture.view?.tag else { return }
-        guard tag >= 0 && tag < availableServers.count else { return }
-
-        for (i, row) in serverRowNodes.enumerated() {
-            row.check.isHidden = (i != tag)
-        }
-        selectedServerIndex = tag
-
-        let server = availableServers[tag]
+    private func selectServer(at index: Int) {
+        guard index >= 0 && index < self.availableServers.count else { return }
+        self.selectedServerIndex = index
+        let server = self.availableServers[index]
         LitegramConfig.selectedServerHost = server.host
         LitegramProxyController.shared.applyServer(server)
+        self.serversTableNode?.reloadData()
     }
 
     @objc private func actionButtonTapped() {
@@ -908,6 +910,42 @@ public final class LitegramConnectionController: ViewController {
 
         self.connectButtonNode?.setTitle(btnTitle, with: UIFont.systemFont(ofSize: 17, weight: .semibold), with: .white, for: .normal)
         self.connectButtonNode?.backgroundColor = btnColor
+    }
+
+    public func numberOfSections(in tableNode: ASTableNode) -> Int {
+        return 1
+    }
+
+    public func tableNode(_ tableNode: ASTableNode, numberOfRowsInSection section: Int) -> Int {
+        return self.availableServers.count
+    }
+
+    public func tableNode(_ tableNode: ASTableNode, constrainedSizeForRowAt indexPath: IndexPath) -> ASSizeRange {
+        let width = max(0, tableNode.bounds.width)
+        let height = self.serverRowHeight + (indexPath.row < self.availableServers.count - 1 ? (1.0 / UIScreen.main.scale) : 0)
+        let size = CGSize(width: width, height: height)
+        return ASSizeRange(min: size, max: size)
+    }
+
+    public func tableNode(_ tableNode: ASTableNode, nodeBlockForRowAt indexPath: IndexPath) -> ASCellNodeBlock {
+        let server = self.availableServers[indexPath.row]
+        let isSelected = indexPath.row == self.selectedServerIndex
+        let hasSeparator = indexPath.row < self.availableServers.count - 1
+        let label = server.name.isEmpty ? server.host : "\(server.name) (\(server.country.uppercased()))"
+        let theme = self.presentationData.theme
+        return {
+            return LitegramServerRowNode(
+                theme: theme,
+                title: label,
+                countryCode: server.country,
+                isSelected: isSelected,
+                hasSeparator: hasSeparator
+            )
+        }
+    }
+
+    public func tableNode(_ tableNode: ASTableNode, didSelectRowAt indexPath: IndexPath) {
+        self.selectServer(at: indexPath.row)
     }
     
     private func debugLog(
