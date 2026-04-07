@@ -4116,8 +4116,12 @@ func replayFinalState(
     
     var isPremiumUpdated = false
     
-    let deletedMessageMarkerPrefix = "🗑 Удалено: "
-    let deletedMessageMarkerOnly = "🗑 Удалено"
+    let deletedMessageMarkerPrefix = "🗑︎ "
+    let deletedMessageMarkerOnly = "🗑︎"
+    let previousDeletedMessageMarkerPrefix = "🗑 "
+    let previousDeletedMessageMarkerOnly = "🗑"
+    let legacyDeletedMessageMarkerPrefix = "🗑 Удалено: "
+    let legacyDeletedMessageMarkerOnly = "🗑 Удалено"
     let shouldKeepIncomingDeletedMessages: () -> Bool = {
         if let isEnabled = LitegramDeletedMessagesHook.isEnabled {
             return isEnabled()
@@ -4134,7 +4138,12 @@ func replayFinalState(
                 storeForwardInfo = StoreMessageForwardInfo(forwardInfo)
             }
             
-            if currentMessage.text.hasPrefix(deletedMessageMarkerPrefix) || currentMessage.text == deletedMessageMarkerOnly {
+            if currentMessage.text.hasPrefix(deletedMessageMarkerPrefix)
+                || currentMessage.text == deletedMessageMarkerOnly
+                || currentMessage.text.hasPrefix(previousDeletedMessageMarkerPrefix)
+                || currentMessage.text == previousDeletedMessageMarkerOnly
+                || currentMessage.text.hasPrefix(legacyDeletedMessageMarkerPrefix)
+                || currentMessage.text == legacyDeletedMessageMarkerOnly {
                 return .skip
             }
             
