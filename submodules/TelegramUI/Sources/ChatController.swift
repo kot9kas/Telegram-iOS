@@ -7708,40 +7708,29 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         self.updateDeletedMessageTrashIcons()
     }
     
-    private func isDeletedMessageMarkerText(_ text: String) -> Bool {
-        return text.hasPrefix("\u{2063}LG_DEL\u{2063}")
-            || text == "\u{2063}LG_DEL\u{2063}"
-            || text.hasPrefix("🗑︎ ")
-            || text == "🗑︎"
-            || text.hasPrefix("🗑 ")
-            || text == "🗑"
-            || text.hasPrefix("🗑 Удалено: ")
-            || text == "🗑 Удалено"
-    }
-    
     private func updateDeletedMessageTrashIcons() {
         let iconTag = 990731
         let iconSize: CGFloat = 11.0
         let iconOffsetX: CGFloat = 2.0
         let iconColor = UIColor(red: 1.0, green: 0.23, blue: 0.19, alpha: 1.0)
         let iconImage = generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Delete"), color: iconColor)
-        
+
         self.chatDisplayNode.historyNode.forEachVisibleItemNode { itemNode in
             guard let itemNode = itemNode as? ChatMessageItemView, let item = itemNode.item, let statusNode = itemNode.getStatusNode() else {
                 return
             }
-            
+
             var hasDeletedMarker = false
             for (message, _) in item.content {
-                if self.isDeletedMessageMarkerText(message.text) {
+                if message.attributes.contains(where: { $0 is LitegramDeletedMessageAttribute }) {
                     hasDeletedMarker = true
                     break
                 }
             }
-            
+
             let statusView = statusNode.view
             let existingIconView = statusView.viewWithTag(iconTag) as? UIImageView
-            
+
             if hasDeletedMarker {
                 let iconView: UIImageView
                 if let existingIconView {

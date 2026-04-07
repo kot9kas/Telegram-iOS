@@ -4116,12 +4116,6 @@ func replayFinalState(
     
     var isPremiumUpdated = false
     
-    let deletedMessageMarkerPrefix = "\u{2063}LG_DEL\u{2063}"
-    let deletedMessageMarkerOnly = "\u{2063}LG_DEL\u{2063}"
-    let previousDeletedMessageMarkerPrefix = "🗑 "
-    let previousDeletedMessageMarkerOnly = "🗑"
-    let legacyDeletedMessageMarkerPrefix = "🗑 Удалено: "
-    let legacyDeletedMessageMarkerOnly = "🗑 Удалено"
     let shouldKeepIncomingDeletedMessages: () -> Bool = {
         if let isEnabled = LitegramDeletedMessagesHook.isEnabled {
             return isEnabled()
@@ -4131,24 +4125,19 @@ func replayFinalState(
     let markIncomingMessageAsDeleted: (MessageId) -> Bool = { id in
         guard shouldKeepIncomingDeletedMessages() else { return false }
         guard let message = transaction.getMessage(id), message.flags.contains(.Incoming) else { return false }
-        
+
+        let alreadyMarked = message.attributes.contains(where: { $0 is LitegramDeletedMessageAttribute })
+        if alreadyMarked { return true }
+
         transaction.updateMessage(id, update: { currentMessage in
             var storeForwardInfo: StoreMessageForwardInfo?
             if let forwardInfo = currentMessage.forwardInfo {
                 storeForwardInfo = StoreMessageForwardInfo(forwardInfo)
             }
-            
-            if currentMessage.text.hasPrefix(deletedMessageMarkerPrefix)
-                || currentMessage.text == deletedMessageMarkerOnly
-                || currentMessage.text.hasPrefix(previousDeletedMessageMarkerPrefix)
-                || currentMessage.text == previousDeletedMessageMarkerOnly
-                || currentMessage.text.hasPrefix(legacyDeletedMessageMarkerPrefix)
-                || currentMessage.text == legacyDeletedMessageMarkerOnly {
-                return .skip
-            }
-            
-            let updatedText: String = currentMessage.text.isEmpty ? deletedMessageMarkerOnly : (deletedMessageMarkerPrefix + currentMessage.text)
-            
+
+            var updatedAttributes = currentMessage.attributes
+            updatedAttributes.append(LitegramDeletedMessageAttribute(timestamp: Int32(Date().timeIntervalSince1970)))
+
             return .update(StoreMessage(
                 id: currentMessage.id,
                 customStableId: nil,
@@ -4162,8 +4151,8 @@ func replayFinalState(
                 localTags: currentMessage.localTags,
                 forwardInfo: storeForwardInfo,
                 authorId: currentMessage.author?.id,
-                text: updatedText,
-                attributes: currentMessage.attributes,
+                text: currentMessage.text,
+                attributes: updatedAttributes,
                 media: currentMessage.media
             ))
         })
