@@ -50,6 +50,8 @@ public final class LitegramConnectionController: ViewController {
     private var isConnecting = false
     private var lastAnimName: String?
     private var animSetupPending = false
+    private var authObserver: NSObjectProtocol?
+    private var fetchRetryWorkItem: DispatchWorkItem?
 
     private static let gradientColors: [UIColor] = [
         UIColor(red: 0.94, green: 0.41, blue: 0.13, alpha: 1.0),
@@ -105,6 +107,14 @@ public final class LitegramConnectionController: ViewController {
                 self.updateUI()
             })
 
+        self.authObserver = NotificationCenter.default.addObserver(
+            forName: .litegramAuthDidUpdate,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.fetchServersWithToken()
+        }
+
         fetchServers()
     }
 
@@ -116,6 +126,10 @@ public final class LitegramConnectionController: ViewController {
         self.presentationDataDisposable?.dispose()
         self.proxySettingsDisposable?.dispose()
         self.connectionStatusDisposable?.dispose()
+        self.fetchRetryWorkItem?.cancel()
+        if let observer = self.authObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
 
     private func updateTheme() {
@@ -140,6 +154,7 @@ public final class LitegramConnectionController: ViewController {
 
     override public func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        fetchServers()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
             guard let self = self else { return }
             self.connectedAnimNode?.visibility = true
@@ -174,13 +189,14 @@ public final class LitegramConnectionController: ViewController {
         let proxy = LitegramProxyController.shared
         let api = proxy.api
 
+        self.fetchRetryWorkItem?.cancel()
+
+        if api.accessToken == nil, let tgId = LitegramDeviceToken.getTelegramId(), let tgValue = Int64(tgId) {
+            proxy.ensureRegistered(telegramId: tgValue)
+        }
+
         if api.accessToken == nil {
-            if let tgId = LitegramDeviceToken.getTelegramId() {
-                proxy.onTelegramAuth(telegramId: Int64(tgId) ?? 0)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
-                    self?.fetchServersWithToken()
-                }
-            }
+            scheduleFetchRetry(attempt: 0)
             return
         }
         fetchServersWithToken()
@@ -193,6 +209,7 @@ public final class LitegramConnectionController: ViewController {
             DispatchQueue.main.async {
                 guard let self = self else { return }
                 if case let .success(servers) = result, !servers.isEmpty {
+                    self.fetchRetryWorkItem?.cancel()
                     self.availableServers = servers
                     if let savedHost = LitegramConfig.selectedServerHost,
                        let idx = servers.firstIndex(where: { $0.host == savedHost }) {
@@ -206,6 +223,21 @@ public final class LitegramConnectionController: ViewController {
                 }
             }
         }
+    }
+
+    private func scheduleFetchRetry(attempt: Int) {
+        guard attempt < 12 else { return }
+        let delay = min(0.5 + Double(attempt) * 0.25, 3.0)
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            if LitegramProxyController.shared.api.accessToken != nil {
+                self.fetchServersWithToken()
+            } else {
+                self.scheduleFetchRetry(attempt: attempt + 1)
+            }
+        }
+        self.fetchRetryWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
     }
 
     // MARK: - Setup

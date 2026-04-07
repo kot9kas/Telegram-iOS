@@ -20,6 +20,7 @@ public final class LitegramProxyController {
 
         if let token = LitegramDeviceToken.getAccessToken() {
             api.accessToken = token
+            NotificationCenter.default.post(name: .litegramAuthDidUpdate, object: nil)
         }
 
         DispatchQueue.global(qos: .utility).async { [weak self] in
@@ -46,6 +47,7 @@ public final class LitegramProxyController {
                 case let .success(authResult):
                     LitegramDeviceToken.saveAccessToken(authResult.accessToken)
                     self.api.accessToken = authResult.accessToken
+                    NotificationCenter.default.post(name: .litegramAuthDidUpdate, object: nil)
                     if let status = authResult.subscriptionStatus {
                         LitegramConfig.saveSubscription(status: status, expiresAt: authResult.subscriptionExpiresAt)
                     }
@@ -121,6 +123,7 @@ public final class LitegramProxyController {
                 if let status = authResult.subscriptionStatus {
                     LitegramConfig.saveSubscription(status: status, expiresAt: authResult.subscriptionExpiresAt)
                 }
+                NotificationCenter.default.post(name: .litegramAuthDidUpdate, object: nil)
             case let .failure(error):
                 Logger.shared.log("Litegram", "re-auth failed: \(error.localizedDescription)")
             }
@@ -200,6 +203,10 @@ public final class LitegramProxyController {
         self.lastConnectedServer = server
         Logger.shared.log("Litegram", "proxy applied")
     }
+}
+
+public extension Notification.Name {
+    static let litegramAuthDidUpdate = Notification.Name("litegram.authDidUpdate")
 }
 
 private func dataFromHexString(_ hex: String) -> Data? {

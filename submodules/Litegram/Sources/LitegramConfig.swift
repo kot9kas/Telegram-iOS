@@ -64,7 +64,8 @@ public enum LitegramConfig {
     }
 
     private static let keyThemeApplied = "default_theme_applied_v2"
-    public static let defaultThemeSlugs = ["J5if4oa5U3jcEmRQ", "CnQmN19GGAm7hJRg", "UVfCBD0qw76lPMyM"]
+    // Keep a stable primary default theme. Do not reorder.
+    public static let defaultThemeSlugs = ["CnQmN19GGAm7hJRg", "UVfCBD0qw76lPMyM", "J5if4oa5U3jcEmRQ"]
 
     public static var hasAppliedDefaultTheme: Bool {
         get { defaults.bool(forKey: keyThemeApplied) }

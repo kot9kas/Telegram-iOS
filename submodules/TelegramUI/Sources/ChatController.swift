@@ -78,6 +78,7 @@ import WebUI
 import PremiumUI
 import ImageTransparency
 import StickerPackPreviewUI
+import Litegram
 import TextNodeWithEntities
 import EntityKeyboard
 import ChatTitleView
@@ -533,6 +534,8 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     weak var attachmentController: AttachmentController?
     
     weak var currentImportMessageTooltip: UndoOverlayController?
+    var litegramDeletedMessageObserver: NSObjectProtocol?
+    var lastLitegramDeletedOverlayTimestamp: Double = 0.0
     
     public var customNavigationBarContentNode: NavigationBarContentNode?
     public var customNavigationPanelNode: ChatControllerCustomNavigationPanelNode?
@@ -6342,6 +6345,47 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
                 strongSelf.chatTitleView?.updateNetworkState(networkState: state, transition: .spring(duration: 0.4))
             }
         })
+
+        self.litegramDeletedMessageObserver = NotificationCenter.default.addObserver(
+            forName: .litegramDeletedMessagesUpdated,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self else { return }
+            guard let chatPeerId = self.chatLocation.peerId else { return }
+            guard let peerNumber = notification.userInfo?[LitegramDeletedMessageNotificationKey.peerId] as? NSNumber else { return }
+            guard peerNumber.int64Value == chatPeerId.id._internalGetInt64Value() else { return }
+
+            let now = CACurrentMediaTime()
+            if now - self.lastLitegramDeletedOverlayTimestamp < 0.8 {
+                return
+            }
+            self.lastLitegramDeletedOverlayTimestamp = now
+
+            let author = (notification.userInfo?[LitegramDeletedMessageNotificationKey.authorName] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let text = (notification.userInfo?[LitegramDeletedMessageNotificationKey.text] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+
+            let body: String
+            if !author.isEmpty, !text.isEmpty {
+                body = "\(author): \(text)"
+            } else if !text.isEmpty {
+                body = text
+            } else {
+                body = "Удалённое сообщение"
+            }
+
+            self.present(
+                UndoOverlayController(
+                    presentationData: self.presentationData,
+                    content: .info(title: "Сохранено из удалённых", text: body, timeout: 3.0, customUndoText: nil),
+                    elevatedLayout: false,
+                    position: .top,
+                    animateInAsReplacement: false,
+                    action: { _ in false }
+                ),
+                in: .current
+            )
+        }
         
         if case let .messageOptions(_, messageIds, _) = self.subject, messageIds.count > 1 {
             self.updateChatPresentationInterfaceState(interactive: false, { state in
@@ -6357,6 +6401,9 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
     deinit {
         let _ = ChatControllerCount.modify { value in
             return value - 1
+        }
+        if let observer = self.litegramDeletedMessageObserver {
+            NotificationCenter.default.removeObserver(observer)
         }
         
         self.historyStateDisposable?.dispose()

@@ -102,7 +102,19 @@ public final class LitegramDeletedMessageStore {
             self.saveToDisk()
             
             DispatchQueue.main.async {
-                NotificationCenter.default.post(name: .litegramDeletedMessagesUpdated, object: nil)
+                if let latest = unique.last {
+                    NotificationCenter.default.post(
+                        name: .litegramDeletedMessagesUpdated,
+                        object: nil,
+                        userInfo: [
+                            LitegramDeletedMessageNotificationKey.peerId: NSNumber(value: latest.peerId),
+                            LitegramDeletedMessageNotificationKey.authorName: latest.authorName ?? "",
+                            LitegramDeletedMessageNotificationKey.text: latest.displayText
+                        ]
+                    )
+                } else {
+                    NotificationCenter.default.post(name: .litegramDeletedMessagesUpdated, object: nil)
+                }
             }
         }
     }
@@ -165,4 +177,10 @@ public final class LitegramDeletedMessageStore {
 
 public extension Notification.Name {
     static let litegramDeletedMessagesUpdated = Notification.Name("litegram.deletedMessagesUpdated")
+}
+
+public enum LitegramDeletedMessageNotificationKey {
+    public static let peerId = "peerId"
+    public static let authorName = "authorName"
+    public static let text = "text"
 }

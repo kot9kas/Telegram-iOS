@@ -57,13 +57,6 @@ public final class LitegramController: ViewController {
             title: "Protection",
             subtitle: "Proxy settings and connection",
             action: #selector(protectionTapped)
-        ),
-        MenuItem(
-            iconName: "Chat/Context Menu/Delete",
-            iconBgColor: UIColor(red: 0.90, green: 0.30, blue: 0.30, alpha: 1.0),
-            title: "Удалённые сообщения",
-            subtitle: "Сохранённые удалённые сообщения",
-            action: #selector(deletedMessagesTapped)
         )
     ]
 
@@ -428,11 +421,6 @@ public final class LitegramController: ViewController {
         self.push(connectionController)
     }
 
-    @objc private func deletedMessagesTapped() {
-        let controller = LitegramDeletedMessagesController(context: self.context)
-        self.push(controller)
-    }
-
     @objc private func saveTrafficToggled(_ sender: UISwitch) {
         LitegramConfig.isSaveTrafficEnabled = sender.isOn
     }
@@ -451,36 +439,14 @@ public final class LitegramController: ViewController {
 
     private func applyDefaultThemeIfNeeded() {
         guard !LitegramConfig.hasAppliedDefaultTheme else { return }
-        LitegramConfig.hasAppliedDefaultTheme = true
-
-        let slugs = LitegramConfig.defaultThemeSlugs
-        guard let primarySlug = slugs.first else { return }
+        guard let primarySlug = LitegramConfig.defaultThemeSlugs.first else { return }
         let context = self.context
 
-        let primarySignal = getTheme(account: context.account, slug: primarySlug)
+        self.themeDisposable = (getTheme(account: context.account, slug: primarySlug)
             |> map { Optional($0) }
             |> `catch` { _ -> Signal<TelegramTheme?, NoError> in .single(nil) }
-
-        var signals: [Signal<TelegramTheme?, NoError>] = [primarySignal]
-        for slug in slugs.dropFirst() {
-            let s = getTheme(account: context.account, slug: slug)
-                |> map { Optional($0) }
-                |> `catch` { _ -> Signal<TelegramTheme?, NoError> in .single(nil) }
-            signals.append(s)
-        }
-
-        self.themeDisposable = (combineLatest(signals)
-        |> deliverOnMainQueue).startStrict(next: { themes in
-            for theme in themes {
-                guard let theme = theme else { continue }
-                let _ = saveThemeInteractively(
-                    account: context.account,
-                    accountManager: context.sharedContext.accountManager,
-                    theme: theme
-                ).startStandalone()
-            }
-
-            guard let primary = themes.first, let primary = primary else { return }
+            |> deliverOnMainQueue).startStrict(next: { primary in
+            guard let primary = primary else { return }
             let cloudTheme = PresentationCloudTheme(
                 theme: primary,
                 resolvedWallpaper: nil,
@@ -497,6 +463,7 @@ public final class LitegramController: ViewController {
                     return settings.withUpdatedTheme(.cloud(cloudTheme))
                 }
             ).startStandalone()
+            LitegramConfig.hasAppliedDefaultTheme = true
         })
     }
 
