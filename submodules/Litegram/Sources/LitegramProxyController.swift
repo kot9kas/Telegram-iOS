@@ -28,11 +28,11 @@ public final class LitegramProxyController {
         }
     }
 
-    private var hasRegistered = false
+    private var lastRegisteredTelegramId: Int64?
 
     public func ensureRegistered(telegramId: Int64) {
-        guard !hasRegistered else { return }
-        hasRegistered = true
+        guard lastRegisteredTelegramId != telegramId else { return }
+        lastRegisteredTelegramId = telegramId
         onTelegramAuth(telegramId: telegramId)
     }
 

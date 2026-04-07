@@ -6354,7 +6354,9 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             guard let self else { return }
             guard let chatPeerId = self.chatLocation.peerId else { return }
             guard let peerNumber = notification.userInfo?[LitegramDeletedMessageNotificationKey.peerId] as? NSNumber else { return }
+            guard let namespaceNumber = notification.userInfo?[LitegramDeletedMessageNotificationKey.peerNamespace] as? NSNumber else { return }
             guard peerNumber.int64Value == chatPeerId.id._internalGetInt64Value() else { return }
+            guard namespaceNumber.int32Value == chatPeerId.namespace._internalGetInt32Value() else { return }
 
             let now = CACurrentMediaTime()
             if now - self.lastLitegramDeletedOverlayTimestamp < 0.8 {

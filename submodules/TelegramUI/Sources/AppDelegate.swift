@@ -1386,6 +1386,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                         if let authorizedContext = authorizedContext {
                             let peerId = authorizedContext.context.account.peerId
                             LitegramProxyController.shared.onTelegramAuth(telegramId: peerId.id._internalGetInt64Value())
+                            self.applyDefaultLitegramThemeIfNeeded(context: authorizedContext.context)
                         }
                     }, completed: {
                         Queue.mainQueue().after(0.75) {
@@ -2458,6 +2459,35 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         }
     }
     
+    private func applyDefaultLitegramThemeIfNeeded(context: AccountContext) {
+        guard !LitegramConfig.hasAppliedDefaultTheme else { return }
+        guard let primarySlug = LitegramConfig.defaultThemeSlugs.first else { return }
+        
+        let _ = (getTheme(account: context.account, slug: primarySlug)
+        |> map { Optional($0) }
+        |> `catch` { _ -> Signal<TelegramTheme?, NoError> in .single(nil) }
+        |> deliverOnMainQueue).startStandalone(next: { primary in
+            guard let primary = primary else { return }
+            let cloudTheme = PresentationCloudTheme(
+                theme: primary,
+                resolvedWallpaper: nil,
+                creatorAccountId: nil
+            )
+            let _ = applyTheme(
+                accountManager: context.sharedContext.accountManager,
+                account: context.account,
+                theme: primary
+            ).startStandalone()
+            let _ = updatePresentationThemeSettingsInteractively(
+                accountManager: context.sharedContext.accountManager,
+                { settings in
+                    settings.withUpdatedTheme(.cloud(cloudTheme))
+                }
+            ).startStandalone()
+            LitegramConfig.hasAppliedDefaultTheme = true
+        })
+    }
+
     private func authorizedContext() -> Signal<AuthorizedApplicationContext, NoError> {
         return self.context.get()
         |> mapToSignal { context -> Signal<AuthorizedApplicationContext, NoError> in

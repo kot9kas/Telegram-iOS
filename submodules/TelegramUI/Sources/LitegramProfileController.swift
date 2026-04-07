@@ -17,7 +17,6 @@ public final class LitegramController: ViewController {
     private var presentationData: PresentationData
     private var presentationDataDisposable: Disposable?
     private var peerDisposable: Disposable?
-    private var themeDisposable: Disposable?
 
     private var scrollNode: ASScrollNode?
 
@@ -113,8 +112,6 @@ public final class LitegramController: ViewController {
                 }
                 self.fetchSubscriptionStatus()
             })
-
-        applyDefaultThemeIfNeeded()
     }
 
     required public init(coder aDecoder: NSCoder) {
@@ -124,7 +121,6 @@ public final class LitegramController: ViewController {
     deinit {
         self.presentationDataDisposable?.dispose()
         self.peerDisposable?.dispose()
-        self.themeDisposable?.dispose()
     }
 
     private func updateTheme() {
@@ -435,36 +431,6 @@ public final class LitegramController: ViewController {
             navigationController: self.navigationController as? NavigationController,
             dismissInput: { }
         )
-    }
-
-    private func applyDefaultThemeIfNeeded() {
-        guard !LitegramConfig.hasAppliedDefaultTheme else { return }
-        guard let primarySlug = LitegramConfig.defaultThemeSlugs.first else { return }
-        let context = self.context
-
-        self.themeDisposable = (getTheme(account: context.account, slug: primarySlug)
-            |> map { Optional($0) }
-            |> `catch` { _ -> Signal<TelegramTheme?, NoError> in .single(nil) }
-            |> deliverOnMainQueue).startStrict(next: { primary in
-            guard let primary = primary else { return }
-            let cloudTheme = PresentationCloudTheme(
-                theme: primary,
-                resolvedWallpaper: nil,
-                creatorAccountId: nil
-            )
-            let _ = applyTheme(
-                accountManager: context.sharedContext.accountManager,
-                account: context.account,
-                theme: primary
-            ).startStandalone()
-            let _ = updatePresentationThemeSettingsInteractively(
-                accountManager: context.sharedContext.accountManager,
-                { settings in
-                    return settings.withUpdatedTheme(.cloud(cloudTheme))
-                }
-            ).startStandalone()
-            LitegramConfig.hasAppliedDefaultTheme = true
-        })
     }
 
     private func fetchSubscriptionStatus() {

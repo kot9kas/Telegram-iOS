@@ -1,4 +1,5 @@
 import Foundation
+import Security
 
 public enum LitegramConfig {
     public static let apiBaseURL = "https://test.enderfall.net"
@@ -15,8 +16,18 @@ public enum LitegramConfig {
     private static let keySubExpires = "sub_expires"
     private static let keySaveTraffic = "save_traffic"
     private static let keyCachedServers = "cached_proxy_servers_v1"
+    private static let cachedServersKeychainService = "io.litegram.cache"
+    private static let cachedServersKeychainAccount = "proxy_servers"
+    private static let cachedServersSchemaVersion = 1
+    private static let cachedServersTtl: TimeInterval = 60 * 60 * 24 * 90
 
     private static var defaults: UserDefaults { UserDefaults(suiteName: suiteName) ?? .standard }
+    
+    private struct CachedServersEnvelope: Codable {
+        let version: Int
+        let savedAt: TimeInterval
+        let servers: [LitegramServerInfo]
+    }
 
     public static func saveSubscription(status: String, expiresAt: String?) {
         let d = defaults
@@ -94,12 +105,82 @@ public enum LitegramConfig {
     }
 
     public static func saveCachedServers(_ servers: [LitegramServerInfo]) {
-        guard let data = try? JSONEncoder().encode(servers) else { return }
-        defaults.set(data, forKey: keyCachedServers)
+        let envelope = CachedServersEnvelope(
+            version: cachedServersSchemaVersion,
+            savedAt: Date().timeIntervalSince1970,
+            servers: servers
+        )
+        guard let data = try? JSONEncoder().encode(envelope) else { return }
+        _ = setKeychainData(data, service: cachedServersKeychainService, account: cachedServersKeychainAccount)
+        defaults.removeObject(forKey: keyCachedServers)
     }
 
     public static func getCachedServers() -> [LitegramServerInfo] {
-        guard let data = defaults.data(forKey: keyCachedServers) else { return [] }
-        return (try? JSONDecoder().decode([LitegramServerInfo].self, from: data)) ?? []
+        if let data = getKeychainData(service: cachedServersKeychainService, account: cachedServersKeychainAccount),
+           let envelope = try? JSONDecoder().decode(CachedServersEnvelope.self, from: data),
+           envelope.version == cachedServersSchemaVersion {
+            if Date().timeIntervalSince1970 - envelope.savedAt <= cachedServersTtl {
+                return envelope.servers
+            } else {
+                _ = removeKeychainData(service: cachedServersKeychainService, account: cachedServersKeychainAccount)
+                return []
+            }
+        }
+        
+        // Migration path from previous UserDefaults-based cache.
+        if let legacyData = defaults.data(forKey: keyCachedServers),
+           let legacyServers = try? JSONDecoder().decode([LitegramServerInfo].self, from: legacyData),
+           !legacyServers.isEmpty {
+            saveCachedServers(legacyServers)
+            defaults.removeObject(forKey: keyCachedServers)
+            return legacyServers
+        }
+        
+        return []
+    }
+    
+    @discardableResult
+    private static func setKeychainData(_ data: Data, service: String, account: String) -> Bool {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account
+        ]
+        let attributes: [String: Any] = [
+            kSecValueData as String: data
+        ]
+        let updateStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+        if updateStatus == errSecSuccess {
+            return true
+        }
+        var insertQuery = query
+        insertQuery[kSecValueData as String] = data
+        let addStatus = SecItemAdd(insertQuery as CFDictionary, nil)
+        return addStatus == errSecSuccess
+    }
+    
+    private static func getKeychainData(service: String, account: String) -> Data? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        guard status == errSecSuccess else { return nil }
+        return item as? Data
+    }
+    
+    @discardableResult
+    private static func removeKeychainData(service: String, account: String) -> Bool {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account
+        ]
+        let status = SecItemDelete(query as CFDictionary)
+        return status == errSecSuccess || status == errSecItemNotFound
     }
 }

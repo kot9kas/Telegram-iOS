@@ -5,6 +5,7 @@ public final class LitegramDeletedMessagesHook {
     public struct DeletedMessageInfo {
         public let messageId: Int32
         public let peerId: Int64
+        public let peerNamespace: Int32
         public let authorId: Int64?
         public let authorName: String?
         public let text: String
@@ -26,6 +27,7 @@ public final class LitegramDeletedMessagesHook {
             infos.append(DeletedMessageInfo(
                 messageId: id.id,
                 peerId: id.peerId.id._internalGetInt64Value(),
+                peerNamespace: id.peerId.namespace._internalGetInt32Value(),
                 authorId: message.author?.id.id._internalGetInt64Value(),
                 authorName: extractAuthorName(message: message),
                 text: message.text,
