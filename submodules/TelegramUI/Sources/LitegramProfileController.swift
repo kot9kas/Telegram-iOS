@@ -74,10 +74,6 @@ public final class LitegramController: ViewController {
         let icon = UIImage(bundleImageName: "Chat List/Tabs/IconLitegram")
         self.tabBarItem.image = icon
         self.tabBarItem.selectedImage = icon
-        if !self.presentationData.reduceMotion {
-            self.tabBarItem.animationName = "TabLitegram"
-            self.tabBarItem.animationOffset = CGPoint(x: 0.0, y: UIScreenPixel)
-        }
 
         LitegramProxyController.shared.start(accountManager: context.sharedContext.accountManager)
 
@@ -90,12 +86,6 @@ public final class LitegramController: ViewController {
                     self.updateTheme()
                 }
                 self.tabBarItem.title = "Litegram"
-                if !presentationData.reduceMotion {
-                    self.tabBarItem.animationName = "TabLitegram"
-                    self.tabBarItem.animationOffset = CGPoint(x: 0.0, y: UIScreenPixel)
-                } else {
-                    self.tabBarItem.animationName = nil
-                }
             })
 
         self.peerDisposable = (context.engine.data.subscribe(TelegramEngine.EngineData.Item.Peer.Peer(id: context.account.peerId))
@@ -126,10 +116,22 @@ public final class LitegramController: ViewController {
     private func updateTheme() {
         self.navigationBar?.updatePresentationData(NavigationBarPresentationData(presentationData: self.presentationData), transition: .immediate)
         if self.isNodeLoaded {
-            self.displayNode.backgroundColor = self.presentationData.theme.list.blocksBackgroundColor
+            let theme = self.presentationData.theme
+            self.displayNode.backgroundColor = theme.list.blocksBackgroundColor
+            self.profileGradientLayer?.colors = Self.gradientColors(from: theme.list.itemAccentColor)
+            self.tryButtonNode?.backgroundColor = theme.list.itemAccentColor
             self.rebuildMenuColors()
             self.updateProfile()
         }
+    }
+
+    private static func gradientColors(from accent: UIColor) -> [CGColor] {
+        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        accent.getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+        let dark = UIColor(hue: h, saturation: min(s * 1.15, 1.0), brightness: max(b * 0.75, 0.0), alpha: a)
+        let mid = UIColor(hue: h, saturation: s, brightness: b, alpha: a)
+        let light = UIColor(hue: h, saturation: max(s * 0.7, 0.0), brightness: min(b * 1.2, 1.0), alpha: a)
+        return [dark.cgColor, mid.cgColor, light.cgColor]
     }
 
     override public func loadDisplayNode() {
@@ -173,11 +175,8 @@ public final class LitegramController: ViewController {
         self.profileSectionNode = profileSection
 
         let gradient = CAGradientLayer()
-        gradient.colors = [
-            UIColor(red: 0.42, green: 0.25, blue: 0.82, alpha: 1.0).cgColor,
-            UIColor(red: 0.55, green: 0.35, blue: 0.88, alpha: 1.0).cgColor,
-            UIColor(red: 0.75, green: 0.55, blue: 0.92, alpha: 1.0).cgColor
-        ]
+        let accentColor = theme.list.itemAccentColor
+        gradient.colors = Self.gradientColors(from: accentColor)
         gradient.startPoint = CGPoint(x: 0, y: 0)
         gradient.endPoint = CGPoint(x: 1, y: 1)
         profileSection.layer.insertSublayer(gradient, at: 0)
@@ -296,7 +295,7 @@ public final class LitegramController: ViewController {
         tryBtn.cornerRadius = 11
         tryBtn.clipsToBounds = true
         tryBtn.setTitle("⭐ Try all features", with: UIFont.systemFont(ofSize: 17, weight: .semibold), with: .white, for: .normal)
-        tryBtn.backgroundColor = UIColor(red: 0.42, green: 0.25, blue: 0.82, alpha: 1.0)
+        tryBtn.backgroundColor = theme.list.itemAccentColor
         tryBtn.addTarget(self, action: #selector(tryAllFeaturesTapped), forControlEvents: .touchUpInside)
         scrollNode?.addSubnode(tryBtn)
         self.tryButtonNode = tryBtn

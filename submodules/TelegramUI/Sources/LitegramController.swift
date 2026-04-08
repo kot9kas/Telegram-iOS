@@ -138,9 +138,20 @@ public final class LitegramConnectionController: ViewController, UITableViewData
     private func updateTheme() {
         self.navigationBar?.updatePresentationData(NavigationBarPresentationData(presentationData: self.presentationData), transition: .immediate)
         if self.isNodeLoaded {
-            self.displayNode.backgroundColor = self.presentationData.theme.list.blocksBackgroundColor
+            let theme = self.presentationData.theme
+            self.displayNode.backgroundColor = theme.list.blocksBackgroundColor
+            self.headerGradientLayer?.colors = Self.gradientColorsFromAccent(theme.list.itemAccentColor)
             self.updateUI()
         }
+    }
+
+    private static func gradientColorsFromAccent(_ accent: UIColor) -> [CGColor] {
+        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        accent.getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+        let dark = UIColor(hue: h, saturation: min(s * 1.15, 1.0), brightness: max(b * 0.75, 0.0), alpha: a)
+        let mid = UIColor(hue: h, saturation: s, brightness: b, alpha: a)
+        let light = UIColor(hue: h, saturation: max(s * 0.7, 0.0), brightness: min(b * 1.2, 1.0), alpha: a)
+        return [dark.cgColor, mid.cgColor, light.cgColor]
     }
 
     override public func loadDisplayNode() {
@@ -311,11 +322,8 @@ public final class LitegramConnectionController: ViewController, UITableViewData
         self.headerNode = header
 
         let gradient = CAGradientLayer()
-        gradient.colors = [
-            UIColor(red: 0.42, green: 0.25, blue: 0.82, alpha: 1.0).cgColor,
-            UIColor(red: 0.55, green: 0.35, blue: 0.88, alpha: 1.0).cgColor,
-            UIColor(red: 0.75, green: 0.55, blue: 0.92, alpha: 1.0).cgColor
-        ]
+        let accentColor = theme.list.itemAccentColor
+        gradient.colors = Self.gradientColorsFromAccent(accentColor)
         gradient.startPoint = CGPoint(x: 0, y: 0)
         gradient.endPoint = CGPoint(x: 1, y: 1)
         header.layer.insertSublayer(gradient, at: 0)
@@ -680,7 +688,7 @@ public final class LitegramConnectionController: ViewController, UITableViewData
             subtitleStr = "Нажмите Подключить для включения прокси"
             animName = "media_forbidden"
             btnTitle = "Подключить"
-            btnColor = UIColor(red: 0.42, green: 0.25, blue: 0.82, alpha: 1.0)
+            btnColor = theme.list.itemAccentColor
         }
 
         self.headerTitleNode?.attributedText = NSAttributedString(string: titleStr, attributes: [
