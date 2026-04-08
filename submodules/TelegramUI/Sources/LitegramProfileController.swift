@@ -71,7 +71,7 @@ public final class LitegramController: ViewController {
         self.navigationItem.title = "Litegram"
 
         self.tabBarItem.title = "Litegram"
-        let icon = UIImage(bundleImageName: "Chat List/Tabs/IconLitegram")?.withRenderingMode(.automatic)
+        let icon = UIImage(bundleImageName: "Chat List/Tabs/IconLitegram")
         self.tabBarItem.image = icon
         self.tabBarItem.selectedImage = icon
 
