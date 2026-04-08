@@ -453,7 +453,8 @@ public final class LitegramConnectionController: ViewController, UITableViewData
 
             let arrow = ASImageNode()
             arrow.displaysAsynchronously = false
-            arrow.image = UIImage(bundleImageName: "Item List/DisclosureArrow")
+            arrow.image = UIImage(bundleImageName: "Item List/DisclosureArrow")?.withRenderingMode(.alwaysTemplate)
+            arrow.tintColor = theme.list.itemSecondaryTextColor
             perksContainer.addSubnode(arrow)
 
             self.perkNodes.append((bg: bg, icon: iconNode, title: titleNode, subtitle: subtitleNode, arrow: arrow))
@@ -731,6 +732,35 @@ public final class LitegramConnectionController: ViewController, UITableViewData
 
         self.connectButtonNode?.setTitle(btnTitle, with: UIFont.systemFont(ofSize: 17, weight: .semibold), with: .white, for: .normal)
         self.connectButtonNode?.backgroundColor = btnColor
+
+        self.serverSectionNode?.backgroundColor = theme.list.itemBlocksBackgroundColor
+        self.perksContainerNode?.backgroundColor = theme.list.itemBlocksBackgroundColor
+        self.serverHeaderNode?.attributedText = NSAttributedString(string: "SERVERS", attributes: [
+            .font: UIFont.systemFont(ofSize: 13, weight: .medium),
+            .foregroundColor: theme.list.itemSecondaryTextColor,
+            .kern: 0.5 as NSNumber
+        ])
+        self.perksHeaderNode?.attributedText = NSAttributedString(string: "WHAT'S INCLUDED", attributes: [
+            .font: UIFont.systemFont(ofSize: 13, weight: .medium),
+            .foregroundColor: theme.list.itemSecondaryTextColor,
+            .kern: 0.5 as NSNumber
+        ])
+        for (i, node) in self.perkNodes.enumerated() {
+            let perk = Self.perks[i]
+            node.title.attributedText = NSAttributedString(string: perk.title, attributes: [
+                .font: UIFont.systemFont(ofSize: 16, weight: .regular),
+                .foregroundColor: theme.list.itemPrimaryTextColor
+            ])
+            node.subtitle.attributedText = NSAttributedString(string: perk.subtitle, attributes: [
+                .font: UIFont.systemFont(ofSize: 13),
+                .foregroundColor: theme.list.itemSecondaryTextColor
+            ])
+            node.arrow.tintColor = theme.list.itemSecondaryTextColor
+        }
+        for sep in self.perkSepNodes {
+            sep.backgroundColor = theme.list.itemBlocksSeparatorColor
+        }
+        self.serversTableView?.reloadData()
     }
 
     public func numberOfSections(in tableView: UITableView) -> Int {
@@ -766,7 +796,8 @@ public final class LitegramConnectionController: ViewController, UITableViewData
         cell.contentView.addSubview(titleLabel)
 
         let checkView = UIImageView(frame: CGRect(x: max(0, tableView.bounds.width - 30), y: 16, width: 16, height: 16))
-        checkView.image = UIImage(bundleImageName: "Chat/Context Menu/Check")
+        checkView.image = UIImage(bundleImageName: "Chat/Context Menu/Check")?.withRenderingMode(.alwaysTemplate)
+        checkView.tintColor = theme.list.itemAccentColor
         checkView.isHidden = !isSelected
         cell.contentView.addSubview(checkView)
 

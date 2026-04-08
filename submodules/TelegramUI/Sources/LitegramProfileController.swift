@@ -277,7 +277,8 @@ public final class LitegramController: ViewController {
 
             let arrow = ASImageNode()
             arrow.displaysAsynchronously = false
-            arrow.image = UIImage(bundleImageName: "Item List/DisclosureArrow")
+            arrow.image = UIImage(bundleImageName: "Item List/DisclosureArrow")?.withRenderingMode(.alwaysTemplate)
+            arrow.tintColor = theme.list.itemSecondaryTextColor
             container.addSubnode(arrow)
 
             var sep: ASDisplayNode? = nil
@@ -495,6 +496,7 @@ public final class LitegramController: ViewController {
                 .font: UIFont.systemFont(ofSize: 13),
                 .foregroundColor: theme.list.itemSecondaryTextColor
             ])
+            row.arrow.tintColor = theme.list.itemSecondaryTextColor
             row.sep?.backgroundColor = theme.list.itemBlocksSeparatorColor
         }
     }
