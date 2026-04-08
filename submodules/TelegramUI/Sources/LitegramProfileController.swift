@@ -72,6 +72,11 @@ public final class LitegramController: ViewController {
 
         self.tabBarItem.title = "Litegram"
         let icon = UIImage(bundleImageName: "Chat List/Tabs/IconLitegram")
+        if icon == nil {
+            print("[Litegram] WARNING: IconLitegram asset not found in bundle!")
+        } else {
+            print("[Litegram] Icon loaded: size=\(icon!.size), renderingMode=\(icon!.renderingMode.rawValue), cgImage=\(icon!.cgImage != nil)")
+        }
         self.tabBarItem.image = icon
         self.tabBarItem.selectedImage = icon
 
