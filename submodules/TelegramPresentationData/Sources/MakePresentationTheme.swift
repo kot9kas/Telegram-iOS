@@ -4,11 +4,18 @@ import Postbox
 import TelegramUIPreferences
 import TelegramCore
 
+private var isLoadingLitegramTheme = false
+
 public func makeDefaultPresentationTheme(reference: PresentationBuiltinThemeReference, extendingThemeReference: PresentationThemeReference? = nil, serviceBackgroundColor: UIColor?, preview: Bool = false) -> PresentationTheme {
-    if let url = Bundle.main.url(forResource: "litegram-theme", withExtension: "txt"),
-       let data = try? Data(contentsOf: url),
-       let litegramTheme = makePresentationTheme(data: data, themeReference: .builtin(.litegram)) {
-        return litegramTheme
+    if !isLoadingLitegramTheme,
+       let url = Bundle.main.url(forResource: "litegram-theme", withExtension: "txt"),
+       let data = try? Data(contentsOf: url) {
+        isLoadingLitegramTheme = true
+        let theme = makePresentationTheme(data: data, themeReference: .builtin(.litegram))
+        isLoadingLitegramTheme = false
+        if let theme {
+            return theme
+        }
     }
     return makeDefaultDarkTintedPresentationTheme(extendingThemeReference: extendingThemeReference, preview: preview)
 }
