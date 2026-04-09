@@ -3,6 +3,8 @@ import Foundation
 import UIKit
 import AsyncDisplayKit
 import Display
+import AnimatedStickerNode
+import TelegramAnimatedStickerNode
 import SwiftSignalKit
 import Postbox
 import TelegramCore
@@ -29,12 +31,15 @@ private final class LitegramDataStorageTrafficBlockController: ViewController {
     private var presentationDataDisposable: Disposable?
 
     private var scrollNode: ASScrollNode?
+    private var animNode: AnimatedStickerNode?
     private var titleNode: ASTextNode?
-    private var bodyNode: ASTextNode?
+    private var bodyTextView: UITextView?
     private var buttonNode: ASButtonNode?
 
-    private static let infoTitle = "\u{042d}\u{043a}\u{043e}\u{043d}\u{043e}\u{043c}\u{0438}\u{044f} \u{0442}\u{0440}\u{0430}\u{0444}\u{0438}\u{043a}\u{0430}"
-    private static let infoBody = "\u{0420}\u{0435}\u{0436}\u{0438}\u{043c} \u{044d}\u{043a}\u{043e}\u{043d}\u{043e}\u{043c}\u{0438}\u{0438} \u{0442}\u{0440}\u{0430}\u{0444}\u{0438}\u{043a}\u{0430} \u{0432}\u{043a}\u{043b}\u{044e}\u{0447}\u{0451}\u{043d}. \u{0410}\u{0432}\u{0442}\u{043e}\u{043c}\u{0430}\u{0442}\u{0438}\u{0447}\u{0435}\u{0441}\u{043a}\u{0430}\u{044f} \u{0437}\u{0430}\u{0433}\u{0440}\u{0443}\u{0437}\u{043a}\u{0430} \u{043c}\u{0435}\u{0434}\u{0438}\u{0430} \u{043e}\u{0442}\u{043a}\u{043b}\u{044e}\u{0447}\u{0435}\u{043d}\u{0430}. \u{0414}\u{043b}\u{044f} \u{0438}\u{0437}\u{043c}\u{0435}\u{043d}\u{0435}\u{043d}\u{0438}\u{044f} \u{043e}\u{0442}\u{043a}\u{043b}\u{044e}\u{0447}\u{0438}\u{0442}\u{0435} \u{044d}\u{043a}\u{043e}\u{043d}\u{043e}\u{043c}\u{0438}\u{044e} \u{0442}\u{0440}\u{0430}\u{0444}\u{0438}\u{043a}\u{0430} \u{0432} \u{043f}\u{0440}\u{043e}\u{0444}\u{0438}\u{043b}\u{0435} Litegram."
+    private static let titleText = "\u{042d}\u{043a}\u{043e}\u{043d}\u{043e}\u{043c}\u{0438}\u{044f} \u{0442}\u{0440}\u{0430}\u{0444}\u{0438}\u{043a}\u{0430} \u{0432}\u{043a}\u{043b}\u{044e}\u{0447}\u{0435}\u{043d}\u{0430}"
+    private static let bodyPrefix = "\u{041f}\u{043e}\u{043a}\u{0430} \u{042d}\u{043a}\u{043e}\u{043d}\u{043e}\u{043c}\u{0438}\u{044f} \u{0442}\u{0440}\u{0430}\u{0444}\u{0438}\u{043a}\u{0430} \u{0430}\u{043a}\u{0442}\u{0438}\u{0432}\u{043d}\u{0430}, \u{043d}\u{0430}\u{0441}\u{0442}\u{0440}\u{043e}\u{0439}\u{043a}\u{0438} \u{0434}\u{0430}\u{043d}\u{043d}\u{044b}\u{0445} \u{0438} \u{043f}\u{0430}\u{043c}\u{044f}\u{0442}\u{0438} \u{0443}\u{043f}\u{0440}\u{0430}\u{0432}\u{043b}\u{044f}\u{044e}\u{0442}\u{0441}\u{044f} Litegram. \u{041d}\u{0430}\u{0436}\u{043c}\u{0438}\u{0442}\u{0435} "
+    private static let linkText = "\u{042d}\u{043a}\u{043e}\u{043d}\u{043e}\u{043c}\u{0438}\u{044f} \u{0442}\u{0440}\u{0430}\u{0444}\u{0438}\u{043a}\u{0430}"
+    private static let bodySuffix = ", \u{0447}\u{0442}\u{043e}\u{0431}\u{044b} \u{0438}\u{0437}\u{043c}\u{0435}\u{043d}\u{0438}\u{0442}\u{044c} \u{044d}\u{0442}\u{043e}."
     private static let buttonTitle = "\u{041f}\u{043e}\u{043d}\u{044f}\u{0442}\u{043d}\u{043e}"
 
     init(context: AccountContext) {
@@ -53,7 +58,7 @@ private final class LitegramDataStorageTrafficBlockController: ViewController {
                 self.navigationBar?.updatePresentationData(NavigationBarPresentationData(presentationData: presentationData), transition: .immediate)
                 if self.isNodeLoaded {
                     self.displayNode.backgroundColor = presentationData.theme.list.blocksBackgroundColor
-                    self.applyTextTheme()
+                    self.applyTheme()
                 }
             })
     }
@@ -66,25 +71,47 @@ private final class LitegramDataStorageTrafficBlockController: ViewController {
         self.presentationDataDisposable?.dispose()
     }
 
-    private func applyTextTheme() {
+    private func applyTheme() {
         let theme = self.presentationData.theme
-        let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.lineSpacing = 4
-        self.titleNode?.attributedText = NSAttributedString(string: Self.infoTitle, attributes: [
-            .font: UIFont.systemFont(ofSize: 22, weight: .semibold),
+        self.titleNode?.attributedText = NSAttributedString(string: Self.titleText, attributes: [
+            .font: UIFont.systemFont(ofSize: 22, weight: .bold),
             .foregroundColor: theme.list.itemPrimaryTextColor
         ])
-        self.bodyNode?.attributedText = NSAttributedString(string: Self.infoBody, attributes: [
-            .font: UIFont.systemFont(ofSize: 16, weight: .regular),
-            .foregroundColor: theme.list.itemSecondaryTextColor,
-            .paragraphStyle: paragraphStyle
-        ])
         self.buttonNode?.backgroundColor = theme.list.itemAccentColor
+        self.updateBodyText()
     }
 
-    private static func textHeight(_ attributed: NSAttributedString, width: CGFloat) -> CGFloat {
-        let rect = attributed.boundingRect(with: CGSize(width: width, height: CGFloat.greatestFiniteMagnitude), options: [.usesLineFragmentOrigin, .usesFontLeading], context: nil)
-        return ceil(rect.height)
+    private func updateBodyText() {
+        guard let textView = self.bodyTextView else { return }
+        let theme = self.presentationData.theme
+        let accentColor = theme.list.itemAccentColor
+        let secondaryColor = theme.list.itemSecondaryTextColor
+        let font = UIFont.systemFont(ofSize: 15, weight: .regular)
+
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.alignment = .center
+        paragraphStyle.lineSpacing = 3
+
+        let full = NSMutableAttributedString()
+        full.append(NSAttributedString(string: Self.bodyPrefix, attributes: [
+            .font: font,
+            .foregroundColor: secondaryColor,
+            .paragraphStyle: paragraphStyle
+        ]))
+        full.append(NSAttributedString(string: Self.linkText, attributes: [
+            .font: font,
+            .foregroundColor: accentColor,
+            .underlineStyle: NSUnderlineStyle.single.rawValue,
+            .link: "litegram://saveTraffic",
+            .paragraphStyle: paragraphStyle
+        ]))
+        full.append(NSAttributedString(string: Self.bodySuffix, attributes: [
+            .font: font,
+            .foregroundColor: secondaryColor,
+            .paragraphStyle: paragraphStyle
+        ]))
+        textView.attributedText = full
+        textView.linkTextAttributes = [.foregroundColor: accentColor]
     }
 
     override func loadDisplayNode() {
@@ -96,15 +123,31 @@ private final class LitegramDataStorageTrafficBlockController: ViewController {
         self.displayNode.addSubnode(scroll)
         self.scrollNode = scroll
 
+        let animSize = 120
+        let pixelSize = animSize * Int(UIScreen.main.scale)
+        let animNode = DefaultAnimatedStickerNodeImpl()
+        animNode.automaticallyLoadFirstFrame = true
+        animNode.setup(source: AnimatedStickerNodeLocalFileSource(name: "ClearCache"), width: pixelSize, height: pixelSize, playbackMode: .loop, mode: .direct(cachePathPrefix: nil))
+        animNode.visibility = true
+        scroll.addSubnode(animNode)
+        self.animNode = animNode
+
         let titleNode = ASTextNode()
         titleNode.maximumNumberOfLines = 0
+        titleNode.textAlignment = .center
         scroll.addSubnode(titleNode)
         self.titleNode = titleNode
 
-        let bodyNode = ASTextNode()
-        bodyNode.maximumNumberOfLines = 0
-        scroll.addSubnode(bodyNode)
-        self.bodyNode = bodyNode
+        let textView = UITextView()
+        textView.isEditable = false
+        textView.isScrollEnabled = false
+        textView.backgroundColor = .clear
+        textView.textContainerInset = .zero
+        textView.textContainer.lineFragmentPadding = 0
+        textView.dataDetectorTypes = []
+        textView.delegate = self
+        scroll.view.addSubview(textView)
+        self.bodyTextView = textView
 
         let buttonNode = ASButtonNode()
         buttonNode.cornerRadius = 11
@@ -114,7 +157,7 @@ private final class LitegramDataStorageTrafficBlockController: ViewController {
         scroll.addSubnode(buttonNode)
         self.buttonNode = buttonNode
 
-        self.applyTextTheme()
+        self.applyTheme()
         self.displayNodeDidLoad()
     }
 
@@ -127,33 +170,56 @@ private final class LitegramDataStorageTrafficBlockController: ViewController {
 
         let navBarHeight = self.navigationLayout(layout: layout).navigationFrame.maxY
         let contentHeight = layout.size.height - navBarHeight
-        let sideInset: CGFloat = 16
-        let textWidth = layout.size.width - layout.safeInsets.left - layout.safeInsets.right - sideInset * 2
+        let sideInset: CGFloat = 32
+        let fullWidth = layout.size.width
+        let textWidth = fullWidth - layout.safeInsets.left - layout.safeInsets.right - sideInset * 2
         let x = layout.safeInsets.left + sideInset
 
         if let scrollNode = self.scrollNode {
-            transition.updateFrame(node: scrollNode, frame: CGRect(x: 0, y: navBarHeight, width: layout.size.width, height: contentHeight))
+            transition.updateFrame(node: scrollNode, frame: CGRect(x: 0, y: navBarHeight, width: fullWidth, height: contentHeight))
         }
 
-        guard let titleNode = self.titleNode, let bodyNode = self.bodyNode, let buttonNode = self.buttonNode else {
-            return
+        let animSize: CGFloat = 120
+        var y: CGFloat = 40
+
+        if let animNode = self.animNode {
+            let ax = (fullWidth - animSize) / 2
+            transition.updateFrame(node: animNode, frame: CGRect(x: ax, y: y, width: animSize, height: animSize))
+            animNode.updateLayout(size: CGSize(width: animSize, height: animSize))
+        }
+        y += animSize + 20
+
+        if let titleNode = self.titleNode {
+            let titleAttr = titleNode.attributedText ?? NSAttributedString()
+            let titleH = ceil(titleAttr.boundingRect(with: CGSize(width: textWidth, height: .greatestFiniteMagnitude), options: [.usesLineFragmentOrigin], context: nil).height)
+            transition.updateFrame(node: titleNode, frame: CGRect(x: x, y: y, width: textWidth, height: titleH))
+            y += titleH + 12
         }
 
-        let titleAttr = titleNode.attributedText ?? NSAttributedString()
-        let bodyAttr = bodyNode.attributedText ?? NSAttributedString()
-        let titleH = Self.textHeight(titleAttr, width: textWidth)
-        let bodyH = Self.textHeight(bodyAttr, width: textWidth)
+        if let textView = self.bodyTextView {
+            let fitSize = textView.sizeThatFits(CGSize(width: textWidth, height: .greatestFiniteMagnitude))
+            textView.frame = CGRect(x: x, y: y, width: textWidth, height: ceil(fitSize.height))
+            y += ceil(fitSize.height) + 28
+        }
 
-        var y: CGFloat = 24
-        transition.updateFrame(node: titleNode, frame: CGRect(x: x, y: y, width: textWidth, height: titleH))
-        y += titleH + 16
-        transition.updateFrame(node: bodyNode, frame: CGRect(x: x, y: y, width: textWidth, height: bodyH))
-        y += bodyH + 28
-        let buttonH: CGFloat = 50
-        transition.updateFrame(node: buttonNode, frame: CGRect(x: x, y: y, width: textWidth, height: buttonH))
-        y += buttonH + 24
+        if let buttonNode = self.buttonNode {
+            let bx = layout.safeInsets.left + 16
+            let bw = fullWidth - layout.safeInsets.left - layout.safeInsets.right - 32
+            let buttonH: CGFloat = 50
+            transition.updateFrame(node: buttonNode, frame: CGRect(x: bx, y: y, width: bw, height: buttonH))
+            y += buttonH + 24
+        }
 
-        self.scrollNode?.view.contentSize = CGSize(width: layout.size.width, height: max(y, contentHeight))
+        self.scrollNode?.view.contentSize = CGSize(width: fullWidth, height: max(y, contentHeight))
+    }
+}
+
+extension LitegramDataStorageTrafficBlockController: UITextViewDelegate {
+    func textView(_ textView: UITextView, shouldInteractWith URL: URL, in characterRange: NSRange, interaction: UITextItemInteraction) -> Bool {
+        if URL.scheme == "litegram" {
+            self.navigationController?.popViewController(animated: true)
+        }
+        return false
     }
 }
 
