@@ -1032,7 +1032,6 @@ public func dataAndStorageController(context: AccountContext, focusOnItemTag: Da
 
     controller.didAppear = { [weak controller] firstTime in
         guard firstTime, LitegramConfig.isSaveTrafficEnabled else { return }
-        let presentationData = context.sharedContext.currentPresentationData.with { $0 }
         let alertController = textAlertController(
             context: context,
             title: "╨¡╨║╨╛╨╜╨╛╨╝╨╕╤Å ╤é╤Ç╨░╤ä╨╕╨║╨░",
