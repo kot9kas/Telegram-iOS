@@ -416,27 +416,17 @@ private func themeSettingsControllerEntries(
     var entries: [ThemeSettingsControllerEntry] = []
     
     let strings = presentationData.strings
-    let title = presentationData.autoNightModeTriggered ? strings.Appearance_ColorThemeNight.uppercased() : strings.Appearance_ColorTheme.uppercased()
-    entries.append(.themeListHeader(presentationData.theme, title))
     
     let nameColor: PeerColor
     let profileColor: PeerNameColor?
-    var authorName = presentationData.strings.Appearance_PreviewReplyAuthor
     if let accountPeer {
         nameColor = accountPeer.nameColor ?? .preset(.blue)
-        if accountPeer._asPeer().hasCustomNameColor {
-            authorName = accountPeer.displayTitle(strings: strings, displayOrder: presentationData.nameDisplayOrder)
-        }
         profileColor = accountPeer.effectiveProfileColor
     } else {
         nameColor = .preset(.blue)
         profileColor = nil
     }
     
-    entries.append(.chatPreview(presentationData.theme, presentationData.chatWallpaper, presentationData.chatFontSize, presentationData.chatBubbleCorners, presentationData.strings, presentationData.dateTimeFormat, presentationData.nameDisplayOrder, [ChatPreviewMessageItem(outgoing: false, reply: (authorName, presentationData.strings.Appearance_PreviewReplyText), text: presentationData.strings.Appearance_PreviewIncomingText, nameColor: nameColor, backgroundEmojiId: accountPeer?.backgroundEmojiId), ChatPreviewMessageItem(outgoing: true, reply: nil, text: presentationData.strings.Appearance_PreviewOutgoingText, nameColor: .preset(.blue), backgroundEmojiId: nil)]))
-    
-    entries.append(.themes(presentationData.theme, presentationData.strings, chatThemes, themeReference, presentationThemeSettings.automaticThemeSwitchSetting.force || presentationData.autoNightModeTriggered, animatedEmojiStickers, presentationThemeSettings.themeSpecificAccentColors, presentationThemeSettings.themeSpecificChatWallpapers))
-    entries.append(.chatTheme(presentationData.theme, strings.Settings_ChatThemes))
     entries.append(.wallpaper(presentationData.theme, strings.Settings_ChatBackground))
     
     let colors: PeerNameColors.Colors
@@ -449,23 +439,7 @@ private func themeSettingsControllerEntries(
     let profileColors = profileColor.flatMap { nameColors.getProfile($0, dark: presentationData.theme.overallDarkAppearance, subject: .palette) }
     entries.append(.nameColor(presentationData.theme, presentationData.strings.Settings_YourColor, accountPeer?.compactDisplayTitle ?? "", colors, profileColors))
     
-    entries.append(.autoNight(presentationData.theme, strings.Appearance_NightTheme, presentationThemeSettings.automaticThemeSwitchSetting.force, !presentationData.autoNightModeTriggered || presentationThemeSettings.automaticThemeSwitchSetting.force))
-    let autoNightMode: String
-    switch presentationThemeSettings.automaticThemeSwitchSetting.trigger {
-        case .system:
-            if #available(iOSApplicationExtension 13.0, iOS 13.0, *) {
-                autoNightMode = strings.AutoNightTheme_System
-            } else {
-                autoNightMode = strings.AutoNightTheme_Disabled
-            }
-        case .explicitNone:
-            autoNightMode = strings.AutoNightTheme_Disabled
-        case .timeBased:
-            autoNightMode = strings.AutoNightTheme_Scheduled
-        case .brightness:
-            autoNightMode = strings.AutoNightTheme_Automatic
-    }
-    entries.append(.autoNightTheme(presentationData.theme, strings.Appearance_AutoNightTheme, autoNightMode))
+    
     
     let textSizeValue: String
     if presentationThemeSettings.useSystemFont {
