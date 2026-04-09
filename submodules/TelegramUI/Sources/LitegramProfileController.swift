@@ -71,9 +71,7 @@ public final class LitegramController: ViewController {
         self.navigationItem.title = "Litegram"
 
         self.tabBarItem.title = "Litegram"
-        let icon = UIImage(bundleImageName: "Chat List/Tabs/IconLitegram")
-        self.tabBarItem.image = icon
-        self.tabBarItem.selectedImage = icon
+        self.updateTabBarIcon()
 
         LitegramProxyController.shared.start(accountManager: context.sharedContext.accountManager)
 
@@ -84,6 +82,7 @@ public final class LitegramController: ViewController {
                 self.presentationData = presentationData
                 if previousTheme !== presentationData.theme {
                     self.updateTheme()
+                    self.updateTabBarIcon()
                 }
                 self.tabBarItem.title = "Litegram"
             })
@@ -111,6 +110,16 @@ public final class LitegramController: ViewController {
     deinit {
         self.presentationDataDisposable?.dispose()
         self.peerDisposable?.dispose()
+    }
+
+    private func updateTabBarIcon() {
+        let baseIcon = UIImage(bundleImageName: "Chat List/Tabs/IconLitegram")
+        let iconColor = self.presentationData.theme.rootController.tabBar.iconColor
+        let selectedColor = self.presentationData.theme.rootController.tabBar.selectedIconColor
+        let tinted = generateTintedImage(image: baseIcon, color: iconColor)?.withRenderingMode(.alwaysOriginal)
+        let selectedTinted = generateTintedImage(image: baseIcon, color: selectedColor)?.withRenderingMode(.alwaysOriginal)
+        self.tabBarItem.image = tinted
+        self.tabBarItem.selectedImage = selectedTinted
     }
 
     private func updateTheme() {
