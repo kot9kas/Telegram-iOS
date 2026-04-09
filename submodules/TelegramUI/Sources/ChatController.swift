@@ -7050,11 +7050,6 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
         
         self.didAppear = true
         
-        self.chatDisplayNode.historyNode.didScrollWithOffset = { [weak self] _, _, _, _ in
-            self?.updateDeletedMessageTrashIcons()
-        }
-        self.updateDeletedMessageTrashIcons()
-        
         self.chatDisplayNode.historyNode.experimentalSnapScrollToItem = false
         self.chatDisplayNode.historyNode.canReadHistory.set(self.computedCanReadHistoryPromise.get())
         self.chatDisplayNode.historyNode.areContentAnimationsEnabled = true
@@ -7710,54 +7705,6 @@ public final class ChatControllerImpl: TelegramBaseController, ChatController, G
             self.applyNavigationBarLayout(suspendedNavigationBarLayout, navigationLayout: self.navigationLayout(layout: layout), additionalBackgroundHeight: self.additionalNavigationBarBackgroundHeight, additionalCutout: self.additionalNavigationBarCutout, transition: navigationBarTransition)
         }
         self.navigationBar?.additionalContentNode.hitTestSlop = UIEdgeInsets(top: 0.0, left: 0.0, bottom: self.additionalNavigationBarHitTestSlop, right: 0.0)
-        self.updateDeletedMessageTrashIcons()
-    }
-    
-    private func updateDeletedMessageTrashIcons() {
-        let iconTag = 990731
-        let iconSize: CGFloat = 11.0
-        let iconOffsetX: CGFloat = 2.0
-        let iconColor = UIColor(red: 1.0, green: 0.23, blue: 0.19, alpha: 1.0)
-        let iconImage = generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Delete"), color: iconColor)
-
-        self.chatDisplayNode.historyNode.forEachVisibleItemNode { itemNode in
-            guard let itemNode = itemNode as? ChatMessageItemView, let item = itemNode.item, let statusNode = itemNode.getStatusNode() else {
-                return
-            }
-
-            var hasDeletedMarker = false
-            for (message, _) in item.content {
-                if message.attributes.contains(where: { $0 is LitegramDeletedMessageAttribute }) {
-                    hasDeletedMarker = true
-                    break
-                }
-            }
-
-            let statusView = statusNode.view
-            let existingIconView = statusView.viewWithTag(iconTag) as? UIImageView
-
-            if hasDeletedMarker {
-                let iconView: UIImageView
-                if let existingIconView {
-                    iconView = existingIconView
-                } else {
-                    iconView = UIImageView()
-                    iconView.tag = iconTag
-                    iconView.contentMode = .scaleAspectFit
-                    statusView.addSubview(iconView)
-                }
-                iconView.image = iconImage
-                iconView.frame = CGRect(
-                    x: statusView.bounds.width + iconOffsetX,
-                    y: floor((statusView.bounds.height - iconSize) / 2.0),
-                    width: iconSize,
-                    height: iconSize
-                )
-                iconView.isHidden = false
-            } else {
-                existingIconView?.removeFromSuperview()
-            }
-        }
     }
     
     func updateChatPresentationInterfaceState(animated: Bool = true, interactive: Bool, saveInterfaceState: Bool = false, _ f: (ChatPresentationInterfaceState) -> ChatPresentationInterfaceState, completion: @escaping (ContainedViewLayoutTransition) -> Void = { _ in }) {

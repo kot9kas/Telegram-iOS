@@ -999,7 +999,6 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         self.accountManager = accountManager
 
         LitegramProxyController.shared.start(accountManager: accountManager)
-        LitegramDeletedMessageStore.shared.setup()
 
         telegramUIDeclareEncodables()
         initializeAccountManagement()

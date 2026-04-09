@@ -4116,49 +4116,6 @@ func replayFinalState(
     
     var isPremiumUpdated = false
     
-    let shouldKeepIncomingDeletedMessages: () -> Bool = {
-        if let isEnabled = LitegramDeletedMessagesHook.isEnabled {
-            return isEnabled()
-        }
-        return false
-    }
-    let markIncomingMessageAsDeleted: (MessageId) -> Bool = { id in
-        guard shouldKeepIncomingDeletedMessages() else { return false }
-        guard let message = transaction.getMessage(id), message.flags.contains(.Incoming) else { return false }
-
-        let alreadyMarked = message.attributes.contains(where: { $0 is LitegramDeletedMessageAttribute })
-        if alreadyMarked { return true }
-
-        transaction.updateMessage(id, update: { currentMessage in
-            var storeForwardInfo: StoreMessageForwardInfo?
-            if let forwardInfo = currentMessage.forwardInfo {
-                storeForwardInfo = StoreMessageForwardInfo(forwardInfo)
-            }
-
-            var updatedAttributes = currentMessage.attributes
-            updatedAttributes.append(LitegramDeletedMessageAttribute(timestamp: Int32(Date().timeIntervalSince1970)))
-
-            return .update(StoreMessage(
-                id: currentMessage.id,
-                customStableId: nil,
-                globallyUniqueId: currentMessage.globallyUniqueId,
-                groupingKey: currentMessage.groupingKey,
-                threadId: currentMessage.threadId,
-                timestamp: currentMessage.timestamp,
-                flags: StoreMessageFlags(currentMessage.flags),
-                tags: currentMessage.tags,
-                globalTags: currentMessage.globalTags,
-                localTags: currentMessage.localTags,
-                forwardInfo: storeForwardInfo,
-                authorId: currentMessage.author?.id,
-                text: currentMessage.text,
-                attributes: updatedAttributes,
-                media: currentMessage.media
-            ))
-        })
-        return true
-    }
-    
     for operation in optimizedOperations(finalState.state.operations) {
         switch operation {
             case let .AddMessages(messages, location):
@@ -4432,47 +4389,19 @@ func replayFinalState(
                     }
                 }
             case let .DeleteMessagesWithGlobalIds(ids):
-                LitegramDeletedMessagesHook.extractAndNotifyGlobal(transaction: transaction, globalIds: ids)
-                var idsToDelete = ids
-                if shouldKeepIncomingDeletedMessages() {
-                    let mappedIds = transaction.messageIdsForGlobalIds(ids)
-                    var incomingGlobalIds = Set<Int32>()
-                    for id in mappedIds {
-                        if markIncomingMessageAsDeleted(id) {
-                            incomingGlobalIds.insert(id.id)
-                        }
-                    }
-                    idsToDelete = ids.filter { !incomingGlobalIds.contains($0) }
-                }
-                if idsToDelete.isEmpty {
-                    break
-                }
                 var resourceIds: [MediaResourceId] = []
-                transaction.deleteMessagesWithGlobalIds(idsToDelete, forEachMedia: { media in
+                transaction.deleteMessagesWithGlobalIds(ids, forEachMedia: { media in
                     addMessageMediaResourceIdsToRemove(media: media, resourceIds: &resourceIds)
                 })
                 if !resourceIds.isEmpty {
                     let _ = mediaBox.removeCachedResources(Array(Set(resourceIds)), force: true).start()
                 }
-                deletedMessageIds.append(contentsOf: idsToDelete.map { .global($0) })
+                deletedMessageIds.append(contentsOf: ids.map { .global($0) })
             case let .DeleteMessages(ids):
-                LitegramDeletedMessagesHook.extractAndNotify(transaction: transaction, ids: ids)
-                var idsToDelete = ids
-                if shouldKeepIncomingDeletedMessages() {
-                    idsToDelete = []
-                    for id in ids {
-                        if !markIncomingMessageAsDeleted(id) {
-                            idsToDelete.append(id)
-                        }
-                    }
-                }
-                if idsToDelete.isEmpty {
-                    break
-                }
-                _internal_deleteMessages(transaction: transaction, mediaBox: mediaBox, ids: idsToDelete, manualAddMessageThreadStatsDifference: { id, add, remove in
+                _internal_deleteMessages(transaction: transaction, mediaBox: mediaBox, ids: ids, manualAddMessageThreadStatsDifference: { id, add, remove in
                     addMessageThreadStatsDifference(threadKey: id, remove: remove, addedMessagePeer: nil, addedMessageId: nil, isOutgoing: false)
                 })
-                deletedMessageIds.append(contentsOf: idsToDelete.map { .messageId($0) })
+                deletedMessageIds.append(contentsOf: ids.map { .messageId($0) })
             case let .UpdateMinAvailableMessage(id):
                 if let message = transaction.getMessage(id) {
                     updatePeerChatInclusionWithMinTimestamp(transaction: transaction, id: id.peerId, minTimestamp: message.timestamp, forceRootGroupIfNotExists: false)
