@@ -115,19 +115,22 @@ private final class LitegramDataStorageTrafficBlockController: ViewController {
 
     private func navigateToLitegramTab() {
         guard let navigationController = self.navigationController as? NavigationController else { return }
-        var tabBar: TabBarController?
+
+        var tabBarController: TabBarController?
         for vc in navigationController.viewControllers {
             if let tbc = vc as? TabBarController {
-                tabBar = tbc
+                tabBarController = tbc
                 break
             }
         }
-        guard let tabBarController = tabBar else { return }
-        let litegramIndex = tabBarController.controllers.count - 2
+        guard let tbc = tabBarController else { return }
+
+        let count = tbc.controllers.count
+        guard count >= 2 else { return }
+        let targetIndex = count - 2
+
         navigationController.popToRoot(animated: false)
-        DispatchQueue.main.async {
-            tabBarController.selectedIndex = litegramIndex
-        }
+        tbc.selectedIndex = targetIndex
     }
 
     override func loadDisplayNode() {
