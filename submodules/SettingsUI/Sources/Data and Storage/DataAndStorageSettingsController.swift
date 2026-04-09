@@ -34,6 +34,8 @@ private final class LitegramDataStorageTrafficBlockController: ViewController {
     private var titleNode: ASTextNode?
     private var bodyNode: ASTextNode?
     private var buttonNode: ASButtonNode?
+    private var animStarted = false
+    private var animSetupPending = false
 
     private static let titleText = "\u{042d}\u{043a}\u{043e}\u{043d}\u{043e}\u{043c}\u{0438}\u{044f} \u{0442}\u{0440}\u{0430}\u{0444}\u{0438}\u{043a}\u{0430} \u{0432}\u{043a}\u{043b}\u{044e}\u{0447}\u{0435}\u{043d}\u{0430}"
     private static let bodyPrefix = "\u{041f}\u{043e}\u{043a}\u{0430} "
@@ -119,7 +121,6 @@ private final class LitegramDataStorageTrafficBlockController: ViewController {
         let animNode = DefaultAnimatedStickerNodeImpl()
         animNode.automaticallyLoadFirstFrame = true
         animNode.setup(source: AnimatedStickerNodeLocalFileSource(name: "ClearCache"), width: pixelSize, height: pixelSize, playbackMode: .loop, mode: .direct(cachePathPrefix: nil))
-        animNode.visibility = true
         self.displayNode.addSubnode(animNode)
         self.animNode = animNode
 
@@ -149,7 +150,14 @@ private final class LitegramDataStorageTrafficBlockController: ViewController {
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        self.animNode?.visibility = true
+        if !self.animStarted {
+            self.animStarted = true
+            self.animSetupPending = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                guard let self = self else { return }
+                self.animNode?.visibility = true
+            }
+        }
     }
 
     @objc private func understoodTapped() {
@@ -201,6 +209,14 @@ private final class LitegramDataStorageTrafficBlockController: ViewController {
             let bx = layout.safeInsets.left + 16
             let bw = fullWidth - layout.safeInsets.left - layout.safeInsets.right - 32
             transition.updateFrame(node: buttonNode, frame: CGRect(x: bx, y: buttonY, width: bw, height: buttonH))
+        }
+
+        if self.animSetupPending {
+            self.animSetupPending = false
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                self.animNode?.visibility = true
+            }
         }
     }
 }
