@@ -1,6 +1,7 @@
 import Litegram
 import Foundation
 import UIKit
+import AsyncDisplayKit
 import Display
 import SwiftSignalKit
 import Postbox
@@ -21,6 +22,139 @@ public enum AutomaticSaveIncomingPeerType {
     case privateChats
     case groups
     case channels
+}
+
+private final class LitegramDataStorageTrafficBlockController: ViewController {
+    private var presentationData: PresentationData
+    private var presentationDataDisposable: Disposable?
+
+    private var scrollNode: ASScrollNode?
+    private var titleNode: ASTextNode?
+    private var bodyNode: ASTextNode?
+    private var buttonNode: ASButtonNode?
+
+    private static let infoTitle = "\u{042d}\u{043a}\u{043e}\u{043d}\u{043e}\u{043c}\u{0438}\u{044f} \u{0442}\u{0440}\u{0430}\u{0444}\u{0438}\u{043a}\u{0430}"
+    private static let infoBody = "\u{0420}\u{0435}\u{0436}\u{0438}\u{043c} \u{044d}\u{043a}\u{043e}\u{043d}\u{043e}\u{043c}\u{0438}\u{0438} \u{0442}\u{0440}\u{0430}\u{0444}\u{0438}\u{043a}\u{0430} \u{0432}\u{043a}\u{043b}\u{044e}\u{0447}\u{0451}\u{043d}. \u{0410}\u{0432}\u{0442}\u{043e}\u{043c}\u{0430}\u{0442}\u{0438}\u{0447}\u{0435}\u{0441}\u{043a}\u{0430}\u{044f} \u{0437}\u{0430}\u{0433}\u{0440}\u{0443}\u{0437}\u{043a}\u{0430} \u{043c}\u{0435}\u{0434}\u{0438}\u{0430} \u{043e}\u{0442}\u{043a}\u{043b}\u{044e}\u{0447}\u{0435}\u{043d}\u{0430}. \u{0414}\u{043b}\u{044f} \u{0438}\u{0437}\u{043c}\u{0435}\u{043d}\u{0435}\u{043d}\u{0438}\u{044f} \u{043e}\u{0442}\u{043a}\u{043b}\u{044e}\u{0447}\u{0438}\u{0442}\u{0435} \u{044d}\u{043a}\u{043e}\u{043d}\u{043e}\u{043c}\u{0438}\u{044e} \u{0442}\u{0440}\u{0430}\u{0444}\u{0438}\u{043a}\u{0430} \u{0432} \u{043f}\u{0440}\u{043e}\u{0444}\u{0438}\u{043b}\u{0435} Litegram."
+    private static let buttonTitle = "\u{041f}\u{043e}\u{043d}\u{044f}\u{0442}\u{043d}\u{043e}"
+
+    init(context: AccountContext) {
+        self.presentationData = context.sharedContext.currentPresentationData.with { $0 }
+
+        super.init(navigationBarPresentationData: NavigationBarPresentationData(presentationData: self.presentationData))
+
+        self.statusBar.statusBarStyle = self.presentationData.theme.rootController.statusBarStyle.style
+        self.navigationItem.title = self.presentationData.strings.ChatSettings_Title
+
+        self.presentationDataDisposable = (context.sharedContext.presentationData
+            |> deliverOnMainQueue).startStrict(next: { [weak self] presentationData in
+                guard let self = self else { return }
+                self.presentationData = presentationData
+                self.statusBar.statusBarStyle = presentationData.theme.rootController.statusBarStyle.style
+                self.navigationBar?.updatePresentationData(NavigationBarPresentationData(presentationData: presentationData), transition: .immediate)
+                if self.isNodeLoaded {
+                    self.displayNode.backgroundColor = presentationData.theme.list.blocksBackgroundColor
+                    self.applyTextTheme()
+                }
+            })
+    }
+
+    required init(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    deinit {
+        self.presentationDataDisposable?.dispose()
+    }
+
+    private func applyTextTheme() {
+        let theme = self.presentationData.theme
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineSpacing = 4
+        self.titleNode?.attributedText = NSAttributedString(string: Self.infoTitle, attributes: [
+            .font: UIFont.systemFont(ofSize: 22, weight: .semibold),
+            .foregroundColor: theme.list.itemPrimaryTextColor
+        ])
+        self.bodyNode?.attributedText = NSAttributedString(string: Self.infoBody, attributes: [
+            .font: UIFont.systemFont(ofSize: 16, weight: .regular),
+            .foregroundColor: theme.list.itemSecondaryTextColor,
+            .paragraphStyle: paragraphStyle
+        ])
+        self.buttonNode?.backgroundColor = theme.list.itemAccentColor
+    }
+
+    private static func textHeight(_ attributed: NSAttributedString, width: CGFloat) -> CGFloat {
+        let rect = attributed.boundingRect(with: CGSize(width: width, height: CGFloat.greatestFiniteMagnitude), options: [.usesLineFragmentOrigin, .usesFontLeading], context: nil)
+        return ceil(rect.height)
+    }
+
+    override func loadDisplayNode() {
+        self.displayNode = ASDisplayNode()
+        self.displayNode.backgroundColor = self.presentationData.theme.list.blocksBackgroundColor
+
+        let scroll = ASScrollNode()
+        scroll.view.alwaysBounceVertical = true
+        self.displayNode.addSubnode(scroll)
+        self.scrollNode = scroll
+
+        let titleNode = ASTextNode()
+        titleNode.maximumNumberOfLines = 0
+        scroll.addSubnode(titleNode)
+        self.titleNode = titleNode
+
+        let bodyNode = ASTextNode()
+        bodyNode.maximumNumberOfLines = 0
+        scroll.addSubnode(bodyNode)
+        self.bodyNode = bodyNode
+
+        let buttonNode = ASButtonNode()
+        buttonNode.cornerRadius = 11
+        buttonNode.clipsToBounds = true
+        buttonNode.setTitle(Self.buttonTitle, with: UIFont.systemFont(ofSize: 17, weight: .semibold), with: .white, for: .normal)
+        buttonNode.addTarget(self, action: #selector(self.understoodTapped), forControlEvents: .touchUpInside)
+        scroll.addSubnode(buttonNode)
+        self.buttonNode = buttonNode
+
+        self.applyTextTheme()
+        self.displayNodeDidLoad()
+    }
+
+    @objc private func understoodTapped() {
+        self.navigationController?.popViewController(animated: true)
+    }
+
+    override func containerLayoutUpdated(_ layout: ContainerViewLayout, transition: ContainedViewLayoutTransition) {
+        super.containerLayoutUpdated(layout, transition: transition)
+
+        let navBarHeight = self.navigationLayout(layout: layout).navigationFrame.maxY
+        let contentHeight = layout.size.height - navBarHeight
+        let sideInset: CGFloat = 16
+        let textWidth = layout.size.width - layout.safeInsets.left - layout.safeInsets.right - sideInset * 2
+        let x = layout.safeInsets.left + sideInset
+
+        if let scrollNode = self.scrollNode {
+            transition.updateFrame(node: scrollNode, frame: CGRect(x: 0, y: navBarHeight, width: layout.size.width, height: contentHeight))
+        }
+
+        guard let titleNode = self.titleNode, let bodyNode = self.bodyNode, let buttonNode = self.buttonNode else {
+            return
+        }
+
+        let titleAttr = titleNode.attributedText ?? NSAttributedString()
+        let bodyAttr = bodyNode.attributedText ?? NSAttributedString()
+        let titleH = Self.textHeight(titleAttr, width: textWidth)
+        let bodyH = Self.textHeight(bodyAttr, width: textWidth)
+
+        var y: CGFloat = 24
+        transition.updateFrame(node: titleNode, frame: CGRect(x: x, y: y, width: textWidth, height: titleH))
+        y += titleH + 16
+        transition.updateFrame(node: bodyNode, frame: CGRect(x: x, y: y, width: textWidth, height: bodyH))
+        y += bodyH + 28
+        let buttonH: CGFloat = 50
+        transition.updateFrame(node: buttonNode, frame: CGRect(x: x, y: y, width: textWidth, height: buttonH))
+        y += buttonH + 24
+
+        self.scrollNode?.view.contentSize = CGSize(width: layout.size.width, height: max(y, contentHeight))
+    }
 }
 
 private final class DataAndStorageControllerArguments {
@@ -682,6 +816,10 @@ private func dataAndStorageControllerEntries(context: AccountContext, state: Dat
 }
 
 public func dataAndStorageController(context: AccountContext, focusOnItemTag: DataAndStorageEntryTag? = nil) -> ViewController {
+    if LitegramConfig.isSaveTrafficEnabled {
+        return LitegramDataStorageTrafficBlockController(context: context)
+    }
+
     let initialState = DataAndStorageControllerState()
     let statePromise = ValuePromise(initialState, ignoreRepeated: true)
     
@@ -1027,20 +1165,6 @@ public func dataAndStorageController(context: AccountContext, focusOnItemTag: Da
                 }
             }
         }
-    }
-    
-
-    controller.didAppear = { [weak controller] firstTime in
-        guard firstTime, LitegramConfig.isSaveTrafficEnabled else { return }
-        let alertController = textAlertController(
-            context: context,
-            title: "\u{042d}\u{043a}\u{043e}\u{043d}\u{043e}\u{043c}\u{0438}\u{044f} \u{0442}\u{0440}\u{0430}\u{0444}\u{0438}\u{043a}\u{0430}",
-            text: "\u{0420}\u{0435}\u{0436}\u{0438}\u{043c} \u{044d}\u{043a}\u{043e}\u{043d}\u{043e}\u{043c}\u{0438}\u{0438} \u{0442}\u{0440}\u{0430}\u{0444}\u{0438}\u{043a}\u{0430} \u{0432}\u{043a}\u{043b}\u{044e}\u{0447}\u{0451}\u{043d}. \u{0410}\u{0432}\u{0442}\u{043e}\u{043c}\u{0430}\u{0442}\u{0438}\u{0447}\u{0435}\u{0441}\u{043a}\u{0430}\u{044f} \u{0437}\u{0430}\u{0433}\u{0440}\u{0443}\u{0437}\u{043a}\u{0430} \u{043c}\u{0435}\u{0434}\u{0438}\u{0430} \u{043e}\u{0442}\u{043a}\u{043b}\u{044e}\u{0447}\u{0435}\u{043d}\u{0430}. \u{0414}\u{043b}\u{044f} \u{0438}\u{0437}\u{043c}\u{0435}\u{043d}\u{0435}\u{043d}\u{0438}\u{044f} \u{043f}\u{0435}\u{0440}\u{0435}\u{0439}\u{0434}\u{0438}\u{0442}\u{0435} \u{0432} \u{043f}\u{0440}\u{043e}\u{0444}\u{0438}\u{043b}\u{044c} Litegram.",
-            actions: [
-                TextAlertAction(type: .defaultAction, title: "OK", action: {})
-            ]
-        )
-        controller?.present(alertController, in: .window(.root))
     }
 
     return controller
