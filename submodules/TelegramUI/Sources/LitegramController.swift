@@ -82,7 +82,7 @@ public final class LitegramConnectionController: ViewController, UITableViewData
         super.init(navigationBarPresentationData: NavigationBarPresentationData(presentationData: self.presentationData))
 
         self.statusBar.statusBarStyle = self.presentationData.theme.rootController.statusBarStyle.style
-        self.navigationItem.title = "Защита"
+        self.navigationItem.title = "Соединение"
 
         self.presentationDataDisposable = (context.sharedContext.presentationData
             |> deliverOnMainQueue).startStrict(next: { [weak self] presentationData in
@@ -92,7 +92,7 @@ public final class LitegramConnectionController: ViewController, UITableViewData
                 if previousTheme !== presentationData.theme {
                     self.updateTheme()
                 }
-                self.navigationItem.title = "Защита"
+                self.navigationItem.title = "Соединение"
             })
 
         self.proxySettingsDisposable = (context.sharedContext.accountManager.sharedData(keys: [SharedDataKeys.proxySettings])

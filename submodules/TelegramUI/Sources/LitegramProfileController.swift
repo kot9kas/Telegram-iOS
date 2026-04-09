@@ -53,9 +53,16 @@ public final class LitegramController: ViewController {
         MenuItem(
             iconName: "Settings/Menu/Proxy",
             iconBgColor: UIColor(red: 0.25, green: 0.70, blue: 0.42, alpha: 1.0),
-            title: "Защита",
+            title: "Соединение",
             subtitle: "Настройки прокси и подключение",
             action: #selector(protectionTapped)
+        ),
+        MenuItem(
+            iconName: "Chat/Context Menu/Info",
+            iconBgColor: UIColor(red: 1.0, green: 0.62, blue: 0.07, alpha: 1.0),
+            title: "Поддержка",
+            subtitle: "support@litegram.io",
+            action: #selector(supportTapped)
         )
     ]
 
@@ -424,6 +431,18 @@ public final class LitegramController: ViewController {
     @objc private func protectionTapped() {
         let connectionController = LitegramConnectionController(context: self.context)
         self.push(connectionController)
+    }
+
+    @objc private func supportTapped() {
+        self.context.sharedContext.openExternalUrl(
+            context: self.context,
+            urlContext: .generic,
+            url: "https://t.me/Litegram_sup",
+            forceExternal: false,
+            presentationData: self.presentationData,
+            navigationController: self.navigationController as? NavigationController,
+            dismissInput: { }
+        )
     }
 
     @objc private func saveTrafficToggled(_ sender: UISwitch) {
