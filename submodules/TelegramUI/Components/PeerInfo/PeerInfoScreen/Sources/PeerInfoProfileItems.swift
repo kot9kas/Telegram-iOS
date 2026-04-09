@@ -17,6 +17,7 @@ import WebUI
 import AvatarNode
 import PeerNameColorItem
 import BoostLevelIconComponent
+import UndoUI
 
 private let enabledPublicBioEntities: EnabledEntityTypes = [.allUrl, .mention, .hashtag]
 private let enabledPrivateBioEntities: EnabledEntityTypes = [.internalUrl, .mention, .hashtag]
@@ -72,10 +73,11 @@ func infoItems(data: PeerInfoScreenData?, context: AccountContext, presentationD
         let ItemPersonalChannel = 2001
         let ItemPhoneNumber = 3000
         let ItemUsername = 3001
-        let ItemBirthdate = 3002
-        let ItemAbout = 3003
-        let ItemNote = 3004
-        let ItemAppFooter = 3005
+        let ItemTelegramId = 3002
+        let ItemBirthdate = 3003
+        let ItemAbout = 3004
+        let ItemNote = 3005
+        let ItemAppFooter = 3006
         let ItemAffiliate = 4000
         let ItemAffiliateInfo = 4001
         let ItemBusinessHours = 5000
@@ -171,6 +173,32 @@ func infoItems(data: PeerInfoScreenData?, context: AccountContext, presentationD
                 )
             )
         }
+        
+        let telegramId = "\(user.id.id._internalGetInt64Value())"
+        items[currentPeerInfoSection]!.append(
+            PeerInfoScreenLabeledValueItem(
+                id: ItemTelegramId,
+                label: "telegram id",
+                text: telegramId,
+                textColor: .accent,
+                action: { _, _ in
+                    UIPasteboard.general.string = telegramId
+                    interaction.getController()?.present(
+                        UndoOverlayController(
+                            presentationData: presentationData,
+                            content: .copy(text: presentationData.strings.Conversation_TextCopied),
+                            elevatedLayout: false,
+                            animateInAsReplacement: false,
+                            action: { _ in false }
+                        ),
+                        in: .current
+                    )
+                },
+                requestLayout: { animated in
+                    interaction.requestLayout(animated)
+                }
+            )
+        )
         
         if let cachedData = data.cachedData as? CachedUserData {
             if let birthday = cachedData.birthday {
