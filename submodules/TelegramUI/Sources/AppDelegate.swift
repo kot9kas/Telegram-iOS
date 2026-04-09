@@ -1,4 +1,4 @@
-﻿import UIKit
+import UIKit
 import SwiftSignalKit
 import Display
 import TelegramCore

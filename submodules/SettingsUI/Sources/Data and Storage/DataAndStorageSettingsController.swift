@@ -1,4 +1,4 @@
-﻿import Litegram
+import Litegram
 import Foundation
 import UIKit
 import Display
