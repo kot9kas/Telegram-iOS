@@ -1131,9 +1131,6 @@ public func themeSettingsController(context: AccountContext, focusOnItemTag: The
         let cloudThemes: [PresentationThemeReference] = cloudThemes.map { .cloud(PresentationCloudTheme(theme: $0, resolvedWallpaper: nil, creatorAccountId: $0.isCreator ? context.account.id : nil)) }.filter { !removedThemeIndexes.contains($0.index) }
         
         var availableThemes: [PresentationThemeReference] = []
-        if cloudThemes.first(where: { $0.index == themeReference.index }) == nil {
-            availableThemes.append(themeReference)
-        }
         availableThemes.append(contentsOf: cloudThemes)
         
         let chatThemes = cloudThemes
