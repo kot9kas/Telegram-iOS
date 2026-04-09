@@ -434,11 +434,45 @@ public final class LitegramController: ViewController {
     }
 
     @objc private func supportTapped() {
+        let actionSheet = ActionSheetController(presentationData: self.presentationData)
+        actionSheet.setItemGroups([
+            ActionSheetItemGroup(items: [
+                ActionSheetButtonItem(title: "Поддержка в чате", color: .accent, action: { [weak self, weak actionSheet] in
+                    actionSheet?.dismissAnimated()
+                    self?.openSupportChat()
+                }),
+                ActionSheetButtonItem(title: "Почта", color: .accent, action: { [weak self, weak actionSheet] in
+                    actionSheet?.dismissAnimated()
+                    self?.openSupportEmail()
+                })
+            ]),
+            ActionSheetItemGroup(items: [
+                ActionSheetButtonItem(title: self.presentationData.strings.Common_Cancel, color: .accent, font: .bold, action: { [weak actionSheet] in
+                    actionSheet?.dismissAnimated()
+                })
+            ])
+        ])
+        self.present(actionSheet, in: .window(.root))
+    }
+
+    private func openSupportChat() {
         self.context.sharedContext.openExternalUrl(
             context: self.context,
             urlContext: .generic,
             url: "https://t.me/Litegram_sup",
             forceExternal: false,
+            presentationData: self.presentationData,
+            navigationController: self.navigationController as? NavigationController,
+            dismissInput: { }
+        )
+    }
+
+    private func openSupportEmail() {
+        self.context.sharedContext.openExternalUrl(
+            context: self.context,
+            urlContext: .generic,
+            url: "mailto:support@litegram.io",
+            forceExternal: true,
             presentationData: self.presentationData,
             navigationController: self.navigationController as? NavigationController,
             dismissInput: { }
