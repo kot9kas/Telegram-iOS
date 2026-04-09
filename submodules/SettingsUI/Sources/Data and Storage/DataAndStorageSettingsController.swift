@@ -30,7 +30,6 @@ private final class LitegramDataStorageTrafficBlockController: ViewController {
     private var presentationData: PresentationData
     private var presentationDataDisposable: Disposable?
 
-    private var scrollNode: ASScrollNode?
     private var animNode: AnimatedStickerNode?
     private var titleNode: ASTextNode?
     private var bodyTextView: UITextView?
@@ -114,14 +113,25 @@ private final class LitegramDataStorageTrafficBlockController: ViewController {
         textView.linkTextAttributes = [.foregroundColor: accentColor]
     }
 
+    private func navigateToLitegramTab() {
+        guard let navigationController = self.navigationController as? NavigationController else { return }
+        navigationController.popToRoot(animated: false)
+        for controller in navigationController.viewControllers {
+            if let tabBarController = controller as? TabBarController {
+                for (index, tab) in tabBarController.controllers.enumerated() {
+                    if tab.tabBarItem.title == "Litegram" {
+                        tabBarController.selectedIndex = index
+                        break
+                    }
+                }
+                break
+            }
+        }
+    }
+
     override func loadDisplayNode() {
         self.displayNode = ASDisplayNode()
         self.displayNode.backgroundColor = self.presentationData.theme.list.blocksBackgroundColor
-
-        let scroll = ASScrollNode()
-        scroll.view.alwaysBounceVertical = true
-        self.displayNode.addSubnode(scroll)
-        self.scrollNode = scroll
 
         let animSize = 120
         let pixelSize = animSize * Int(UIScreen.main.scale)
@@ -129,13 +139,13 @@ private final class LitegramDataStorageTrafficBlockController: ViewController {
         animNode.automaticallyLoadFirstFrame = true
         animNode.setup(source: AnimatedStickerNodeLocalFileSource(name: "ClearCache"), width: pixelSize, height: pixelSize, playbackMode: .loop, mode: .direct(cachePathPrefix: nil))
         animNode.visibility = true
-        scroll.addSubnode(animNode)
+        self.displayNode.addSubnode(animNode)
         self.animNode = animNode
 
         let titleNode = ASTextNode()
         titleNode.maximumNumberOfLines = 0
         titleNode.textAlignment = .center
-        scroll.addSubnode(titleNode)
+        self.displayNode.addSubnode(titleNode)
         self.titleNode = titleNode
 
         let textView = UITextView()
@@ -146,7 +156,7 @@ private final class LitegramDataStorageTrafficBlockController: ViewController {
         textView.textContainer.lineFragmentPadding = 0
         textView.dataDetectorTypes = []
         textView.delegate = self
-        scroll.view.addSubview(textView)
+        self.displayNode.view.addSubview(textView)
         self.bodyTextView = textView
 
         let buttonNode = ASButtonNode()
@@ -154,11 +164,16 @@ private final class LitegramDataStorageTrafficBlockController: ViewController {
         buttonNode.clipsToBounds = true
         buttonNode.setTitle(Self.buttonTitle, with: UIFont.systemFont(ofSize: 17, weight: .semibold), with: .white, for: .normal)
         buttonNode.addTarget(self, action: #selector(self.understoodTapped), forControlEvents: .touchUpInside)
-        scroll.addSubnode(buttonNode)
+        self.displayNode.addSubnode(buttonNode)
         self.buttonNode = buttonNode
 
         self.applyTheme()
         self.displayNodeDidLoad()
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        self.animNode?.visibility = true
     }
 
     @objc private func understoodTapped() {
@@ -169,18 +184,25 @@ private final class LitegramDataStorageTrafficBlockController: ViewController {
         super.containerLayoutUpdated(layout, transition: transition)
 
         let navBarHeight = self.navigationLayout(layout: layout).navigationFrame.maxY
-        let contentHeight = layout.size.height - navBarHeight
-        let sideInset: CGFloat = 32
         let fullWidth = layout.size.width
+        let fullHeight = layout.size.height
+        let sideInset: CGFloat = 32
         let textWidth = fullWidth - layout.safeInsets.left - layout.safeInsets.right - sideInset * 2
         let x = layout.safeInsets.left + sideInset
 
-        if let scrollNode = self.scrollNode {
-            transition.updateFrame(node: scrollNode, frame: CGRect(x: 0, y: navBarHeight, width: fullWidth, height: contentHeight))
-        }
-
         let animSize: CGFloat = 120
-        var y: CGFloat = 40
+        let titleAttr = self.titleNode?.attributedText ?? NSAttributedString()
+        let titleH = ceil(titleAttr.boundingRect(with: CGSize(width: textWidth, height: .greatestFiniteMagnitude), options: [.usesLineFragmentOrigin], context: nil).height)
+        let bodyH: CGFloat = {
+            guard let tv = self.bodyTextView else { return 60 }
+            return ceil(tv.sizeThatFits(CGSize(width: textWidth, height: .greatestFiniteMagnitude)).height)
+        }()
+
+        let contentBlockH = animSize + 20 + titleH + 12 + bodyH
+        let availableH = fullHeight - navBarHeight
+        let topOffset = navBarHeight + max((availableH - contentBlockH) / 2 - 40, 20)
+
+        var y = topOffset
 
         if let animNode = self.animNode {
             let ax = (fullWidth - animSize) / 2
@@ -190,34 +212,29 @@ private final class LitegramDataStorageTrafficBlockController: ViewController {
         y += animSize + 20
 
         if let titleNode = self.titleNode {
-            let titleAttr = titleNode.attributedText ?? NSAttributedString()
-            let titleH = ceil(titleAttr.boundingRect(with: CGSize(width: textWidth, height: .greatestFiniteMagnitude), options: [.usesLineFragmentOrigin], context: nil).height)
             transition.updateFrame(node: titleNode, frame: CGRect(x: x, y: y, width: textWidth, height: titleH))
-            y += titleH + 12
         }
+        y += titleH + 12
 
         if let textView = self.bodyTextView {
-            let fitSize = textView.sizeThatFits(CGSize(width: textWidth, height: .greatestFiniteMagnitude))
-            textView.frame = CGRect(x: x, y: y, width: textWidth, height: ceil(fitSize.height))
-            y += ceil(fitSize.height) + 28
+            textView.frame = CGRect(x: x, y: y, width: textWidth, height: bodyH)
         }
 
+        let buttonH: CGFloat = 50
+        let buttonBottom: CGFloat = layout.intrinsicInsets.bottom + 16
+        let buttonY = fullHeight - buttonBottom - buttonH
         if let buttonNode = self.buttonNode {
             let bx = layout.safeInsets.left + 16
             let bw = fullWidth - layout.safeInsets.left - layout.safeInsets.right - 32
-            let buttonH: CGFloat = 50
-            transition.updateFrame(node: buttonNode, frame: CGRect(x: bx, y: y, width: bw, height: buttonH))
-            y += buttonH + 24
+            transition.updateFrame(node: buttonNode, frame: CGRect(x: bx, y: buttonY, width: bw, height: buttonH))
         }
-
-        self.scrollNode?.view.contentSize = CGSize(width: fullWidth, height: max(y, contentHeight))
     }
 }
 
 extension LitegramDataStorageTrafficBlockController: UITextViewDelegate {
     func textView(_ textView: UITextView, shouldInteractWith URL: URL, in characterRange: NSRange, interaction: UITextItemInteraction) -> Bool {
         if URL.scheme == "litegram" {
-            self.navigationController?.popViewController(animated: true)
+            self.navigateToLitegramTab()
         }
         return false
     }
