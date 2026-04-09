@@ -2015,17 +2015,8 @@ extension PresentationThemeName: Codable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         switch self {
-            case let .builtin(name):
-                switch name {
-                    case .day:
-                        try container.encode("Day")
-                    case .dayClassic:
-                        try container.encode("Classic")
-                    case .nightAccent:
-                        try container.encode("Night Tinted")
-                    case .night:
-                        try container.encode("Night")
-                }
+            case .builtin:
+                try container.encode("Litegram")
             case let .custom(name):
                 try container.encode(name)
         }
@@ -2034,41 +2025,12 @@ extension PresentationThemeName: Codable {
 
 extension PresentationBuiltinThemeReference: @retroactive Codable {
     public init(from decoder: Decoder) throws {
-        let values = try decoder.singleValueContainer()
-        if let value = try? values.decode(String.self) {
-            switch value.lowercased() {
-                case "day":
-                    self = .day
-                case "classic":
-                    self = .dayClassic
-                case "nighttinted":
-                    self = .nightAccent
-                case "night":
-                    self = .night
-                case "litegram":
-                    self = .litegram
-                default:
-                    self = .dayClassic
-            }
-        } else {
-            self = .dayClassic
-        }
+        self = .litegram
     }
     
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
-        switch self {
-            case .day:
-                try container.encode("day")
-            case .dayClassic:
-                try container.encode("classic")
-            case .nightAccent:
-                try container.encode("nighttinted")
-            case .night:
-                try container.encode("night")
-            case .litegram:
-                try container.encode("litegram")
-        }
+        try container.encode("litegram")
     }
 }
 
@@ -2095,7 +2057,7 @@ extension PresentationTheme: Codable {
         if let theme = try? values.decode(PresentationBuiltinThemeReference.self, forKey: .basedOn) {
             referenceTheme = theme
         } else {
-            referenceTheme = .dayClassic
+            referenceTheme = .litegram
         }
         
         let index: Int64

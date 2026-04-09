@@ -18,29 +18,15 @@ public enum PresentationBuiltinThemeReference: Int32 {
     case litegram = -1
     
     public init(baseTheme: TelegramBaseTheme) {
-        switch baseTheme {
-            case .classic:
-                self = .dayClassic
-            case .day:
-                self = .day
-            case .night:
-                self = .night
-            case .tinted:
-                self = .nightAccent
-        }
+        self = .litegram
     }
     
     public var baseTheme: TelegramBaseTheme {
-        switch self {
-            case .dayClassic:
-                return .classic
-            case .day:
-                return .day
-            case .night:
-                return .night
-            case .nightAccent, .litegram:
-                return .tinted
-        }
+        return .tinted
+    }
+    
+    public var resolved: PresentationBuiltinThemeReference {
+        return .litegram
     }
 }
 
@@ -151,19 +137,19 @@ public enum PresentationThemeReference: PostboxCoding, Equatable {
                 if let localTheme = decoder.decodeObjectForKey("localTheme", decoder: { PresentationLocalTheme(decoder: $0) }) as? PresentationLocalTheme {
                     self = .local(localTheme)
                 } else {
-                    self = .builtin(.dayClassic)
+                    self = .builtin(.litegram)
                 }
             case 2:
                 if let cloudTheme = decoder.decode(PresentationCloudTheme.self, forKey: "cloudTheme") {
                     self = .cloud(cloudTheme)
                 } else {
-                    self = .builtin(.dayClassic)
+                    self = .builtin(.litegram)
                 }
             case 3:
-                self = .builtin(.dayClassic)
+                self = .builtin(.litegram)
             default:
                 assertionFailure()
-                self = .builtin(.dayClassic)
+                self = .builtin(.litegram)
         }
     }
     
@@ -245,7 +231,7 @@ public enum PresentationThemeReference: PostboxCoding, Equatable {
     
     public var emoticon: String? {
         switch self {
-            case .builtin(.dayClassic):
+            case .builtin(.litegram):
                 return "🏠"
             case let .cloud(theme):
                 return theme.theme.emoticon
@@ -373,7 +359,7 @@ public struct AutomaticThemeSwitchSetting: Codable, Equatable {
         if let themeData = try container.decodeIfPresent(AdaptedPostboxDecoder.RawObjectData.self, forKey: "theme_v2") {
             self.theme = PresentationThemeReference(decoder: PostboxDecoder(buffer: MemoryBuffer(data: themeData.data)))
         } else {
-            self.theme = .builtin(.night)
+            self.theme = .builtin(.litegram)
         }
     }
     
@@ -677,7 +663,7 @@ public struct PresentationThemeSettings: Codable {
         if let themeData = try container.decodeIfPresent(AdaptedPostboxDecoder.RawObjectData.self, forKey: "t") {
             self.theme = PresentationThemeReference(decoder: PostboxDecoder(buffer: MemoryBuffer(data: themeData.data)))
         } else {
-            self.theme = .builtin(.dayClassic)
+            self.theme = .builtin(.litegram)
         }
         
         var mappedThemePreferredBaseTheme: [Int64: TelegramBaseTheme] = [:]
@@ -711,7 +697,7 @@ public struct PresentationThemeSettings: Codable {
         self.listsFontSize = PresentationFontSize(rawValue: try container.decodeIfPresent(Int32.self, forKey: "lf") ?? PresentationFontSize.regular.rawValue) ?? fontSize
 
         self.chatBubbleSettings = try container.decodeIfPresent(PresentationChatBubbleSettings.self, forKey: "chatBubbleSettings") ?? PresentationChatBubbleSettings.default
-        self.automaticThemeSwitchSetting = try container.decodeIfPresent(AutomaticThemeSwitchSetting.self, forKey: "automaticThemeSwitchSetting") ?? AutomaticThemeSwitchSetting(force: false, trigger: .system, theme: .builtin(.night))
+        self.automaticThemeSwitchSetting = try container.decodeIfPresent(AutomaticThemeSwitchSetting.self, forKey: "automaticThemeSwitchSetting") ?? AutomaticThemeSwitchSetting(force: false, trigger: .system, theme: .builtin(.litegram))
 
         self.largeEmoji = try container.decodeIfPresent(Bool.self, forKey: "largeEmoji") ?? true
         self.reduceMotion = try container.decodeIfPresent(Bool.self, forKey: "reduceMotion") ?? false

@@ -812,7 +812,7 @@ public func themeSettingsController(context: AccountContext, focusOnItemTag: The
                                             let theme = themes[themes.index(before: previousThemeIndex.base)]
                                             newTheme = .cloud(PresentationCloudTheme(theme: theme, resolvedWallpaper: nil, creatorAccountId: theme.isCreator ? context.account.id : nil))
                                         } else {
-                                            newTheme = .builtin(.nightAccent)
+                                            newTheme = .builtin(.litegram)
                                         }
                                         selectThemeImpl?(newTheme)
                                     }
@@ -1280,14 +1280,8 @@ public func themeSettingsController(context: AccountContext, focusOnItemTag: The
                 var updatedAutomaticThemeSwitchSetting = current.automaticThemeSwitchSetting
                 if case let .cloud(info) = updatedTheme, info.theme.settings?.contains(where: { $0.baseTheme == .night || $0.baseTheme == .tinted }) ?? false {
                     updatedAutomaticThemeSwitchSetting.theme = updatedTheme
-                } else if case let .builtin(theme) = updatedTheme {
-                    if [.day, .dayClassic].contains(theme) {
-                        if updatedAutomaticThemeSwitchSetting.theme.emoticon != nil || [.builtin(.dayClassic), .builtin(.day)].contains(updatedAutomaticThemeSwitchSetting.theme.generalThemeReference) {
-                            updatedAutomaticThemeSwitchSetting.theme = .builtin(.night)
-                        }
-                    } else {
-                        updatedAutomaticThemeSwitchSetting.theme = updatedTheme
-                    }
+                } else if case .builtin = updatedTheme {
+                    updatedAutomaticThemeSwitchSetting.theme = .builtin(.litegram)
                 }
                 return current.withUpdatedTheme(updatedTheme).withUpdatedAutomaticThemeSwitchSetting(updatedAutomaticThemeSwitchSetting)
 
