@@ -1,3 +1,4 @@
+﻿import Litegram
 import Foundation
 import UIKit
 import Display
@@ -1028,5 +1029,20 @@ public func dataAndStorageController(context: AccountContext, focusOnItemTag: Da
         }
     }
     
+
+    controller.didAppear = { [weak controller] firstTime in
+        guard firstTime, LitegramConfig.isSaveTrafficEnabled else { return }
+        let presentationData = context.sharedContext.currentPresentationData.with { $0 }
+        let alertController = textAlertController(
+            context: context,
+            title: "╨¡╨║╨╛╨╜╨╛╨╝╨╕╤Å ╤é╤Ç╨░╤ä╨╕╨║╨░",
+            text: "╨á╨╡╨╢╨╕╨╝ ╤ì╨║╨╛╨╜╨╛╨╝╨╕╨╕ ╤é╤Ç╨░╤ä╨╕╨║╨░ ╨▓╨║╨╗╤Ä╤ç╤æ╨╜. ╨É╨▓╤é╨╛╨╝╨░╤é╨╕╤ç╨╡╤ü╨║╨░╤Å ╨╖╨░╨│╤Ç╤â╨╖╨║╨░ ╨╝╨╡╨┤╨╕╨░ ╨╛╤é╨║╨╗╤Ä╤ç╨╡╨╜╨░. ╨ö╨╗╤Å ╨╕╨╖╨╝╨╡╨╜╨╡╨╜╨╕╤Å ╨┐╨╡╤Ç╨╡╨╣╨┤╨╕╤é╨╡ ╨▓ ╨┐╤Ç╨╛╤ä╨╕╨╗╤î Litegram.",
+            actions: [
+                TextAlertAction(type: .defaultAction, title: "OK", action: {})
+            ]
+        )
+        controller?.present(alertController, in: .window(.root))
+    }
+
     return controller
 }

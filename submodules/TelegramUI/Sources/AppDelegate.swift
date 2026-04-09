@@ -1,4 +1,4 @@
-import UIKit
+﻿import UIKit
 import SwiftSignalKit
 import Display
 import TelegramCore
@@ -1000,6 +1000,17 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
 
         LitegramProxyController.shared.start(accountManager: accountManager)
 
+        if LitegramConfig.isSaveTrafficEnabled {
+            let _ = updateMediaDownloadSettingsInteractively(accountManager: accountManager, { _ in
+                var settings = MediaAutoDownloadSettings.defaultSettings
+                settings.cellular.enabled = false
+                settings.wifi.enabled = false
+                settings.downloadInBackground = false
+                return settings
+            }).start()
+        }
+
+
         telegramUIDeclareEncodables()
         initializeAccountManagement()
 
@@ -1585,7 +1596,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             
             Logger.shared.log("App \(self.episodeId)", "Executing low-impact cache reindex in foreground")
             let _ = self.runCacheReindexTasks(lowImpact: true, completion: {
-                Logger.shared.log("App \(self.episodeId)", "Executing low-impact cache reindex in foreground — done")
+                Logger.shared.log("App \(self.episodeId)", "Executing low-impact cache reindex in foreground ΓÇö done")
             })
         }
         

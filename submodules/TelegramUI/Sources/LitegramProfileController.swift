@@ -428,6 +428,17 @@ public final class LitegramController: ViewController {
 
     @objc private func saveTrafficToggled(_ sender: UISwitch) {
         LitegramConfig.isSaveTrafficEnabled = sender.isOn
+        let _ = updateMediaDownloadSettingsInteractively(accountManager: self.context.sharedContext.accountManager, { settings in
+            if sender.isOn {
+                var updated = settings
+                updated.cellular.enabled = false
+                updated.wifi.enabled = false
+                updated.downloadInBackground = false
+                return updated
+            } else {
+                return MediaAutoDownloadSettings.defaultSettings
+            }
+        }).start()
     }
 
     @objc private func tryAllFeaturesTapped() {
