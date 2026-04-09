@@ -32,13 +32,13 @@ private final class LitegramDataStorageTrafficBlockController: ViewController {
 
     private var animNode: AnimatedStickerNode?
     private var titleNode: ASTextNode?
-    private var bodyTextView: UITextView?
+    private var bodyNode: ASTextNode?
     private var buttonNode: ASButtonNode?
 
     private static let titleText = "\u{042d}\u{043a}\u{043e}\u{043d}\u{043e}\u{043c}\u{0438}\u{044f} \u{0442}\u{0440}\u{0430}\u{0444}\u{0438}\u{043a}\u{0430} \u{0432}\u{043a}\u{043b}\u{044e}\u{0447}\u{0435}\u{043d}\u{0430}"
-    private static let bodyPrefix = "\u{041f}\u{043e}\u{043a}\u{0430} \u{042d}\u{043a}\u{043e}\u{043d}\u{043e}\u{043c}\u{0438}\u{044f} \u{0442}\u{0440}\u{0430}\u{0444}\u{0438}\u{043a}\u{0430} \u{0430}\u{043a}\u{0442}\u{0438}\u{0432}\u{043d}\u{0430}, \u{043d}\u{0430}\u{0441}\u{0442}\u{0440}\u{043e}\u{0439}\u{043a}\u{0438} \u{0434}\u{0430}\u{043d}\u{043d}\u{044b}\u{0445} \u{0438} \u{043f}\u{0430}\u{043c}\u{044f}\u{0442}\u{0438} \u{0443}\u{043f}\u{0440}\u{0430}\u{0432}\u{043b}\u{044f}\u{044e}\u{0442}\u{0441}\u{044f} Litegram. \u{041d}\u{0430}\u{0436}\u{043c}\u{0438}\u{0442}\u{0435} "
-    private static let linkText = "\u{042d}\u{043a}\u{043e}\u{043d}\u{043e}\u{043c}\u{0438}\u{044f} \u{0442}\u{0440}\u{0430}\u{0444}\u{0438}\u{043a}\u{0430}"
-    private static let bodySuffix = ", \u{0447}\u{0442}\u{043e}\u{0431}\u{044b} \u{0438}\u{0437}\u{043c}\u{0435}\u{043d}\u{0438}\u{0442}\u{044c} \u{044d}\u{0442}\u{043e}."
+    private static let bodyPrefix = "\u{041f}\u{043e}\u{043a}\u{0430} "
+    private static let bodyHighlight = "\u{042d}\u{043a}\u{043e}\u{043d}\u{043e}\u{043c}\u{0438}\u{044f} \u{0442}\u{0440}\u{0430}\u{0444}\u{0438}\u{043a}\u{0430}"
+    private static let bodySuffix = " \u{0430}\u{043a}\u{0442}\u{0438}\u{0432}\u{043d}\u{0430}, \u{043d}\u{0430}\u{0441}\u{0442}\u{0440}\u{043e}\u{0439}\u{043a}\u{0438} \u{0434}\u{0430}\u{043d}\u{043d}\u{044b}\u{0445} \u{0438} \u{043f}\u{0430}\u{043c}\u{044f}\u{0442}\u{0438} \u{0443}\u{043f}\u{0440}\u{0430}\u{0432}\u{043b}\u{044f}\u{044e}\u{0442}\u{0441}\u{044f} Litegram. \u{0412}\u{044b}\u{043a}\u{043b}\u{044e}\u{0447}\u{0438}\u{0442}\u{0435} \u{0435}\u{0451} \u{0432} \u{043f}\u{0440}\u{043e}\u{0444}\u{0438}\u{043b}\u{0435} Litegram, \u{0447}\u{0442}\u{043e}\u{0431}\u{044b} \u{0438}\u{0437}\u{043c}\u{0435}\u{043d}\u{0438}\u{0442}\u{044c} \u{044d}\u{0442}\u{043e}."
     private static let buttonTitle = "\u{041f}\u{043e}\u{043d}\u{044f}\u{0442}\u{043d}\u{043e}"
 
     init(context: AccountContext) {
@@ -81,7 +81,7 @@ private final class LitegramDataStorageTrafficBlockController: ViewController {
     }
 
     private func updateBodyText() {
-        guard let textView = self.bodyTextView else { return }
+        guard let bodyNode = self.bodyNode else { return }
         let theme = self.presentationData.theme
         let accentColor = theme.list.itemAccentColor
         let secondaryColor = theme.list.itemSecondaryTextColor
@@ -97,11 +97,9 @@ private final class LitegramDataStorageTrafficBlockController: ViewController {
             .foregroundColor: secondaryColor,
             .paragraphStyle: paragraphStyle
         ]))
-        full.append(NSAttributedString(string: Self.linkText, attributes: [
-            .font: font,
+        full.append(NSAttributedString(string: Self.bodyHighlight, attributes: [
+            .font: UIFont.systemFont(ofSize: 15, weight: .semibold),
             .foregroundColor: accentColor,
-            .underlineStyle: NSUnderlineStyle.single.rawValue,
-            .link: "litegram://saveTraffic",
             .paragraphStyle: paragraphStyle
         ]))
         full.append(NSAttributedString(string: Self.bodySuffix, attributes: [
@@ -109,43 +107,7 @@ private final class LitegramDataStorageTrafficBlockController: ViewController {
             .foregroundColor: secondaryColor,
             .paragraphStyle: paragraphStyle
         ]))
-        textView.attributedText = full
-        textView.linkTextAttributes = [.foregroundColor: accentColor]
-    }
-
-    private func navigateToLitegramTab() {
-        guard let navigationController = self.navigationController as? NavigationController else { return }
-
-        var tabBarController: TabBarController?
-        for vc in navigationController.viewControllers {
-            if let tbc = vc as? TabBarController {
-                tabBarController = tbc
-                break
-            }
-        }
-
-        if tabBarController == nil {
-            if let window = self.view.window,
-               let rootNav = window.rootViewController as? NavigationController {
-                for vc in rootNav.viewControllers {
-                    if let tbc = vc as? TabBarController {
-                        tabBarController = tbc
-                        break
-                    }
-                }
-            }
-        }
-
-        guard let tbc = tabBarController else { return }
-
-        let count = tbc.controllers.count
-        guard count >= 2 else { return }
-        let targetIndex = count - 2
-
-        navigationController.popToRoot(animated: false)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            tbc.selectedIndex = targetIndex
-        }
+        bodyNode.attributedText = full
     }
 
     override func loadDisplayNode() {
@@ -167,16 +129,11 @@ private final class LitegramDataStorageTrafficBlockController: ViewController {
         self.displayNode.addSubnode(titleNode)
         self.titleNode = titleNode
 
-        let textView = UITextView()
-        textView.isEditable = false
-        textView.isScrollEnabled = false
-        textView.backgroundColor = .clear
-        textView.textContainerInset = .zero
-        textView.textContainer.lineFragmentPadding = 0
-        textView.dataDetectorTypes = []
-        textView.delegate = self
-        self.displayNode.view.addSubview(textView)
-        self.bodyTextView = textView
+        let bodyNode = ASTextNode()
+        bodyNode.maximumNumberOfLines = 0
+        bodyNode.textAlignment = .center
+        self.displayNode.addSubnode(bodyNode)
+        self.bodyNode = bodyNode
 
         let buttonNode = ASButtonNode()
         buttonNode.cornerRadius = 11
@@ -212,10 +169,8 @@ private final class LitegramDataStorageTrafficBlockController: ViewController {
         let animSize: CGFloat = 120
         let titleAttr = self.titleNode?.attributedText ?? NSAttributedString()
         let titleH = ceil(titleAttr.boundingRect(with: CGSize(width: textWidth, height: .greatestFiniteMagnitude), options: [.usesLineFragmentOrigin], context: nil).height)
-        let bodyH: CGFloat = {
-            guard let tv = self.bodyTextView else { return 60 }
-            return ceil(tv.sizeThatFits(CGSize(width: textWidth, height: .greatestFiniteMagnitude)).height)
-        }()
+        let bodyAttr = self.bodyNode?.attributedText ?? NSAttributedString()
+        let bodyH = ceil(bodyAttr.boundingRect(with: CGSize(width: textWidth, height: .greatestFiniteMagnitude), options: [.usesLineFragmentOrigin], context: nil).height)
 
         let contentBlockH = animSize + 20 + titleH + 12 + bodyH
         let availableH = fullHeight - navBarHeight
@@ -235,8 +190,8 @@ private final class LitegramDataStorageTrafficBlockController: ViewController {
         }
         y += titleH + 12
 
-        if let textView = self.bodyTextView {
-            textView.frame = CGRect(x: x, y: y, width: textWidth, height: bodyH)
+        if let bodyNode = self.bodyNode {
+            transition.updateFrame(node: bodyNode, frame: CGRect(x: x, y: y, width: textWidth, height: bodyH))
         }
 
         let buttonH: CGFloat = 50
@@ -247,15 +202,6 @@ private final class LitegramDataStorageTrafficBlockController: ViewController {
             let bw = fullWidth - layout.safeInsets.left - layout.safeInsets.right - 32
             transition.updateFrame(node: buttonNode, frame: CGRect(x: bx, y: buttonY, width: bw, height: buttonH))
         }
-    }
-}
-
-extension LitegramDataStorageTrafficBlockController: UITextViewDelegate {
-    func textView(_ textView: UITextView, shouldInteractWith URL: URL, in characterRange: NSRange, interaction: UITextItemInteraction) -> Bool {
-        if URL.scheme == "litegram" {
-            self.navigateToLitegramTab()
-        }
-        return false
     }
 }
 
