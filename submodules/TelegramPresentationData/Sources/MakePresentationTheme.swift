@@ -5,6 +5,11 @@ import TelegramUIPreferences
 import TelegramCore
 
 public func makeDefaultPresentationTheme(reference: PresentationBuiltinThemeReference, extendingThemeReference: PresentationThemeReference? = nil, serviceBackgroundColor: UIColor?, preview: Bool = false) -> PresentationTheme {
+    if let url = Bundle.main.url(forResource: "litegram-theme", withExtension: "txt"),
+       let data = try? Data(contentsOf: url),
+       let litegramTheme = makePresentationTheme(data: data, themeReference: .builtin(.litegram)) {
+        return litegramTheme
+    }
     return makeDefaultDarkTintedPresentationTheme(extendingThemeReference: extendingThemeReference, preview: preview)
 }
 
