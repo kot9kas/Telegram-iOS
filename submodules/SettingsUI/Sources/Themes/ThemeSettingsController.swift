@@ -540,8 +540,7 @@ public func themeSettingsController(context: AccountContext, focusOnItemTag: The
     currentAppIconName.set(currentAppIcon?.name ?? "Blue")
     
     let cloudThemes = Promise<[TelegramTheme]>()
-    let updatedCloudThemes = telegramThemes(postbox: context.account.postbox, network: context.account.network, accountManager: context.sharedContext.accountManager)
-    cloudThemes.set(updatedCloudThemes)
+    cloudThemes.set(.single([]))
     
     let removedThemeIndexesPromise = Promise<Set<Int64>>(Set())
     let removedThemeIndexes = Atomic<Set<Int64>>(value: Set())
