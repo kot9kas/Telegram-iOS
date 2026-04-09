@@ -115,17 +115,18 @@ private final class LitegramDataStorageTrafficBlockController: ViewController {
 
     private func navigateToLitegramTab() {
         guard let navigationController = self.navigationController as? NavigationController else { return }
-        navigationController.popToRoot(animated: false)
-        for controller in navigationController.viewControllers {
-            if let tabBarController = controller as? TabBarController {
-                for (index, tab) in tabBarController.controllers.enumerated() {
-                    if tab.tabBarItem.title == "Litegram" {
-                        tabBarController.selectedIndex = index
-                        break
-                    }
-                }
+        var tabBar: TabBarController?
+        for vc in navigationController.viewControllers {
+            if let tbc = vc as? TabBarController {
+                tabBar = tbc
                 break
             }
+        }
+        guard let tabBarController = tabBar else { return }
+        let litegramIndex = tabBarController.controllers.count - 2
+        navigationController.popToRoot(animated: false)
+        DispatchQueue.main.async {
+            tabBarController.selectedIndex = litegramIndex
         }
     }
 
