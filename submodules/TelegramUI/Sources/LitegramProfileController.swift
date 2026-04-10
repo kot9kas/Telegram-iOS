@@ -121,13 +121,16 @@ public final class LitegramController: ViewController {
 
     private func updateTabBarIcon() {
         let baseIcon = UIImage(bundleImageName: "Chat List/Tabs/IconLitegram")
-        let targetSize = CGSize(width: 26.0, height: 26.0)
+        let iconSize = CGSize(width: 26.0, height: 26.0)
+        let canvasSize = CGSize(width: 30.0, height: 30.0)
         let scaledIcon: UIImage?
         if let base = baseIcon {
             let format = UIGraphicsImageRendererFormat()
             format.scale = UIScreen.main.scale
-            scaledIcon = UIGraphicsImageRenderer(size: targetSize, format: format).image { _ in
-                base.draw(in: CGRect(origin: .zero, size: targetSize))
+            scaledIcon = UIGraphicsImageRenderer(size: canvasSize, format: format).image { _ in
+                let x = (canvasSize.width - iconSize.width) / 2.0
+                let y = canvasSize.height - iconSize.height
+                base.draw(in: CGRect(x: x, y: y, width: iconSize.width, height: iconSize.height))
             }
         } else {
             scaledIcon = nil
