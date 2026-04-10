@@ -437,24 +437,21 @@ public final class LitegramChatsController: ViewController, UITableViewDataSourc
 
     private func presentPinSet(completion: @escaping (String) -> Void) {
         let pin = LitegramPinController(mode: .set)
-        pin.gradientTop = presentationData.theme.passcode.backgroundColors.topColor
-        pin.gradientBottom = presentationData.theme.passcode.backgroundColors.bottomColor
+        pin.applyAccentColor(presentationData.theme.list.itemAccentColor)
         pin.onPinSet = { p in completion(p) }
         self.view.window?.rootViewController?.present(pin, animated: true)
     }
 
     private func presentPinVerifyChat(_ peerId: Int64, then: @escaping () -> Void) {
         let pin = LitegramPinController(mode: .verify(peerId: peerId))
-        pin.gradientTop = presentationData.theme.passcode.backgroundColors.topColor
-        pin.gradientBottom = presentationData.theme.passcode.backgroundColors.bottomColor
+        pin.applyAccentColor(presentationData.theme.list.itemAccentColor)
         pin.onPinVerified = then
         self.view.window?.rootViewController?.present(pin, animated: true)
     }
 
     private func presentPinVerifyFolder(_ filterId: Int32, then: @escaping () -> Void) {
         let pin = LitegramPinController(mode: .verifyFolder(filterId: filterId))
-        pin.gradientTop = presentationData.theme.passcode.backgroundColors.topColor
-        pin.gradientBottom = presentationData.theme.passcode.backgroundColors.bottomColor
+        pin.applyAccentColor(presentationData.theme.list.itemAccentColor)
         pin.onPinVerified = then
         self.view.window?.rootViewController?.present(pin, animated: true)
     }

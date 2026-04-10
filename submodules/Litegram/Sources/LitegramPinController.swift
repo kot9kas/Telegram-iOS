@@ -17,6 +17,13 @@ public final class LitegramPinController: UIViewController {
     public var gradientTop: UIColor = UIColor(red: 0.275, green: 0.451, blue: 0.620, alpha: 1.0)
     public var gradientBottom: UIColor = UIColor(red: 0.165, green: 0.349, blue: 0.510, alpha: 1.0)
 
+    public func applyAccentColor(_ accent: UIColor) {
+        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        accent.getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+        gradientTop = UIColor(hue: h, saturation: max(0.35, s * 0.75), brightness: min(0.6, b * 0.75), alpha: 1.0)
+        gradientBottom = UIColor(hue: h, saturation: max(0.4, s * 0.85), brightness: min(0.45, b * 0.55), alpha: 1.0)
+    }
+
     private let mode: Mode
     private var enteredPin = ""
     private var firstPin: String?
