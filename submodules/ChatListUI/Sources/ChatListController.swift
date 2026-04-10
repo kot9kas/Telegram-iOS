@@ -774,7 +774,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     }
     
     deinit {
-        NotificationCenter.default.removeObserver(self, name: LitegramChatLocks.autolockDidExpireNotification, object: nil)
+        NotificationCenter.default.removeObserver(self)
         self.openMessageFromSearchDisposable.dispose()
         self.badgeDisposable?.dispose()
         self.badgeIconDisposable?.dispose()
@@ -1387,6 +1387,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                     pinVC.applyAccentColor(self.presentationData.theme.list.itemAccentColor)
                     pinVC.onPinVerified = { [weak self] in
                         guard let self else { return }
+                        LitegramChatLocks.shared.currentlyViewingLockedPeerId = dialogId
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                             self.chatListDisplayNode.mainContainerNode.peerSelected?(peer, threadId, animated, activateInput, promoInfo)
                         }
@@ -2320,6 +2321,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         super.displayNodeDidLoad()
         
         NotificationCenter.default.addObserver(self, selector: #selector(self.litegramAutolockExpired), name: LitegramChatLocks.autolockDidExpireNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(self.litegramAppDidBecomeActive), name: UIApplication.didBecomeActiveNotification, object: nil)
         
         Queue.mainQueue().after(1.0) {
             self.context.prefetchManager?.prepareNextGreetingSticker()
@@ -2334,10 +2336,35 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         }
     }
     
+    @objc private func litegramAppDidBecomeActive() {
+        guard LitegramChatLocks.shared.hasAnyLock else { return }
+        
+        if let viewingPeerId = LitegramChatLocks.shared.currentlyViewingLockedPeerId,
+           LitegramChatLocks.shared.isLocked(viewingPeerId),
+           !LitegramChatLocks.shared.isUnlockedNow(viewingPeerId) {
+            LitegramChatLocks.shared.currentlyViewingLockedPeerId = nil
+            LitegramChatLocks.shared.cancelAllRelockTimers()
+            
+            if let navController = self.navigationController as? NavigationController {
+                navController.popToRoot(animated: false)
+            }
+        }
+        
+        if LitegramChatLocks.shared.hasExpiredUnlocks() {
+            self.chatListDisplayNode.mainContainerNode.updateState(onlyCurrent: false) { state in
+                var state = state
+                state.lockVersion += 1
+                return state
+            }
+        }
+    }
+    
     public static var sharedPreviousPowerSavingEnabled: Bool?
     
     override public func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        
+        LitegramChatLocks.shared.currentlyViewingLockedPeerId = nil
                 
         if self.powerSavingMonitoringDisposable == nil {
             self.powerSavingMonitoringDisposable = (self.context.sharedContext.automaticMediaDownloadSettings

@@ -8,6 +8,7 @@ public final class LitegramChatLocks {
     private let defaults: UserDefaults
     private var unlockTimes: [Int64: Date] = [:]
     private var relockTimers: [Int64: DispatchWorkItem] = [:]
+    public var currentlyViewingLockedPeerId: Int64?
 
     private init() {
         defaults = UserDefaults(suiteName: "litegram.chatlocks") ?? .standard
@@ -177,15 +178,37 @@ public final class LitegramChatLocks {
         relockTimers[key]?.cancel()
         let seconds = autolockSeconds
         guard seconds > 0 else {
-            NotificationCenter.default.post(name: Self.autolockDidExpireNotification, object: nil)
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: LitegramChatLocks.autolockDidExpireNotification, object: nil)
+            }
             return
         }
         let work = DispatchWorkItem { [weak self] in
             self?.relockTimers.removeValue(forKey: key)
-            NotificationCenter.default.post(name: LitegramChatLocks.autolockDidExpireNotification, object: nil)
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: LitegramChatLocks.autolockDidExpireNotification, object: nil)
+            }
         }
         relockTimers[key] = work
         DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(seconds), execute: work)
+    }
+
+    public func cancelAllRelockTimers() {
+        for (_, work) in relockTimers {
+            work.cancel()
+        }
+        relockTimers.removeAll()
+    }
+
+    public func hasExpiredUnlocks() -> Bool {
+        let timeout = Double(autolockSeconds)
+        let now = Date()
+        for (_, time) in unlockTimes {
+            if now.timeIntervalSince(time) >= timeout {
+                return true
+            }
+        }
+        return false
     }
 
     public var hasAnyLock: Bool {
