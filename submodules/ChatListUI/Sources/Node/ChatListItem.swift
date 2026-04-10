@@ -29,6 +29,7 @@ import AppBundle
 import MultilineTextComponent
 import MultilineTextWithEntitiesComponent
 import ShimmerEffect
+import Litegram
 
 public enum ChatListItemContent {
     public final class ThreadInfo: Equatable {
@@ -3176,6 +3177,24 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
             }
             
             textAttributedString = attributedText
+            
+            if case let .chat(itemPeer, _, _, _, _, _, _, _) = contentData, let mainPeer = itemPeer.chatMainPeer {
+                let litegramDialogId = mainPeer.id._internalGetInt64Value()
+                if LitegramChatLocks.shared.isLocked(litegramDialogId) {
+                    let isCurrentlyUnlocked = LitegramChatLocks.shared.isUnlockedNow(litegramDialogId)
+                    let lockPrefix = isCurrentlyUnlocked ? "🟢 " : "🔒 "
+                    if let existingTitle = titleAttributedString {
+                        let mutable = NSMutableAttributedString(string: lockPrefix)
+                        mutable.append(existingTitle)
+                        titleAttributedString = mutable
+                    }
+                    if !isCurrentlyUnlocked && LitegramChatLocks.shared.isEffectiveHidePreview(litegramDialogId) {
+                        textAttributedString = NSAttributedString(string: "🔒 Чат защищён", font: textFont, textColor: theme.messageTextColor)
+                        authorAttributedString = nil
+                        contentImageSpecs = []
+                    }
+                }
+            }
             
             let dateText: String
             var topIndex: MessageIndex?

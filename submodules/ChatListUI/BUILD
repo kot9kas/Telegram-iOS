@@ -128,6 +128,7 @@ swift_library(
         "//submodules/TelegramUI/Components/AlertComponent/AlertTransferHeaderComponent",
         "//submodules/TelegramUI/Components/AvatarComponent",
         "//submodules/TelegramUI/Components/PeerManagement/OwnershipTransferController",
+        "//submodules/Litegram:Litegram",
     ],
     visibility = [
         "//visibility:public",

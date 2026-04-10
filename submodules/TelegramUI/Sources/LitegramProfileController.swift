@@ -58,6 +58,13 @@ public final class LitegramController: ViewController {
             action: #selector(protectionTapped)
         ),
         MenuItem(
+            iconName: "Chat/Context Menu/Lock",
+            iconBgColor: UIColor(red: 0.67, green: 0.49, blue: 1.0, alpha: 1.0),
+            title: "Чаты",
+            subtitle: "PIN-защита чатов и папок",
+            action: #selector(chatsTapped)
+        ),
+        MenuItem(
             iconName: "Chat/Context Menu/Info",
             iconBgColor: UIColor(red: 1.0, green: 0.62, blue: 0.07, alpha: 1.0),
             title: "Поддержка",
@@ -445,6 +452,11 @@ public final class LitegramController: ViewController {
     @objc private func protectionTapped() {
         let connectionController = LitegramConnectionController(context: self.context)
         self.push(connectionController)
+    }
+
+    @objc private func chatsTapped() {
+        let chatsController = LitegramChatsController(context: self.context)
+        self.push(chatsController)
     }
 
     @objc private func supportTapped() {
