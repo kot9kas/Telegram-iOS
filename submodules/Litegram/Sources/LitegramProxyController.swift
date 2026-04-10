@@ -23,9 +23,18 @@ public final class LitegramProxyController {
             NotificationCenter.default.post(name: .litegramAuthDidUpdate, object: nil)
         }
 
+        self.applyCachedProxyIfAvailable()
+
         DispatchQueue.global(qos: .utility).async { [weak self] in
             self?.connectProxy()
         }
+    }
+
+    private func applyCachedProxyIfAvailable() {
+        let cached = LitegramConfig.getCachedServers()
+        guard !cached.isEmpty else { return }
+        let server = preferredServer(from: cached) ?? cached[0]
+        applyProxy(server: server)
     }
 
     private var lastRegisteredTelegramId: Int64?
