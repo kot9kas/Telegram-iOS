@@ -170,6 +170,10 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
         return self.accountSettingsController?.twoStepAuthData
     }
     
+    public func getNotificationExceptions() -> Promise<NotificationExceptionsList?>? {
+        return self.accountSettingsController?.notificationExceptions
+    }
+    
     override public func containerLayoutUpdated(_ layout: ContainerViewLayout, transition: ContainedViewLayoutTransition) {
         let needsRootWallpaperBackgroundNode: Bool
         if case .regular = layout.metrics.widthClass {
@@ -774,6 +778,7 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
                         randomId: result.randomId,
                         forwardInfo: forwardInfo,
                         folders: folders,
+                        music: result.music,
                         uploadInfo: results.count > 1 ? StoryUploadInfo(groupingId: groupingId, index: index, total: Int32(results.count)) : nil
                     )
                     |> deliverOnMainQueue).startStandalone(next: { stableId in

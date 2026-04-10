@@ -385,7 +385,8 @@ plist_fragment(
     """
     <key>CFBundleVersion</key>
     <string>{buildNumber}</string>
-    """
+    """,
+    defaults = {"buildNumber": "1"},
 )
 
 plist_fragment(
@@ -487,7 +488,7 @@ icloud_fragment = "" if not telegram_enable_icloud else """
     <string>iCloud.{telegram_bundle_id}</string>
 </array>
 <key>com.apple.developer.ubiquity-kvstore-identifier</key>
-<string>{telegram_team_id}.*</string>
+<string>{telegram_team_id}.{telegram_bundle_id}</string>
 <key>com.apple.developer.icloud-container-environment</key>
 <string>{telegram_icloud_environment}</string>
 """.format(
@@ -574,14 +575,23 @@ plist_fragment(
     ])
 )
 
-plist_fragment(
+genrule(
     name = "VersionInfoPlist",
-    extension = "plist",
-    template =
-    """
+    srcs = ["//:versions.json"],
+    outs = ["VersionInfoPlist.plist"],
+    cmd = """
+        version=$$(python3 -c "import json; print(json.load(open('$(location //:versions.json)'))['app'])")
+        cat > $@ <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
     <key>CFBundleShortVersionString</key>
-    <string>{telegramVersion}</string>
-    """
+    <string>$$version</string>
+</dict>
+</plist>
+PLIST
+    """,
 )
 
 plist_fragment(
@@ -1813,7 +1823,7 @@ swift_library(
 ios_ui_test_suite(
     name = "iOSAppUITestSuite",
     bundle_id = "org.telegram.Telegram-iOS-uitests",
-    minimum_os_version = "13.0",
+    minimum_os_version = minimum_os_version,
     runners = [
         ":iPhone-17__26.2",
     ],

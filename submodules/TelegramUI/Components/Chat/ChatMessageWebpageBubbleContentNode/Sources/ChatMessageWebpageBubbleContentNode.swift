@@ -160,6 +160,11 @@ public final class ChatMessageWebpageBubbleContentNode: ChatMessageBubbleContent
                 return ChatMessageBubbleContentTapAction(content: .none)
             }
             
+            let incoming = item.message.effectivelyIncoming(item.context.account.peerId)
+            if incoming && item.associatedData.isSuspiciousPeer {
+                return ChatMessageBubbleContentTapAction(content: .none)
+            }
+            
             if let file = content.file {
                 if !file.isVideo, !file.isVideoSticker, !file.isAnimated, !file.isAnimatedSticker, !file.isSticker, !file.isMusic {
                     return ChatMessageBubbleContentTapAction(content: .openMessage)
@@ -513,6 +518,10 @@ public final class ChatMessageWebpageBubbleContentNode: ChatMessageBubbleContent
                                 actionTitle = hasEnded ? item.presentationData.strings.Chat_Auction_ViewResults : item.presentationData.strings.Chat_Auction_Join
                                 actionIcon = !hasEnded ? .bid : nil
                             }
+                        case "telegram_channel_direct":
+                            actionTitle = item.presentationData.strings.Chat_ContactChannel
+                        case "telegram_newbot":
+                            actionTitle = item.presentationData.strings.Chat_CreateBotLink
                         default:
                             break
                     }

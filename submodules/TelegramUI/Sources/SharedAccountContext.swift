@@ -100,6 +100,8 @@ import ChatParticipantRightsScreen
 import PeerCopyProtectionInfoScreen
 import ChatRankInfoScreen
 import RankChatPreviewItem
+import TextProcessingScreen
+import CreateBotScreen
 
 private final class AccountUserInterfaceInUseContext {
     let subscribers = Bag<(Bool) -> Void>()
@@ -2321,8 +2323,8 @@ public final class SharedAccountContextImpl: SharedAccountContext {
         return LocalizationListController(context: context)
     }
     
-    public func openAddContact(context: AccountContext, firstName: String, lastName: String, phoneNumber: String, label: String, present: @escaping (ViewController, Any?) -> Void, pushController: @escaping (ViewController) -> Void, completed: @escaping () -> Void) {
-        openAddContactImpl(context: context, firstName: firstName, lastName: lastName, phoneNumber: phoneNumber, label: label, present: present, pushController: pushController, completed: completed)
+    public func openAddContact(context: AccountContext, peer: EnginePeer?, firstName: String, lastName: String, phoneNumber: String, label: String, present: @escaping (ViewController, Any?) -> Void, pushController: @escaping (ViewController) -> Void, completed: @escaping () -> Void) {
+        openAddContactImpl(context: context, peer: peer, firstName: firstName, lastName: lastName, phoneNumber: phoneNumber, label: label, present: present, pushController: pushController, completed: completed)
     }
     
     public func openAddPersonContact(context: AccountContext, peerId: PeerId, pushController: @escaping (ViewController) -> Void, present: @escaping (ViewController, Any?) -> Void) {
@@ -2396,6 +2398,7 @@ public final class SharedAccountContextImpl: SharedAccountContext {
             openHashtag: { _, _ in },
             updateInputState: { _ in },
             updateInputMode: { _ in },
+            updatePresentationState: { _ in },
             openMessageShareMenu: { _ in
             },
             presentController: { _, _ in
@@ -2415,6 +2418,8 @@ public final class SharedAccountContextImpl: SharedAccountContext {
             longTap: { _, _ in
             },
             todoItemLongTap: { _, _ in
+            },
+            pollOptionLongTap: { _, _ in
             },
             openCheckoutOrReceipt: { _, _ in
             },
@@ -2438,6 +2443,8 @@ public final class SharedAccountContextImpl: SharedAccountContext {
             },
             requestSelectMessagePollOptions: { _, _ in
             },
+            requestAddMessagePollOption: { _, _, _, _, _ in
+            },
             requestOpenMessagePollResults: { _, _ in
             },
             openAppStorePage: {
@@ -2452,7 +2459,7 @@ public final class SharedAccountContextImpl: SharedAccountContext {
             },
             editScheduledMessagesTime: { _ in
             },
-            performTextSelectionAction: { _, _, _, _ in
+            performTextSelectionAction: { _, _, _, _, _ in
             },
             displayImportedMessageTooltip: { _ in
             },
@@ -2463,6 +2470,8 @@ public final class SharedAccountContextImpl: SharedAccountContext {
             openMessagePollResults: { _, _ in
             },
             openPollCreation: { _ in
+            },
+            openPollMedia: { _, _ in
             },
             displayPollSolution: { _, _ in
             },
@@ -2569,6 +2578,7 @@ public final class SharedAccountContextImpl: SharedAccountContext {
             openStarsPurchase: { _ in
             },
             openRankInfo: { _, _, _ in
+            }, openSetPeerAvatar: {
             },
             automaticMediaDownloadSettings: MediaAutoDownloadSettings.defaultSettings,
             pollActionState: ChatInterfacePollActionState(),
@@ -2681,6 +2691,22 @@ public final class SharedAccountContextImpl: SharedAccountContext {
         })
     }
     
+    public func displaySetPhoto(
+        parentController: ViewController,
+        context: AccountContext,
+        peer: EnginePeer,
+        completion: @escaping (UIImage?) -> Void,
+        completedWithUploadingImage: @escaping (UIImage, Signal<PeerInfoAvatarUploadStatus, NoError>) -> UIView?
+    ) {
+        PeerInfoScreenImpl.displaySetPhoto(
+            parentController: parentController,
+            context: context,
+            peer: peer,
+            completion: completion,
+            completedWithUploadingImage: completedWithUploadingImage
+        )
+    }
+    
     public func makeInstantPageController(context: AccountContext, message: Message, sourcePeerType: MediaAutoDownloadPeerType?) -> ViewController? {
         return makeInstantPageControllerImpl(context: context, message: message, sourcePeerType: sourcePeerType)
     }
@@ -2726,17 +2752,18 @@ public final class SharedAccountContextImpl: SharedAccountContext {
         })
     }
     
-    public func makeAttachmentFileController(context: AccountContext, updatedPresentationData: (initial: PresentationData, signal: Signal<PresentationData, NoError>)?, bannedSendMedia: (Int32, Bool)?, presentGallery: @escaping () -> Void, presentFiles: @escaping () -> Void, presentDocumentScanner: (() -> Void)?, send: @escaping (AnyMediaReference) -> Void) -> AttachmentFileController {
-        return makeAttachmentFileControllerImpl(context: context, updatedPresentationData: updatedPresentationData, bannedSendMedia: bannedSendMedia, presentGallery: presentGallery, presentFiles: presentFiles, presentDocumentScanner: presentDocumentScanner, send: send)
+    public func makeAttachmentFileController(context: AccountContext, updatedPresentationData: (initial: PresentationData, signal: Signal<PresentationData, NoError>)?, audio: Bool, bannedSendMedia: (Int32, Bool)?, presentGallery: @escaping () -> Void, presentFiles: @escaping () -> Void, presentDocumentScanner: (() -> Void)?, send: @escaping ([AnyMediaReference], Bool, Int32?, NSAttributedString?) -> Void) -> AttachmentFileController {
+        return makeAttachmentFileControllerImpl(context: context, updatedPresentationData: updatedPresentationData, mode: audio ? .audio(.chat) : .recent, bannedSendMedia: bannedSendMedia, presentGallery: presentGallery, presentFiles: presentFiles, presentDocumentScanner: presentDocumentScanner, send: send)
     }
     
-    public func makeGalleryCaptionPanelView(context: AccountContext, chatLocation: ChatLocation, isScheduledMessages: Bool, isFile: Bool, hasTimer: Bool, customEmojiAvailable: Bool, present: @escaping (ViewController) -> Void, presentInGlobalOverlay: @escaping (ViewController) -> Void) -> NSObject? {
+    public func makeGalleryCaptionPanelView(context: AccountContext, chatLocation: ChatLocation, isScheduledMessages: Bool, isFile: Bool, hasTimer: Bool, customEmojiAvailable: Bool, pushViewController: @escaping (ViewController) -> Void, present: @escaping (ViewController) -> Void, presentInGlobalOverlay: @escaping (ViewController) -> Void) -> NSObject? {
         let inputPanelNode = LegacyMessageInputPanelNode(
             context: context,
             chatLocation: chatLocation,
             isScheduledMessages: isScheduledMessages,
             isFile: isFile,
             hasTimer: hasTimer,
+            pushViewController: pushViewController,
             present: present,
             presentInGlobalOverlay: presentInGlobalOverlay,
             makeEntityInputView: {
@@ -2944,6 +2971,8 @@ public final class SharedAccountContextImpl: SharedAccountContext {
             mappedSource = .todo
         case .copyProtection:
             mappedSource = .copyProtection
+        case .aiTools:
+            mappedSource = .aiTools
         case let .auth(price):
             mappedSource = .auth(price)
         case let .premiumGift(file):
@@ -3026,6 +3055,8 @@ public final class SharedAccountContextImpl: SharedAccountContext {
             mappedSubject = .todo
         case .copyProtection:
             mappedSubject = .copyProtection
+        case .aiTools:
+            mappedSubject = .aiTools
         case .business:
             mappedSubject = .business
             buttonText = presentationData.strings.Chat_EmptyStateIntroFooterPremiumActionButton
@@ -3542,10 +3573,7 @@ public final class SharedAccountContextImpl: SharedAccountContext {
     }
     
     public func makeGiftStoreController(context: AccountContext, peerId: EnginePeer.Id, gift: StarGift.Gift) -> ViewController {
-        guard let starsContext = context.starsContext else {
-            fatalError()
-        }
-        let controller = GiftStoreScreen(context: context, starsContext: starsContext, peerId: peerId, gift: gift)
+        let controller = GiftStoreScreen(context: context, peerId: peerId, gift: gift)
         return controller
     }
     
@@ -4195,11 +4223,17 @@ public final class SharedAccountContextImpl: SharedAccountContext {
         })
     }
     
-    public func makeShareController(context: AccountContext, subject: ShareControllerSubject, forceExternal: Bool, shareStory: (() -> Void)?, enqueued: (([PeerId], [Int64]) -> Void)?, actionCompleted: (() -> Void)?) -> ViewController {
-        let controller = ShareController(context: context, subject: subject, externalShare: forceExternal)
-        controller.shareStory = shareStory
-        controller.enqueued = enqueued
-        controller.actionCompleted = actionCompleted
+    public func makeShareController(context: AccountContext, params: ShareControllerParams) -> ViewController {
+        let controller = ShareController(context: context, subject: params.subject, presetText: params.presetText, preferredAction: params.preferredAction, showInChat: params.showInChat, fromForeignApp: params.fromForeignApp, segmentedValues: params.segmentedValues, externalShare: params.externalShare, immediateExternalShare: params.immediateExternalShare, immediatePeerId: params.immediatePeerId, updatedPresentationData: params.updatedPresentationData, forceTheme: params.forceTheme, forcedActionTitle: params.forcedActionTitle, shareAsLink: params.shareAsLink, collectibleItemInfo: params.collectibleItemInfo)
+        controller.actionCompleted = params.actionCompleted
+        controller.dismissed = params.dismissed
+        controller.completed = params.completed
+        controller.enqueued = params.enqueued
+        controller.shareStory = params.shareStory
+        controller.debugAction = params.debugAction
+        controller.onMediaTimestampLinkCopied = params.onMediaTimestampLinkCopied
+        controller.parentNavigationController = params.parentNavigationController
+        controller.canSendInHighQuality = params.canSendInHighQuality
         return controller
     }
     
@@ -4307,8 +4341,8 @@ public final class SharedAccountContextImpl: SharedAccountContext {
         return ChannelMembersSearchControllerImpl(params: params)
     }
     
-    public func makeNewContactScreen(context: AccountContext, peer: EnginePeer?, phoneNumber: String?, shareViaException: Bool, completion: @escaping (EnginePeer?, DeviceContactStableId?, DeviceContactExtendedData?) -> Void) -> ViewController {
-        return NewContactScreen(context: context, initialData: NewContactScreen.initialData(peer: peer, phoneNumber: phoneNumber, shareViaException: shareViaException), completion: completion)
+    public func makeNewContactScreen(context: AccountContext, peer: EnginePeer?, firstName: String?, lastName: String?, phoneNumber: String?, shareViaException: Bool, completion: @escaping (EnginePeer?, DeviceContactStableId?, DeviceContactExtendedData?) -> Void) -> ViewController {
+        return NewContactScreen(context: context, initialData: NewContactScreen.initialData(peer: peer, firstName: firstName, lastName: lastName, phoneNumber: phoneNumber, shareViaException: shareViaException), completion: completion)
     }
     
     public func makeLoginEmailSetupController(context: AccountContext, blocking: Bool, emailPattern: String?, canAutoDismissIfNeeded: Bool, navigationController: NavigationController?, completion: @escaping () -> Void, dismiss: @escaping () -> Void) -> ViewController {
@@ -4341,6 +4375,42 @@ public final class SharedAccountContextImpl: SharedAccountContext {
             rankRole: rankRole
         )
         return RankChatPreviewItem(context: context, systemStyle: .glass, theme: theme, componentTheme: theme, strings: strings, sectionId: sectionId, fontSize: fontSize, chatBubbleCorners: chatBubbleCorners, wallpaper: wallpaper, dateTimeFormat: dateTimeFormat, nameDisplayOrder: nameOrder, messageItems: [messageItem])
+    }
+    
+    public func makeTextProcessingScreen(
+        context: AccountContext,
+        theme: PresentationTheme?,
+        mode: TextProcessingScreenMode,
+        inputText: TextWithEntities,
+        copyResult: ((TextWithEntities) -> Void)?,
+        translateChat: ((String) -> Void)?
+    ) async -> ViewController {
+        return await TextProcessingScreen(
+            context: context,
+            theme: theme,
+            mode: mode,
+            inputText: inputText,
+            copyResult: copyResult,
+            translateChat: translateChat
+        )
+    }
+    
+    public func makeCreateBotScreen(
+        context: AccountContext,
+        parentBot: EnginePeer.Id,
+        initialUsername: String?,
+        initialTitle: String?,
+        openAutomatically: Bool,
+        completion: @escaping (EnginePeer.Id?) -> Void
+    ) async -> ViewController? {
+        return await CreateBotScreen(
+            context: context,
+            parentBot: parentBot,
+            initialUsername: initialUsername,
+            initialTitle: initialTitle,
+            openAutomatically: openAutomatically,
+            completion: completion
+        )
     }
 }
 

@@ -14,6 +14,7 @@ import ChatListUI
 import EmojiStatusComponent
 import TelegramUIPreferences
 import TranslateUI
+import TelegramNotices
 
 extension ChatControllerImpl {
     final class ContentData {
@@ -99,6 +100,7 @@ extension ChatControllerImpl {
             var nextChannelToRead: NextChannelToRead?
             var nextChannelToReadDisplayName: Bool = false
             var isNotAccessible: Bool = false
+            var isManagedBot: Bool = false
             var hasBots: Bool = false
             var hasBotCommands: Bool = false
             var botMenuButton: BotMenuButton = .commands
@@ -506,6 +508,25 @@ extension ChatControllerImpl {
                     messageOptionsTitleInfo = .single(nil)
                 }
                 
+                var savedMessagesChatsTip: Signal<Bool, NoError> = .single(false)
+                if case .peer(context.account.peerId) = chatLocation {
+                    let hasSavedChats = context.engine.messages.savedMessagesHasPeersOtherThanSaved()
+                    if chatLocation.threadId == nil {
+                        savedMessagesChatsTip = hasSavedChats
+                        |> distinctUntilChanged
+                        |> mapToSignal { value -> Signal<Bool, NoError> in
+                            if !value {
+                                return .single(false)
+                            }
+                            return ApplicationSpecificNotice.getSavedMessagesChatListView(accountManager: context.sharedContext.accountManager)
+                            |> map { value -> Bool in
+                                return value < 5
+                            }
+                        }
+                        |> distinctUntilChanged
+                    }
+                }
+                
                 self.titleDisposable = (combineLatest(
                     queue: Queue.mainQueue(),
                     peerView.get(),
@@ -514,9 +535,10 @@ extension ChatControllerImpl {
                     subtitleTextSignal,
                     configuration,
                     hasPeerInfo,
-                    messageOptionsTitleInfo
+                    messageOptionsTitleInfo,
+                    savedMessagesChatsTip
                 )
-                |> deliverOnMainQueue).startStrict(next: { [weak self] peerView, onlineMemberCount, displayedCount, subtitleText, configuration, hasPeerInfo, messageOptionsTitleInfo in
+                |> deliverOnMainQueue).startStrict(next: { [weak self] peerView, onlineMemberCount, displayedCount, subtitleText, configuration, hasPeerInfo, messageOptionsTitleInfo, savedMessagesChatsTip in
                     guard let strongSelf = self else {
                         return
                     }
@@ -585,7 +607,13 @@ extension ChatControllerImpl {
                                 strongSelf.state.chatTitleContent = .custom(title: [ChatTitleContent.TitleTextItem(id: AnyHashable(0), content: .text(channel.debugDisplayTitle))], subtitle: nil, isEnabled: true)
                             }
                         } else {
-                            strongSelf.state.chatTitleContent = .peer(peerView: ChatTitleContent.PeerData(peerView: peerView), customTitle: nil, customSubtitle: nil, onlineMemberCount: onlineMemberCount, isScheduledMessages: isScheduledMessages, isMuted: nil, customMessageCount: nil, isEnabled: hasPeerInfo)
+                            var customSubtitle: String?
+                            if savedMessagesChatsTip {
+                                //TODO:localize
+                                customSubtitle = "Tap to view as chats"
+                            }
+                            
+                            strongSelf.state.chatTitleContent = .peer(peerView: ChatTitleContent.PeerData(peerView: peerView), customTitle: nil, customSubtitle: customSubtitle, onlineMemberCount: onlineMemberCount, isScheduledMessages: isScheduledMessages, isMuted: nil, customMessageCount: nil, isEnabled: hasPeerInfo)
                             
                             let imageOverride: AvatarNodeImageOverride?
                             if context.account.peerId == peer.id {
@@ -820,8 +848,10 @@ extension ChatControllerImpl {
                     var sendPaidMessageStars: StarsAmount?
                     var alwaysShowGiftButton = false
                     var disallowedGifts: TelegramDisallowedGifts?
+                    var isManagedBot = false
                     if let peer = peerView.peers[peerView.peerId] {
                         if let cachedData = peerView.cachedData as? CachedUserData {
+                            isManagedBot = cachedData.botManagerId != nil
                             contactStatus = ChatContactStatus(canAddContact: !peerView.peerIsContact, peerStatusSettings: cachedData.peerStatusSettings, invitedBy: nil, managingBot: managingBot)
                             if case let .known(value) = cachedData.businessIntro {
                                 businessIntro = value
@@ -1014,6 +1044,7 @@ extension ChatControllerImpl {
                     strongSelf.state.isNotAccessible = isNotAccessible
                     strongSelf.state.contactStatus = contactStatus
                     strongSelf.state.hasBots = hasBots
+                    strongSelf.state.isManagedBot = isManagedBot
                     strongSelf.state.hasBotCommands = hasBotCommands
                     strongSelf.state.botMenuButton = botMenuButton
                     strongSelf.state.isArchived = isArchived
@@ -1402,9 +1433,11 @@ extension ChatControllerImpl {
                     var sendPaidMessageStars: StarsAmount?
                     var alwaysShowGiftButton = false
                     var disallowedGifts: TelegramDisallowedGifts?
+                    var isManagedBot = false
                     if let peer = peerView.peers[peerView.peerId] {
                         copyProtectionEnabled = false
                         if let cachedData = peerView.cachedData as? CachedUserData {
+                            isManagedBot = cachedData.botManagerId != nil
                             contactStatus = ChatContactStatus(canAddContact: !peerView.peerIsContact, peerStatusSettings: cachedData.peerStatusSettings, invitedBy: nil, managingBot: managingBot)
                             if case let .known(value) = cachedData.businessIntro {
                                 businessIntro = value
@@ -1715,6 +1748,7 @@ extension ChatControllerImpl {
                         strongSelf.state.isNotAccessible = isNotAccessible
                         strongSelf.state.contactStatus = contactStatus
                         strongSelf.state.hasBots = hasBots
+                        strongSelf.state.isManagedBot = isManagedBot
                         strongSelf.state.isArchived = isArchived
                         strongSelf.state.peerIsMuted = peerIsMuted
                         strongSelf.state.peerDiscussionId = peerDiscussionId

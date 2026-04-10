@@ -41,6 +41,7 @@ final class PeerSelectionControllerNode: ASDisplayNode {
     private let forwardedMessageIds: [EngineMessage.Id]
     private let hasTypeHeaders: Bool
     private let requestPeerType: [ReplyMarkupButtonRequestPeerType]?
+    private let suggestedPeers: [EnginePeer]
     
     private var presentationInterfaceState: ChatPresentationInterfaceState
     private let  presentationInterfaceStatePromise = ValuePromise<ChatPresentationInterfaceState>()
@@ -115,7 +116,7 @@ final class PeerSelectionControllerNode: ASDisplayNode {
         return (self.presentationData, self.presentationDataPromise.get())
     }
     
-    init(context: AccountContext, controller: PeerSelectionControllerImpl, presentationData: PresentationData, filter: ChatListNodePeersFilter, forumPeerId: (id: EnginePeer.Id, isMonoforum: Bool)?, hasFilters: Bool, hasChatListSelector: Bool, hasContactSelector: Bool, hasGlobalSearch: Bool, forwardedMessageIds: [EngineMessage.Id], hasTypeHeaders: Bool, requestPeerType: [ReplyMarkupButtonRequestPeerType]?, hasCreation: Bool, createNewGroup: (() -> Void)?, present: @escaping (ViewController, Any?) -> Void, presentInGlobalOverlay: @escaping (ViewController, Any?) -> Void, dismiss: @escaping () -> Void) {
+    init(context: AccountContext, controller: PeerSelectionControllerImpl, presentationData: PresentationData, filter: ChatListNodePeersFilter, forumPeerId: (id: EnginePeer.Id, isMonoforum: Bool)?, hasFilters: Bool, hasChatListSelector: Bool, hasContactSelector: Bool, hasGlobalSearch: Bool, forwardedMessageIds: [EngineMessage.Id], hasTypeHeaders: Bool, requestPeerType: [ReplyMarkupButtonRequestPeerType]?, hasCreation: Bool, createNewGroup: (() -> Void)?, suggestedPeers: [EnginePeer], present: @escaping (ViewController, Any?) -> Void, presentInGlobalOverlay: @escaping (ViewController, Any?) -> Void, dismiss: @escaping () -> Void) {
         self.context = context
         self.controller = controller
         self.present = present
@@ -127,6 +128,7 @@ final class PeerSelectionControllerNode: ASDisplayNode {
         self.forwardedMessageIds = forwardedMessageIds
         self.hasTypeHeaders = hasTypeHeaders
         self.requestPeerType = requestPeerType
+        self.suggestedPeers = suggestedPeers
         
         self.presentationData = presentationData
         
@@ -209,7 +211,7 @@ final class PeerSelectionControllerNode: ASDisplayNode {
         if let requestPeerType = self.requestPeerType {
             chatListMode = .peerType(type: requestPeerType, hasCreate: hasCreation)
         } else {
-            chatListMode = .peers(filter: filter, isSelecting: false, additionalCategories: chatListCategories, chatListFilters: nil, displayAutoremoveTimeout: false, displayPresence: false)
+            chatListMode = .peers(filter: filter, isSelecting: false, additionalCategories: chatListCategories, topPeers: self.suggestedPeers, chatListFilters: nil, displayAutoremoveTimeout: false, displayPresence: false)
         }
        
         if hasFilters {
@@ -765,7 +767,7 @@ final class PeerSelectionControllerNode: ASDisplayNode {
                     )),
                     hasEntityKeyboard: hasEntityKeyboard,
                     gesture: gesture,
-                    sourceSendButton: node,
+                    sourceSendButton: node.view,
                     textInputView: textInputNode.textView,
                     emojiViewProvider: textInputPanelNode.emojiViewProvider,
                     completion: {
@@ -833,7 +835,10 @@ final class PeerSelectionControllerNode: ASDisplayNode {
         }, dismissForwardMessages: {
         }, dismissSuggestPost: {
         }, displayUndo: { _ in
+        }, presentInputTextTranslation: { _, _ in
         }, sendEmoji: { _, _, _ in
+        }, openAICompose: {
+        }, openSetPeerAvatar: {
         }, updateHistoryFilter: { _ in
         }, updateChatLocationThread: { _, _ in
         }, toggleChatSidebarMode: {
@@ -845,6 +850,18 @@ final class PeerSelectionControllerNode: ASDisplayNode {
         
         if let chatListNode = self.chatListNode {
             self.readyValue.set(chatListNode.ready)
+        }
+    }
+    
+    override func didLoad() {
+        super.didLoad()
+        
+        if let controller = self.controller, controller.immediatelySwitchToContacts {
+            self.segmentedControlSelectedIndex = 1
+            if let (layout, navigationBarHeight, actualNavigationBarHeight) = self.containerLayout {
+                self.containerLayoutUpdated(layout, navigationBarHeight: navigationBarHeight, actualNavigationBarHeight: actualNavigationBarHeight, transition: .animated(duration: 0.4, curve: .spring))
+            }
+            self.indexChanged(1)
         }
     }
     
@@ -1197,6 +1214,10 @@ final class PeerSelectionControllerNode: ASDisplayNode {
                         emptyText = ""
                     }
                     emptyButtonText = self.presentationData.strings.RequestPeer_CreateNewGroup
+                case .createBot:
+                    emptyTitle = ""
+                    emptyText = ""
+                    emptyButtonText = ""
                 }
                 
                 self.emptyTitleNode.attributedText = NSAttributedString(string: emptyTitle, font: Font.semibold(15.0), textColor: self.presentationData.theme.list.itemPrimaryTextColor)
@@ -1311,6 +1332,7 @@ final class PeerSelectionControllerNode: ASDisplayNode {
                     filter: self.filter,
                     requestPeerType: self.requestPeerType,
                     location: chatListLocation,
+                    folder: nil,
                     displaySearchFilters: false,
                     hasDownloads: false,
                     openPeer: { [weak self] peer, chatPeer, threadId, _ in
@@ -1850,6 +1872,8 @@ private func stringForRequestPeerType(strings: PresentationStrings, peerType: Re
                 append(rightsString)
             }
         }
+    case .createBot:
+        break
     }
     if lines.isEmpty {
         return nil
