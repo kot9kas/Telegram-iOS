@@ -18,15 +18,29 @@ public enum PresentationBuiltinThemeReference: Int32 {
     case litegram = -1
     
     public init(baseTheme: TelegramBaseTheme) {
-        self = .litegram
+        switch baseTheme {
+            case .classic:
+                self = .dayClassic
+            case .day:
+                self = .day
+            case .night:
+                self = .night
+            case .tinted:
+                self = .nightAccent
+        }
     }
     
     public var baseTheme: TelegramBaseTheme {
-        return .tinted
-    }
-    
-    public var resolved: PresentationBuiltinThemeReference {
-        return .litegram
+        switch self {
+            case .dayClassic:
+                return .classic
+            case .day:
+                return .day
+            case .night:
+                return .night
+            case .nightAccent, .litegram:
+                return .tinted
+        }
     }
 }
 

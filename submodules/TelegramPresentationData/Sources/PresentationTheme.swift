@@ -1498,7 +1498,16 @@ public enum PresentationThemeBuiltinName {
     case nightAccent
     
     public var reference: PresentationBuiltinThemeReference {
-        return .litegram
+        switch self {
+            case .dayClassic:
+                return .dayClassic
+            case .day:
+                return .day
+            case .night:
+                return .night
+            case .nightAccent:
+                return .nightAccent
+        }
     }
 }
 
@@ -1525,8 +1534,17 @@ public enum PresentationThemeName: Equatable {
     
     public var string: String {
         switch self {
-            case .builtin:
-                return "Litegram"
+            case let .builtin(name):
+                switch name {
+                    case .day:
+                        return "Day"
+                    case .dayClassic:
+                        return "Classic"
+                    case .night:
+                        return "Night"
+                    case .nightAccent:
+                        return "Tinted Night"
+                }
             case let .custom(name):
                 return name
         }
@@ -1536,8 +1554,19 @@ public enum PresentationThemeName: Equatable {
 public extension PresentationThemeReference {
     var name: PresentationThemeName {
         switch self {
-            case .builtin:
-                return .custom("Litegram")
+            case let .builtin(theme):
+                switch theme {
+                    case .day:
+                        return .builtin(.day)
+                    case .dayClassic:
+                        return .builtin(.dayClassic)
+                    case .night:
+                        return .builtin(.night)
+                    case .nightAccent:
+                        return .builtin(.nightAccent)
+                    case .litegram:
+                        return .custom("Litegram")
+                }
             case let .cloud(info):
                 return .custom(info.theme.title)
             default:

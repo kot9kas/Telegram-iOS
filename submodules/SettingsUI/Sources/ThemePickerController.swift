@@ -399,13 +399,13 @@ public func themePickerController(context: AccountContext, focusOnItemTag: Theme
         selectThemeImpl?(baseTheme, theme, preset)
     }, previewTheme: { initialThemeReference, nightMode, custom, themeSpecificAccentColors in
         var themeReference = initialThemeReference
-        if nightMode {
-            themeReference = .builtin(.litegram)
+        if nightMode, case .builtin(.dayClassic) = themeReference {
+            themeReference = .builtin(.night)
         }
         let themeSpecificColor = themeSpecificAccentColors[themeReference.index]
         var accentColor = themeSpecificColor?.accentColor.flatMap { UIColor(rgb: $0) }
-        if accentColor == nil, case .builtin(.litegram) = themeReference {
-            accentColor = themeSpecificColor?.colorFor(baseTheme: .tinted)
+        if accentColor == nil, case .builtin(.night) = themeReference {
+            accentColor = themeSpecificColor?.colorFor(baseTheme: .night)
         }
         if let theme = makePresentationTheme(mediaBox: context.sharedContext.accountManager.mediaBox, themeReference: themeReference, baseTheme: nightMode ? .night : .classic, accentColor: accentColor, bubbleColors: themeSpecificColor?.bubbleColors ?? []) {
             let controller = ThemePreviewController(context: context, previewTheme: theme, source: .settings(themeReference, nil, false))
@@ -537,7 +537,7 @@ public func themePickerController(context: AccountContext, focusOnItemTag: Theme
                 if case let .builtin(theme) = reference {
                     effectiveAccentColor = accentColor?.colorFor(baseTheme: (theme).baseTheme)
                 }
-                if reference == .builtin(.litegram), effectiveAccentColor == nil {
+                if reference == .builtin(.night), effectiveAccentColor == nil {
                     effectiveAccentColor = UIColor(rgb: 0x3e88f7)
                 }
                 return (makePresentationTheme(mediaBox: context.sharedContext.accountManager.mediaBox, themeReference: reference, accentColor: effectiveAccentColor, bubbleColors: accentColor?.customBubbleColors ?? [], serviceBackgroundColor: serviceBackgroundColor), wallpaper)
@@ -660,7 +660,7 @@ public func themePickerController(context: AccountContext, focusOnItemTag: Theme
                                                 let theme = themes[themes.index(before: previousThemeIndex.base)]
                                                 newTheme = .cloud(PresentationCloudTheme(theme: theme, resolvedWallpaper: nil, creatorAccountId: theme.isCreator ? context.account.id : nil))
                                             } else {
-                                                newTheme = .builtin(.litegram)
+                                                newTheme = .builtin(.nightAccent)
                                             }
                                             selectThemeImpl?(nil, newTheme, false)
                                         }
@@ -954,7 +954,7 @@ public func themePickerController(context: AccountContext, focusOnItemTag: Theme
             
             let automaticTheme = settings.automaticThemeSwitchSetting.theme
             var effectiveColors = settings.themeSpecificAccentColors[automaticTheme.index]
-            if automaticTheme == .builtin(.litegram) && effectiveColors == nil {
+            if automaticTheme == .builtin(.night) && effectiveColors == nil {
                 effectiveColors = PresentationThemeAccentColor(baseColor: .blue)
             }
             let themeSpecificWallpaper = (settings.themeSpecificChatWallpapers[coloredThemeIndex(reference: automaticTheme, accentColor: effectiveColors)] ?? settings.themeSpecificChatWallpapers[automaticTheme.index])
@@ -1189,8 +1189,12 @@ public func themePickerController(context: AccountContext, focusOnItemTag: Theme
                     } else {
                         return current.withUpdatedTheme(updatedTheme).withUpdatedThemeSpecificAccentColors(updatedThemeSpecificAccentColors)
                     }
-                } else if case .builtin = updatedTheme {
-                    updatedAutomaticThemeSwitchSetting.theme = .builtin(.litegram)
+                } else if case let .builtin(theme) = updatedTheme {
+                    if [.day, .dayClassic].contains(theme) {
+                        updatedAutomaticThemeSwitchSetting.theme = .builtin(.night)
+                    } else {
+                        updatedAutomaticThemeSwitchSetting.theme = updatedTheme
+                    }
                 }
                 return current.withUpdatedTheme(updatedTheme).withUpdatedThemePreferredBaseTheme(updatedThemePreferredBaseTheme).withUpdatedAutomaticThemeSwitchSetting(updatedAutomaticThemeSwitchSetting)
             }).start()

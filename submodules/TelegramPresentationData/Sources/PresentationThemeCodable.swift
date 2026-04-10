@@ -2015,8 +2015,17 @@ extension PresentationThemeName: Codable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         switch self {
-            case .builtin:
-                try container.encode("Litegram")
+            case let .builtin(name):
+                switch name {
+                    case .day:
+                        try container.encode("Day")
+                    case .dayClassic:
+                        try container.encode("Classic")
+                    case .nightAccent:
+                        try container.encode("Night Tinted")
+                    case .night:
+                        try container.encode("Night")
+                }
             case let .custom(name):
                 try container.encode(name)
         }
@@ -2025,12 +2034,41 @@ extension PresentationThemeName: Codable {
 
 extension PresentationBuiltinThemeReference: @retroactive Codable {
     public init(from decoder: Decoder) throws {
-        self = .litegram
+        let values = try decoder.singleValueContainer()
+        if let value = try? values.decode(String.self) {
+            switch value.lowercased() {
+                case "day":
+                    self = .day
+                case "classic":
+                    self = .dayClassic
+                case "nighttinted":
+                    self = .nightAccent
+                case "night":
+                    self = .night
+                case "litegram":
+                    self = .litegram
+                default:
+                    self = .litegram
+            }
+        } else {
+            self = .litegram
+        }
     }
     
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
-        try container.encode("litegram")
+        switch self {
+            case .day:
+                try container.encode("day")
+            case .dayClassic:
+                try container.encode("classic")
+            case .nightAccent:
+                try container.encode("nighttinted")
+            case .night:
+                try container.encode("night")
+            case .litegram:
+                try container.encode("litegram")
+        }
     }
 }
 

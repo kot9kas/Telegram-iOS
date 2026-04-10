@@ -7,21 +7,49 @@ import TelegramCore
 private var isLoadingLitegramTheme = false
 
 public func makeDefaultPresentationTheme(reference: PresentationBuiltinThemeReference, extendingThemeReference: PresentationThemeReference? = nil, serviceBackgroundColor: UIColor?, preview: Bool = false) -> PresentationTheme {
-    if !isLoadingLitegramTheme,
-       let url = Bundle.main.url(forResource: "litegram-theme", withExtension: "txt"),
-       let data = try? Data(contentsOf: url) {
-        isLoadingLitegramTheme = true
-        let theme = makePresentationTheme(data: data, themeReference: .builtin(.litegram))
-        isLoadingLitegramTheme = false
-        if let theme {
-            return theme
-        }
+    let theme: PresentationTheme
+    switch reference {
+        case .litegram:
+            if !isLoadingLitegramTheme,
+               let url = Bundle.main.url(forResource: "litegram-theme", withExtension: "txt"),
+               let data = try? Data(contentsOf: url) {
+                isLoadingLitegramTheme = true
+                let litegramTheme = makePresentationTheme(data: data, themeReference: .builtin(.litegram))
+                isLoadingLitegramTheme = false
+                if let litegramTheme {
+                    theme = litegramTheme
+                } else {
+                    theme = makeDefaultDarkTintedPresentationTheme(extendingThemeReference: extendingThemeReference, preview: preview)
+                }
+            } else {
+                theme = makeDefaultDarkTintedPresentationTheme(extendingThemeReference: extendingThemeReference, preview: preview)
+            }
+        case .dayClassic:
+            theme = makeDefaultDayPresentationTheme(extendingThemeReference: extendingThemeReference, serviceBackgroundColor: serviceBackgroundColor, day: false, preview: preview)
+        case .day:
+            theme = makeDefaultDayPresentationTheme(extendingThemeReference: extendingThemeReference, serviceBackgroundColor: serviceBackgroundColor, day: true, preview: preview)
+        case .night:
+            theme = makeDefaultDarkPresentationTheme(extendingThemeReference: extendingThemeReference, preview: preview)
+        case .nightAccent:
+            theme = makeDefaultDarkTintedPresentationTheme(extendingThemeReference: extendingThemeReference, preview: preview)
     }
-    return makeDefaultDarkTintedPresentationTheme(extendingThemeReference: extendingThemeReference, preview: preview)
+    return theme
 }
 
 public func customizePresentationTheme(_ theme: PresentationTheme, editing: Bool, title: String? = nil, accentColor: UIColor?, outgoingAccentColor: UIColor?, backgroundColors: [UInt32], bubbleColors: [UInt32], animateBubbleColors: Bool?, wallpaper: TelegramWallpaper? = nil, baseColor: PresentationThemeBaseColor? = nil) -> PresentationTheme {
-    return theme
+    if accentColor == nil && bubbleColors.isEmpty && backgroundColors.isEmpty && wallpaper == nil {
+        return theme
+    }
+    switch theme.referenceTheme {
+        case .litegram:
+            return theme
+        case .day, .dayClassic:
+            return customizeDefaultDayTheme(theme: theme, editing: editing, title: title, accentColor: accentColor, outgoingAccentColor: outgoingAccentColor, backgroundColors: backgroundColors, bubbleColors: bubbleColors, animateBubbleColors: animateBubbleColors ?? false, wallpaper: wallpaper, serviceBackgroundColor: nil)
+        case .night:
+            return customizeDefaultDarkPresentationTheme(theme: theme, editing: editing, title: title, accentColor: accentColor, backgroundColors: backgroundColors, bubbleColors: bubbleColors, animateBubbleColors: animateBubbleColors ?? false, wallpaper: wallpaper, baseColor: baseColor)
+        case .nightAccent:
+            return customizeDefaultDarkTintedPresentationTheme(theme: theme, editing: editing, title: title, accentColor: accentColor, backgroundColors: backgroundColors, bubbleColors: bubbleColors, animateBubbleColors: animateBubbleColors ?? false, wallpaper: wallpaper, baseColor: baseColor)
+    }
 }
 
 public func makePresentationTheme(settings: TelegramThemeSettings, title: String? = nil, serviceBackgroundColor: UIColor? = nil) -> PresentationTheme? {

@@ -777,7 +777,7 @@ public func updatedPresentationData(accountManager: AccountManager<TelegramAccou
                             let automaticTheme = themeSettings.automaticThemeSwitchSetting.theme
                             effectiveColors = themeSettings.themeSpecificAccentColors[automaticTheme.index]
                             
-                            if automaticTheme == .builtin(.litegram) && effectiveColors == nil {
+                            if automaticTheme == .builtin(.night) && effectiveColors == nil {
                                 effectiveColors = PresentationThemeAccentColor(baseColor: .blue)
                             }
                             
@@ -897,12 +897,29 @@ public extension PresentationData {
 }
 
 public func themeDisplayName(strings: PresentationStrings, reference: PresentationThemeReference) -> String {
+    let name: String
     switch reference {
-    case .builtin:
-        return "Litegram"
+    case let .builtin(theme):
+        switch theme {
+        case .dayClassic:
+            name = strings.Appearance_ThemeCarouselClassic
+        case .day:
+            name = strings.Appearance_ThemeCarouselDay
+        case .night:
+            name = strings.Appearance_ThemeCarouselNewNight
+        case .nightAccent:
+            name = strings.Appearance_ThemeCarouselTintedNight
+        case .litegram:
+            name = "Litegram"
+        }
     case let .local(theme):
-        return theme.title
+        name = theme.title
     case let .cloud(theme):
-        return theme.theme.emoticon ?? theme.theme.title
+        if let emoticon = theme.theme.emoticon {
+            name = emoticon
+        } else {
+            name = theme.theme.title
+        }
     }
+    return name
 }
