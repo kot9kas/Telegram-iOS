@@ -535,16 +535,17 @@ func chatContextMenuItems(context: AccountContext, peerId: PeerId, promoInfo: Ch
                             c?.dismiss(completion: {
                                 guard let chatListController = chatListController else { return }
                                 let pd = context.sharedContext.currentPresentationData.with { $0 }
+                                let pc = pd.theme.passcode
                                 if litegramIsLocked {
                                     let pinVC = LitegramPinController(mode: .verify(peerId: litegramPeerId))
-                                    pinVC.applyAccentColor(pd.theme.list.itemAccentColor)
+                                    pinVC.applyPasscodeTheme(top: pc.backgroundColors.topColor, bottom: pc.backgroundColors.bottomColor, button: pc.buttonColor)
                                     pinVC.onPinVerified = {
                                         LitegramChatLocks.shared.removeLock(litegramPeerId)
                                     }
                                     chatListController.present(pinVC, animated: true)
                                 } else {
                                     let pinVC = LitegramPinController(mode: .set)
-                                    pinVC.applyAccentColor(pd.theme.list.itemAccentColor)
+                                    pinVC.applyPasscodeTheme(top: pc.backgroundColors.topColor, bottom: pc.backgroundColors.bottomColor, button: pc.buttonColor)
                                     pinVC.onPinSet = { pin in
                                         LitegramChatLocks.shared.setLock(litegramPeerId, pin: pin)
                                     }

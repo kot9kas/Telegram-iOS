@@ -16,12 +16,12 @@ public final class LitegramPinController: UIViewController {
 
     public var gradientTop: UIColor = UIColor(red: 0.275, green: 0.451, blue: 0.620, alpha: 1.0)
     public var gradientBottom: UIColor = UIColor(red: 0.165, green: 0.349, blue: 0.510, alpha: 1.0)
+    public var keyButtonColor: UIColor = UIColor(white: 1.0, alpha: 0.5)
 
-    public func applyAccentColor(_ accent: UIColor) {
-        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        accent.getHue(&h, saturation: &s, brightness: &b, alpha: &a)
-        gradientTop = UIColor(hue: h, saturation: max(0.35, s * 0.75), brightness: min(0.6, b * 0.75), alpha: 1.0)
-        gradientBottom = UIColor(hue: h, saturation: max(0.4, s * 0.85), brightness: min(0.45, b * 0.55), alpha: 1.0)
+    public func applyPasscodeTheme(top: UIColor, bottom: UIColor, button: UIColor) {
+        gradientTop = top
+        gradientBottom = bottom
+        keyButtonColor = button == .clear ? UIColor(white: 1.0, alpha: 0.5) : button
     }
 
     private let mode: Mode
@@ -109,7 +109,7 @@ public final class LitegramPinController: UIViewController {
 
         let digits = ["1","2","3","4","5","6","7","8","9","0"]
         for (i, d) in digits.enumerated() {
-            let k = PinKey(digit: d, letters: Self.letters[i], size: Self.btnSize)
+            let k = PinKey(digit: d, letters: Self.letters[i], size: Self.btnSize, buttonColor: keyButtonColor)
             k.onTap = { [weak self] ch in self?.digitIn(ch) }
             view.addSubview(k)
             keys.append(k)
@@ -189,19 +189,22 @@ public final class LitegramPinController: UIViewController {
 
     private func refreshDots() {
         for (i, s) in dots.enumerated() {
+            let filled = i < enteredPin.count
             CATransaction.begin()
-            CATransaction.setAnimationDuration(0.12)
-            s.fillColor = i < enteredPin.count ? UIColor.white.cgColor : UIColor.clear.cgColor
+            CATransaction.setAnimationDuration(0.15)
+            s.fillColor = filled ? UIColor.white.cgColor : UIColor.clear.cgColor
             CATransaction.commit()
             if i == enteredPin.count - 1 && !enteredPin.isEmpty {
-                let a = CAKeyframeAnimation(keyPath: "transform.scale")
-                a.values = [1.0, 1.4, 1.0]
-                a.keyTimes = [0, 0.4, 1.0]
-                a.duration = 0.18
-                s.add(a, forKey: "p")
+                let pulse = CAKeyframeAnimation(keyPath: "transform.scale")
+                pulse.values = [1.0, 1.35, 1.0]
+                pulse.keyTimes = [0, 0.4, 1.0]
+                pulse.duration = 0.2
+                s.add(pulse, forKey: "pulse")
             }
         }
-        deleteBtn.alpha = enteredPin.isEmpty ? 0 : 1
+        UIView.animate(withDuration: 0.15) {
+            self.deleteBtn.alpha = self.enteredPin.isEmpty ? 0 : 1
+        }
     }
 
     // MARK: - Input
@@ -278,31 +281,45 @@ public final class LitegramPinController: UIViewController {
     // MARK: - Animations
 
     private func shake() {
-        let a = CAKeyframeAnimation(keyPath: "transform.translation.x")
-        a.values = [0, -12, 12, -10, 10, -6, 6, 0]
-        a.duration = 0.4
-        dotsContainer.layer.add(a, forKey: "shake")
+        let anim = CAKeyframeAnimation(keyPath: "transform.translation.x")
+        anim.values = [0, -12, 12, -10, 10, -6, 6, 0]
+        anim.duration = 0.4
+        dotsContainer.layer.add(anim, forKey: "shake")
         UINotificationFeedbackGenerator().notificationOccurred(.error)
     }
 
     private func unlockAnim(done: @escaping () -> Void) {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        let cfg = UIImage.SymbolConfiguration(pointSize: 28, weight: .thin)
-        lockIcon.image = UIImage(systemName: "lock.open.fill", withConfiguration: cfg)
-        CATransaction.begin()
-        CATransaction.setAnimationDuration(0.25)
-        gradient.opacity = 0
-        CATransaction.commit()
-        UIView.animate(withDuration: 0.25, delay: 0, options: .curveEaseIn, animations: {
-            self.lockIcon.transform = CGAffineTransform(scaleX: 0.01, y: 0.01)
-            self.lockIcon.alpha = 0
-            self.dotsContainer.alpha = 0
-            self.titleLabel.alpha = 0
-            for key in self.keys { key.alpha = 0 }
-            self.deleteBtn.alpha = 0
-            self.bioBtn?.alpha = 0
-            self.cancelBtn.alpha = 0
-        }) { _ in done() }
+
+        for dot in dots {
+            let glow = CAKeyframeAnimation(keyPath: "transform.scale")
+            glow.values = [1.0, 1.5, 1.0]
+            glow.keyTimes = [0, 0.5, 1.0]
+            glow.duration = 0.3
+            dot.add(glow, forKey: "glow")
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+            guard let self else { return }
+            let cfg = UIImage.SymbolConfiguration(pointSize: 28, weight: .thin)
+            self.lockIcon.image = UIImage(systemName: "lock.open.fill", withConfiguration: cfg)
+
+            CATransaction.begin()
+            CATransaction.setAnimationDuration(0.3)
+            self.gradient.opacity = 0
+            CATransaction.commit()
+
+            UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseIn, animations: {
+                self.lockIcon.transform = CGAffineTransform(scaleX: 0.01, y: 0.01)
+                self.lockIcon.alpha = 0
+                self.dotsContainer.alpha = 0
+                self.titleLabel.alpha = 0
+                for key in self.keys { key.alpha = 0 }
+                self.deleteBtn.alpha = 0
+                self.bioBtn?.alpha = 0
+                self.cancelBtn.alpha = 0
+            }) { _ in done() }
+        }
     }
 
     @objc private func cancelTap() {
@@ -349,14 +366,16 @@ private final class PinKey: UIControl {
     private let digitLbl = UILabel()
     private let lettersLbl = UILabel()
     private let circle = CAShapeLayer()
+    private let btnColor: UIColor
 
-    init(digit: String, letters: String, size: CGFloat) {
+    init(digit: String, letters: String, size: CGFloat, buttonColor: UIColor) {
         self.digit = digit
+        self.btnColor = buttonColor
         super.init(frame: .zero)
 
         let r = size / 2
         circle.path = UIBezierPath(arcCenter: CGPoint(x: r, y: r), radius: r, startAngle: 0, endAngle: .pi * 2, clockwise: true).cgPath
-        circle.fillColor = UIColor(white: 1, alpha: 0.12).cgColor
+        circle.fillColor = buttonColor.withAlphaComponent(0.8).cgColor
         layer.addSublayer(circle)
 
         digitLbl.text = digit
@@ -399,9 +418,28 @@ private final class PinKey: UIControl {
         didSet {
             CATransaction.begin()
             CATransaction.setAnimationDuration(0.08)
-            circle.fillColor = isHighlighted ? UIColor(white: 1, alpha: 0.35).cgColor : UIColor(white: 1, alpha: 0.12).cgColor
+            if isHighlighted {
+                circle.fillColor = btnColor.withAlphaComponent(0.8).cgColor
+                let overlay = UIColor(white: 1.0, alpha: 0.65).cgColor
+                circle.fillColor = blend(base: btnColor.withAlphaComponent(0.8), overlay: UIColor(white: 1.0, alpha: 0.65)).cgColor
+            } else {
+                circle.fillColor = btnColor.withAlphaComponent(0.8).cgColor
+            }
             CATransaction.commit()
         }
+    }
+
+    private func blend(base: UIColor, overlay: UIColor) -> UIColor {
+        var bR: CGFloat = 0, bG: CGFloat = 0, bB: CGFloat = 0, bA: CGFloat = 0
+        var oR: CGFloat = 0, oG: CGFloat = 0, oB: CGFloat = 0, oA: CGFloat = 0
+        base.getRed(&bR, green: &bG, blue: &bB, alpha: &bA)
+        overlay.getRed(&oR, green: &oG, blue: &oB, alpha: &oA)
+        let a = oA + bA * (1 - oA)
+        guard a > 0 else { return base }
+        let r = (oR * oA + bR * bA * (1 - oA)) / a
+        let g = (oG * oA + bG * bA * (1 - oA)) / a
+        let b = (oB * oA + bB * bA * (1 - oA)) / a
+        return UIColor(red: r, green: g, blue: b, alpha: a)
     }
 
     @objc private func tap() { onTap?(digit) }
