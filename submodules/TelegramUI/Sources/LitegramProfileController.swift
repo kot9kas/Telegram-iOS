@@ -121,10 +121,21 @@ public final class LitegramController: ViewController {
 
     private func updateTabBarIcon() {
         let baseIcon = UIImage(bundleImageName: "Chat List/Tabs/IconLitegram")
+        let targetSize = CGSize(width: 26.0, height: 26.0)
+        let scaledIcon: UIImage?
+        if let base = baseIcon {
+            let format = UIGraphicsImageRendererFormat()
+            format.scale = UIScreen.main.scale
+            scaledIcon = UIGraphicsImageRenderer(size: targetSize, format: format).image { _ in
+                base.draw(in: CGRect(origin: .zero, size: targetSize))
+            }
+        } else {
+            scaledIcon = nil
+        }
         let iconColor = self.presentationData.theme.rootController.tabBar.iconColor
         let selectedColor = self.presentationData.theme.rootController.tabBar.selectedIconColor
-        let tinted = generateTintedImage(image: baseIcon, color: iconColor)?.withRenderingMode(.alwaysOriginal)
-        let selectedTinted = generateTintedImage(image: baseIcon, color: selectedColor)?.withRenderingMode(.alwaysOriginal)
+        let tinted = generateTintedImage(image: scaledIcon, color: iconColor)?.withRenderingMode(.alwaysOriginal)
+        let selectedTinted = generateTintedImage(image: scaledIcon, color: selectedColor)?.withRenderingMode(.alwaysOriginal)
         self.tabBarItem.image = tinted
         self.tabBarItem.selectedImage = selectedTinted
     }
