@@ -2523,12 +2523,6 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         }
     }
     
-    func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
-        let config = UISceneConfiguration(name: "Default Configuration", sessionRole: connectingSceneSession.role)
-        config.delegateClass = NSClassFromString("TelegramSceneDelegate") as? UIResponder.Type
-        return config
-    }
-
     func application(_ application: UIApplication, open url: URL, sourceApplication: String?) -> Bool {
         self.openUrl(url: url)
         return true

@@ -354,7 +354,6 @@ swift_library(
     module_name = "Lib",
     srcs = glob([
         "Telegram-iOS/Application.swift",
-        "Telegram-iOS/SceneDelegate.swift",
     ]),
     data = [
         ":Icons",
@@ -1708,23 +1707,6 @@ plist_fragment(
     <true/>
     <key>UIApplicationSupportsIndirectInputEvents</key>
     <true/>
-    <key>UIApplicationSceneManifest</key>
-    <dict>
-        <key>UIApplicationSupportsMultipleScenes</key>
-        <false/>
-        <key>UISceneConfigurations</key>
-        <dict>
-            <key>UIWindowSceneSessionRoleApplication</key>
-            <array>
-                <dict>
-                    <key>UISceneConfigurationName</key>
-                    <string>Default Configuration</string>
-                    <key>UISceneDelegateClassName</key>
-                    <string>TelegramSceneDelegate</string>
-                </dict>
-            </array>
-        </dict>
-    </dict>
     """.format(
         telegram_bundle_id = telegram_bundle_id,
     )
