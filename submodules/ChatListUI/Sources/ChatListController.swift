@@ -2337,6 +2337,12 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     }
     
     @objc private func litegramAutolockExpired() {
+        if case let .filter(filterId) = self.chatListDisplayNode.mainContainerNode.currentItemFilter,
+           LitegramChatLocks.shared.isFolderLocked(filterId),
+           !LitegramChatLocks.shared.isFolderUnlockedNow(filterId) {
+            self.chatListDisplayNode.mainContainerNode.switchToFilter(id: .all)
+        }
+
         self.chatListDisplayNode.mainContainerNode.updateState(onlyCurrent: false) { state in
             var state = state
             state.lockVersion += 1
@@ -2358,6 +2364,12 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
             }
         }
         
+        if case let .filter(filterId) = self.chatListDisplayNode.mainContainerNode.currentItemFilter,
+           LitegramChatLocks.shared.isFolderLocked(filterId),
+           !LitegramChatLocks.shared.isFolderUnlockedNow(filterId) {
+            self.chatListDisplayNode.mainContainerNode.switchToFilter(id: .all, animated: false)
+        }
+
         if LitegramChatLocks.shared.hasExpiredUnlocks() {
             self.chatListDisplayNode.mainContainerNode.updateState(onlyCurrent: false) { state in
                 var state = state
@@ -4120,6 +4132,29 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     }
     
     func selectTab(id: ChatListFilterTabEntryId, switchToChatsIfNeeded: Bool = true) {
+        if case let .filter(filterId) = id,
+           LitegramChatLocks.shared.isFolderLocked(filterId),
+           !LitegramChatLocks.shared.isFolderUnlockedNow(filterId) {
+            let pinVC = LitegramPinController(mode: .verifyFolder(filterId: filterId))
+            pinVC.strings = LitegramStrings(languageCode: self.presentationData.strings.primaryComponent.languageCode)
+            let pc = self.presentationData.theme.passcode
+            let cols = LitegramPinController.passcodeColors(
+                wallpaper: self.presentationData.chatWallpaper,
+                isDark: self.presentationData.theme.overallDarkAppearance,
+                bubbleFallback: self.presentationData.theme.chat.message.outgoing.bubble.withoutWallpaper.fill.first,
+                passcodeTop: pc.backgroundColors.topColor,
+                passcodeBottom: pc.backgroundColors.bottomColor,
+                passcodeButton: pc.buttonColor
+            )
+            pinVC.applyPasscodeTheme(top: cols.top, bottom: cols.bottom, button: cols.button, isDark: self.presentationData.theme.overallDarkAppearance)
+            pinVC.onPinVerified = { [weak self] in
+                LitegramChatLocks.shared.markFolderUnlocked(filterId)
+                self?.selectTab(id: id, switchToChatsIfNeeded: switchToChatsIfNeeded)
+            }
+            self.present(pinVC, animated: true)
+            return
+        }
+
         if self.parent == nil, switchToChatsIfNeeded {
             if let navigationController = self.context.sharedContext.mainWindow?.viewController as? NavigationController {
                 for controller in navigationController.viewControllers {

@@ -28,6 +28,7 @@ import MediaPlaybackHeaderPanelComponent
 import LiveLocationHeaderPanelComponent
 import ChatListHeaderNoticeComponent
 import ChatListFilterTabContainerNode
+import Litegram
 
 public enum ChatListContainerNodeFilter: Equatable {
     case all
@@ -734,7 +735,11 @@ public final class ChatListContainerNode: ASDisplayNode, ASGestureRecognizerDele
                         updatedIndex = max(updatedIndex - 1, 0)
                     }
                     let switchToId = self.availableFilters[updatedIndex].id
-                    if switchToId != self.selectedId, let itemNode = self.itemNodes[switchToId] {
+                    var isLockedFolder = false
+                    if case let .filter(fid) = switchToId {
+                        isLockedFolder = LitegramChatLocks.shared.isFolderLocked(fid) && !LitegramChatLocks.shared.isFolderUnlockedNow(fid)
+                    }
+                    if !isLockedFolder, switchToId != self.selectedId, let itemNode = self.itemNodes[switchToId] {
                         let _ = itemNode
                         self.selectedId = switchToId
                         applyNodeAsCurrent = switchToId
