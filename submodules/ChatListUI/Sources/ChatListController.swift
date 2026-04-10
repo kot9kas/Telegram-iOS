@@ -1397,7 +1397,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                     pinVC.onPinVerified = { [weak self] in
                         guard let self else { return }
                         LitegramChatLocks.shared.currentlyViewingLockedPeerId = dialogId
-                        self.chatListDisplayNode.mainContainerNode.peerSelected?(peer, threadId, true, activateInput, promoInfo)
+                        self.chatListDisplayNode.mainContainerNode.peerSelected?(peer, threadId, false, activateInput, promoInfo)
                     }
                     self.present(pinVC, animated: true)
                     return

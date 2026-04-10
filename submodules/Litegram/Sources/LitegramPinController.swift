@@ -202,9 +202,9 @@ public final class LitegramPinController: UIViewController {
             keyButtons.append(btn)
         }
 
-        let delCfg = UIImage.SymbolConfiguration(pointSize: 22, weight: .regular)
-        deleteBtn.setImage(UIImage(systemName: "delete.left", withConfiguration: delCfg), for: .normal)
-        deleteBtn.tintColor = .white
+        deleteBtn.setTitle("Удалить", for: .normal)
+        deleteBtn.setTitleColor(.white, for: .normal)
+        deleteBtn.titleLabel?.font = .systemFont(ofSize: 17, weight: .regular)
         deleteBtn.addTarget(self, action: #selector(deleteTapped), for: .touchUpInside)
         deleteBtn.alpha = 0
         view.addSubview(deleteBtn)
@@ -228,11 +228,14 @@ public final class LitegramPinController: UIViewController {
         view.addSubview(cancelBtn)
     }
 
-    // MARK: - Layout
+    // MARK: - Layout (matching PasscodeEntryControllerNode + PasscodeLayout)
 
     private func layoutElements() {
         let w = view.bounds.width
-        let topY = min(view.bounds.height * 0.22, 200.0)
+        let h = view.bounds.height
+        let bottomInset = view.safeAreaInsets.bottom
+
+        let topY = min(h * 0.22, 200.0)
 
         lockIcon.frame = CGRect(x: (w - 35) / 2, y: topY, width: 35, height: 37)
         titleLabel.frame = CGRect(x: 20, y: lockIcon.frame.maxY + 16, width: w - 40, height: 24)
@@ -255,10 +258,36 @@ public final class LitegramPinController: UIViewController {
             btn.frame = CGRect(x: x, y: y, width: Self.btnSize, height: Self.btnSize)
         }
 
-        let row4Y = kbY + 3 * (Self.btnSize + Self.btnGapV)
-        bioBtn?.frame = CGRect(x: kbX, y: row4Y, width: Self.btnSize, height: Self.btnSize)
-        deleteBtn.frame = CGRect(x: kbX + 2 * (Self.btnSize + Self.btnGapH), y: row4Y, width: Self.btnSize, height: Self.btnSize)
-        cancelBtn.frame = CGRect(x: kbX, y: row4Y + Self.btnSize + 16, width: 80, height: 30)
+        let cancelSz = cancelBtn.intrinsicContentSize
+        let deleteSz = deleteBtn.intrinsicContentSize
+        let bottomY = h - bottomInset - cancelSz.height - 20
+
+        let leftColCenter = kbX + Self.btnSize / 2
+        cancelBtn.frame = CGRect(
+            x: floor(leftColCenter - cancelSz.width / 2),
+            y: bottomY,
+            width: cancelSz.width,
+            height: cancelSz.height
+        )
+
+        let rightColCenter = kbX + kbW - Self.btnSize / 2
+        deleteBtn.frame = CGRect(
+            x: floor(rightColCenter - deleteSz.width / 2),
+            y: bottomY,
+            width: deleteSz.width,
+            height: deleteSz.height
+        )
+
+        let kbMaxY = kbY + 3 * (Self.btnSize + Self.btnGapV) + Self.btnSize
+        if let bio = bioBtn {
+            let bioSz = bio.intrinsicContentSize
+            bio.frame = CGRect(
+                x: floor((w - bioSz.width) / 2),
+                y: kbMaxY + 30,
+                width: bioSz.width,
+                height: bioSz.height
+            )
+        }
     }
 
     // MARK: - Title
@@ -529,12 +558,9 @@ private final class PinKeyButton: UIControl {
 
         let trimmed = letters.trimmingCharacters(in: .whitespaces)
         if !trimmed.isEmpty {
-            let attrs: [NSAttributedString.Key: Any] = [
-                .font: UIFont.systemFont(ofSize: 10, weight: .bold),
-                .foregroundColor: UIColor.white,
-                .kern: 2.0 as NSNumber
-            ]
-            lettersLabel.attributedText = NSAttributedString(string: letters, attributes: attrs)
+            lettersLabel.text = letters
+            lettersLabel.font = .systemFont(ofSize: 10, weight: .bold)
+            lettersLabel.textColor = .white
             lettersLabel.textAlignment = .center
             addSubview(lettersLabel)
         }
