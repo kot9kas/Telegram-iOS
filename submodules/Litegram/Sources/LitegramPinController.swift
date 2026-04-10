@@ -14,6 +14,7 @@ public final class LitegramPinController: UIViewController {
     public var onPinSet: ((_ pin: String) -> Void)?
     public var onPinVerified: (() -> Void)?
     public var onDismiss: (() -> Void)?
+    public var strings = LitegramStrings(languageCode: "en")
 
     public var gradientTop: UIColor = UIColor(red: 0.275, green: 0.451, blue: 0.620, alpha: 1.0)
     public var gradientBottom: UIColor = UIColor(red: 0.165, green: 0.349, blue: 0.510, alpha: 1.0)
@@ -202,7 +203,7 @@ public final class LitegramPinController: UIViewController {
             keyButtons.append(btn)
         }
 
-        deleteBtn.setTitle("Удалить", for: .normal)
+        deleteBtn.setTitle(strings.delete, for: .normal)
         deleteBtn.setTitleColor(.white, for: .normal)
         deleteBtn.titleLabel?.font = .systemFont(ofSize: 17, weight: .regular)
         deleteBtn.addTarget(self, action: #selector(deleteTapped), for: .touchUpInside)
@@ -221,7 +222,7 @@ public final class LitegramPinController: UIViewController {
             bioBtn = b
         }
 
-        cancelBtn.setTitle("Отмена", for: .normal)
+        cancelBtn.setTitle(strings.cancel, for: .normal)
         cancelBtn.setTitleColor(.white, for: .normal)
         cancelBtn.titleLabel?.font = .systemFont(ofSize: 17, weight: .regular)
         cancelBtn.addTarget(self, action: #selector(cancelTapped), for: .touchUpInside)
@@ -295,9 +296,9 @@ public final class LitegramPinController: UIViewController {
     private func refreshTitle() {
         switch mode {
         case .set:
-            titleLabel.text = confirmStep ? "Подтвердите PIN-код" : "Установите PIN-код"
+            titleLabel.text = confirmStep ? strings.pinConfirm : strings.pinSet
         case .verify, .verifyFolder:
-            titleLabel.text = "Введите PIN-код"
+            titleLabel.text = strings.pinEnter
         }
     }
 
@@ -379,7 +380,7 @@ public final class LitegramPinController: UIViewController {
                     dismiss(animated: true)
                 } else {
                     shakeError()
-                    titleLabel.text = "PIN не совпал"
+                    titleLabel.text = strings.pinMismatch
                     confirmStep = false
                     firstPin = nil
                     enteredPin = ""
@@ -495,8 +496,8 @@ public final class LitegramPinController: UIViewController {
     private func tryBiometric() {
         guard biometricAvailable else { return }
         let ctx = LAContext()
-        ctx.localizedCancelTitle = "Ввести PIN"
-        ctx.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: "Разблокировать чат") { [weak self] ok, _ in
+        ctx.localizedCancelTitle = strings.pinEnterBio
+        ctx.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: strings.pinUnlockChat) { [weak self] ok, _ in
             guard ok else { return }
             DispatchQueue.main.async {
                 self?.enteredPin = "__bio__"

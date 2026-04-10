@@ -531,7 +531,8 @@ func chatContextMenuItems(context: AccountContext, peerId: PeerId, promoInfo: Ch
                         
                         let litegramPeerId = peerId.toInt64()
                         let litegramIsLocked = LitegramChatLocks.shared.isLocked(litegramPeerId)
-                        items.append(.action(ContextMenuActionItem(text: litegramIsLocked ? "Снять PIN-код" : "Установить PIN-код", icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Lock"), color: theme.contextMenu.primaryColor) }, action: { c, f in
+                        let litegramStrings = LitegramStrings(languageCode: chatListController?.presentationData.strings.primaryComponent.languageCode ?? "en")
+                        items.append(.action(ContextMenuActionItem(text: litegramIsLocked ? litegramStrings.removePin : litegramStrings.setPin, icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Lock"), color: theme.contextMenu.primaryColor) }, action: { c, f in
                             c?.dismiss(completion: {
                                 guard let chatListController = chatListController else { return }
                                 let pd = context.sharedContext.currentPresentationData.with { $0 }
@@ -545,8 +546,10 @@ func chatContextMenuItems(context: AccountContext, peerId: PeerId, promoInfo: Ch
                                     passcodeButton: pc.buttonColor
                                 )
                                 let litegramIsDark = pd.theme.overallDarkAppearance
+                                let litegramPinStrings = LitegramStrings(languageCode: pd.strings.primaryComponent.languageCode)
                                 if litegramIsLocked {
                                     let pinVC = LitegramPinController(mode: .verify(peerId: litegramPeerId))
+                                    pinVC.strings = litegramPinStrings
                                     pinVC.applyPasscodeTheme(top: cols.top, bottom: cols.bottom, button: cols.button, isDark: litegramIsDark)
                                     pinVC.onPinVerified = {
                                         LitegramChatLocks.shared.removeLock(litegramPeerId)
@@ -554,6 +557,7 @@ func chatContextMenuItems(context: AccountContext, peerId: PeerId, promoInfo: Ch
                                     chatListController.present(pinVC, animated: true)
                                 } else {
                                     let pinVC = LitegramPinController(mode: .set)
+                                    pinVC.strings = litegramPinStrings
                                     pinVC.applyPasscodeTheme(top: cols.top, bottom: cols.bottom, button: cols.button, isDark: litegramIsDark)
                                     pinVC.onPinSet = { pin in
                                         LitegramChatLocks.shared.setLock(litegramPeerId, pin: pin)

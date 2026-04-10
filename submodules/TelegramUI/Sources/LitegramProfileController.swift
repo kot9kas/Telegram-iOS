@@ -15,6 +15,7 @@ import Litegram
 public final class LitegramController: ViewController {
     private let context: AccountContext
     private var presentationData: PresentationData
+    private var litegramStrings: LitegramStrings
     private var presentationDataDisposable: Disposable?
     private var peerDisposable: Disposable?
 
@@ -49,35 +50,38 @@ public final class LitegramController: ViewController {
         let action: Selector
     }
 
-    private let menuItems: [MenuItem] = [
-        MenuItem(
-            iconName: "Chat/Context Menu/Lock",
-            iconBgColor: UIColor(red: 0.35, green: 0.55, blue: 0.85, alpha: 1.0),
-            title: "Чаты",
-            subtitle: "PIN-защита чатов и папок",
-            action: #selector(chatsTapped)
-        ),
-        MenuItem(
-            iconName: "Settings/Menu/Proxy",
-            iconBgColor: UIColor(red: 0.25, green: 0.70, blue: 0.42, alpha: 1.0),
-            title: "Соединение",
-            subtitle: "Настройки прокси и подключение",
-            action: #selector(protectionTapped)
-        ),
-        MenuItem(
-            iconName: "Chat/Context Menu/Info",
-            iconBgColor: UIColor(red: 1.0, green: 0.62, blue: 0.07, alpha: 1.0),
-            title: "Поддержка",
-            subtitle: "support@litegram.io",
-            action: #selector(supportTapped)
-        )
-    ]
+    private var menuItems: [MenuItem] {
+        [
+            MenuItem(
+                iconName: "Chat/Context Menu/Lock",
+                iconBgColor: UIColor(red: 0.35, green: 0.55, blue: 0.85, alpha: 1.0),
+                title: litegramStrings.chatsTitle,
+                subtitle: litegramStrings.chatsSubtitle,
+                action: #selector(chatsTapped)
+            ),
+            MenuItem(
+                iconName: "Settings/Menu/Proxy",
+                iconBgColor: UIColor(red: 0.25, green: 0.70, blue: 0.42, alpha: 1.0),
+                title: litegramStrings.connectionTitle,
+                subtitle: litegramStrings.connectionSubtitle,
+                action: #selector(protectionTapped)
+            ),
+            MenuItem(
+                iconName: "Chat/Context Menu/Info",
+                iconBgColor: UIColor(red: 1.0, green: 0.62, blue: 0.07, alpha: 1.0),
+                title: litegramStrings.supportTitle,
+                subtitle: "support@litegram.io",
+                action: #selector(supportTapped)
+            )
+        ]
+    }
 
     private var menuRowNodes: [(container: ASDisplayNode, iconBg: ASDisplayNode, icon: ASImageNode, title: ASTextNode, subtitle: ASTextNode, arrow: ASImageNode, sep: ASDisplayNode?)] = []
 
     public init(context: AccountContext) {
         self.context = context
         self.presentationData = context.sharedContext.currentPresentationData.with { $0 }
+        self.litegramStrings = LitegramStrings(languageCode: presentationData.strings.primaryComponent.languageCode)
 
         super.init(navigationBarPresentationData: NavigationBarPresentationData(presentationData: self.presentationData))
 
@@ -94,6 +98,7 @@ public final class LitegramController: ViewController {
                 guard let self = self else { return }
                 let previousTheme = self.presentationData.theme
                 self.presentationData = presentationData
+                self.litegramStrings = LitegramStrings(languageCode: presentationData.strings.primaryComponent.languageCode)
                 if previousTheme !== presentationData.theme {
                     self.updateTheme()
                     self.updateTabBarIcon()
@@ -251,7 +256,7 @@ public final class LitegramController: ViewController {
         self.saveTrafficSectionNode = saveTrafficSection
 
         let stTitle = ASTextNode()
-        stTitle.attributedText = NSAttributedString(string: "Экономия трафика", attributes: [
+        stTitle.attributedText = NSAttributedString(string: litegramStrings.saveTraffic, attributes: [
             .font: UIFont.systemFont(ofSize: 17),
             .foregroundColor: theme.list.itemPrimaryTextColor
         ])
@@ -259,7 +264,7 @@ public final class LitegramController: ViewController {
         self.saveTrafficTitleNode = stTitle
 
         let stSubtitle = ASTextNode()
-        stSubtitle.attributedText = NSAttributedString(string: "Сжатие изображений и медиа", attributes: [
+        stSubtitle.attributedText = NSAttributedString(string: litegramStrings.saveTrafficSubtitle, attributes: [
             .font: UIFont.systemFont(ofSize: 13),
             .foregroundColor: theme.list.itemSecondaryTextColor
         ])
@@ -463,11 +468,11 @@ public final class LitegramController: ViewController {
         let actionSheet = ActionSheetController(presentationData: self.presentationData)
         actionSheet.setItemGroups([
             ActionSheetItemGroup(items: [
-                ActionSheetButtonItem(title: "Поддержка в чате", color: .accent, action: { [weak self, weak actionSheet] in
+                ActionSheetButtonItem(title: litegramStrings.chatSupport, color: .accent, action: { [weak self, weak actionSheet] in
                     actionSheet?.dismissAnimated()
                     self?.openSupportChat()
                 }),
-                ActionSheetButtonItem(title: "Почта", color: .accent, action: { [weak self, weak actionSheet] in
+                ActionSheetButtonItem(title: litegramStrings.email, color: .accent, action: { [weak self, weak actionSheet] in
                     actionSheet?.dismissAnimated()
                     self?.openSupportEmail()
                 })
@@ -559,12 +564,12 @@ public final class LitegramController: ViewController {
         let alert = UIAlertController(title: ad.title, message: ad.description, preferredStyle: .alert)
 
         if let link = ad.linkUrl, let url = URL(string: link) {
-            alert.addAction(UIAlertAction(title: "Открыть", style: .default) { _ in
+            alert.addAction(UIAlertAction(title: litegramStrings.adOpen, style: .default) { _ in
                 UIApplication.shared.open(url)
             })
         }
 
-        alert.addAction(UIAlertAction(title: "Закрыть", style: .cancel))
+        alert.addAction(UIAlertAction(title: litegramStrings.adClose, style: .cancel))
         self.present(alert, animated: true)
         LitegramAdManager.shared.markAdShown()
     }
@@ -576,11 +581,11 @@ public final class LitegramController: ViewController {
         self.saveTrafficSectionNode?.backgroundColor = theme.list.itemBlocksBackgroundColor
         self.menuSectionNode?.backgroundColor = theme.list.itemBlocksBackgroundColor
 
-        self.saveTrafficTitleNode?.attributedText = NSAttributedString(string: "Экономия трафика", attributes: [
+        self.saveTrafficTitleNode?.attributedText = NSAttributedString(string: litegramStrings.saveTraffic, attributes: [
             .font: UIFont.systemFont(ofSize: 17),
             .foregroundColor: theme.list.itemPrimaryTextColor
         ])
-        self.saveTrafficSubtitleNode?.attributedText = NSAttributedString(string: "Сжатие изображений и медиа", attributes: [
+        self.saveTrafficSubtitleNode?.attributedText = NSAttributedString(string: litegramStrings.saveTrafficSubtitle, attributes: [
             .font: UIFont.systemFont(ofSize: 13),
             .foregroundColor: theme.list.itemSecondaryTextColor
         ])
@@ -641,7 +646,7 @@ public final class LitegramController: ViewController {
             ])
         } else {
             self.badgeBgNode?.backgroundColor = UIColor.black.withAlphaComponent(0.3)
-            self.badgeNode?.attributedText = NSAttributedString(string: "Бесплатно", attributes: [
+            self.badgeNode?.attributedText = NSAttributedString(string: litegramStrings.freeBadge, attributes: [
                 .font: badgeFont,
                 .foregroundColor: UIColor.white.withAlphaComponent(0.8)
             ])

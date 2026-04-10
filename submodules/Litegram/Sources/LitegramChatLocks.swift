@@ -24,15 +24,9 @@ public final class LitegramChatLocks {
 
     // MARK: - Autolock
 
-    public static let autolockOptions: [(title: String, seconds: Int)] = [
-        ("Сразу", 0),
-        ("30 секунд", 30),
-        ("1 минута", 60),
-        ("3 минуты", 180),
-        ("5 минут", 300),
-        ("10 минут", 600),
-        ("30 минут", 1800)
-    ]
+    public static func autolockOptions(strings: LitegramStrings) -> [(title: String, seconds: Int)] {
+        return strings.autolockOptions
+    }
 
     public var autolockSeconds: Int {
         get {
@@ -48,14 +42,8 @@ public final class LitegramChatLocks {
         }
     }
 
-    public func autolockTitle() -> String {
-        for opt in Self.autolockOptions where opt.seconds == autolockSeconds {
-            return opt.title
-        }
-        let m = autolockSeconds / 60
-        let s = autolockSeconds % 60
-        if s == 0 { return "\(m) мин." }
-        return "\(m) мин. \(s) сек."
+    public func autolockTitle(strings: LitegramStrings) -> String {
+        return strings.autolockTitle(for: autolockSeconds)
     }
 
     // MARK: - Salt

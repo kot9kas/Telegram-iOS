@@ -29,6 +29,7 @@ public final class LitegramChatsController: ViewController, UITableViewDataSourc
 
     private var lockedChats: [LockedChat] = []
     private var lockedFolders: [LockedFolder] = []
+    private var litegramStrings: LitegramStrings
 
     private enum Sec: Int, CaseIterable {
         case biometric = 0
@@ -41,8 +42,9 @@ public final class LitegramChatsController: ViewController, UITableViewDataSourc
     public init(context: AccountContext) {
         self.context = context
         self.presentationData = context.sharedContext.currentPresentationData.with { $0 }
+        self.litegramStrings = LitegramStrings(languageCode: presentationData.strings.primaryComponent.languageCode)
         super.init(navigationBarPresentationData: NavigationBarPresentationData(presentationData: self.presentationData))
-        self.title = "Чаты"
+        self.title = litegramStrings.chatsTitle
     }
 
     required init(coder: NSCoder) { fatalError() }
@@ -91,7 +93,7 @@ public final class LitegramChatsController: ViewController, UITableViewDataSourc
                 let name = filters.compactMap { f -> String? in
                     if case let .filter(id, title, _, _) = f, id == fid { return title.text }
                     return nil
-                }.first ?? "Папка \(fid)"
+                }.first ?? self.litegramStrings.folderFallback(fid)
                 self.lockedFolders.append(LockedFolder(filterId: fid, name: name))
             }
             self.tableView?.reloadData()
@@ -114,7 +116,7 @@ public final class LitegramChatsController: ViewController, UITableViewDataSourc
             self.lockedChats = []
             for (i, peer) in peers.enumerated() {
                 let pid = chatIds[i]
-                let name = peer?.displayTitle(strings: self.presentationData.strings, displayOrder: .firstLast) ?? "Чат"
+                let name = peer?.displayTitle(strings: self.presentationData.strings, displayOrder: .firstLast) ?? self.litegramStrings.chatFallback
                 self.lockedChats.append(LockedChat(peerId: pid, name: name))
             }
             self.tableView?.reloadData()
@@ -140,17 +142,17 @@ public final class LitegramChatsController: ViewController, UITableViewDataSourc
 
     public func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
         guard let s = Sec(rawValue: section) else { return nil }
-        if s == .chats && !lockedChats.isEmpty { return "Защищённые чаты" }
-        if s == .folders && !lockedFolders.isEmpty { return "Защищённые папки" }
+        if s == .chats && !lockedChats.isEmpty { return litegramStrings.protectedChats }
+        if s == .folders && !lockedFolders.isEmpty { return litegramStrings.protectedFolders }
         return nil
     }
 
     public func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
         if section == Sec.biometric.rawValue {
-            return "Используйте биометрию для быстрой разблокировки защищённых чатов."
+            return litegramStrings.biometricFooter
         }
         if section == Sec.addButton.rawValue && lockedChats.isEmpty && lockedFolders.isEmpty {
-            return "Установите PIN-код на чат или папку. При открытии защищённого чата потребуется ввод PIN."
+            return litegramStrings.pinFooter
         }
         return nil
     }
@@ -173,7 +175,7 @@ public final class LitegramChatsController: ViewController, UITableViewDataSourc
         switch s {
         case .biometric:
             let bioType = detectBioType()
-            cell.textLabel?.text = bioType == .faceID ? "Разблокировка по Face ID" : "Разблокировка по Touch ID"
+            cell.textLabel?.text = bioType == .faceID ? litegramStrings.unlockWithFaceID : litegramStrings.unlockWithTouchID
             cell.selectionStyle = .none
             let toggle = UISwitch()
             toggle.isOn = LitegramChatLocks.shared.isBiometricEnabled
@@ -182,22 +184,19 @@ public final class LitegramChatsController: ViewController, UITableViewDataSourc
             cell.accessoryView = toggle
 
         case .autolock:
-            cell.textLabel?.text = "Автоблокировка"
-            cell.accessoryType = .disclosureIndicator
+            cell.textLabel?.text = litegramStrings.autoLock
             let detail = UILabel()
-            detail.text = LitegramChatLocks.shared.autolockTitle()
+            detail.text = LitegramChatLocks.shared.autolockTitle(strings: litegramStrings)
             detail.textColor = theme.list.itemSecondaryTextColor
             detail.font = .systemFont(ofSize: 17)
             detail.sizeToFit()
-            cell.accessoryView = nil
             cell.accessoryType = .disclosureIndicator
-            cell.detailTextLabel?.text = nil
             let stack = UIStackView(arrangedSubviews: [detail])
             stack.frame = CGRect(x: 0, y: 0, width: detail.frame.width + 8, height: 22)
             cell.accessoryView = stack
 
         case .addButton:
-            cell.textLabel?.text = "Добавить пароль"
+            cell.textLabel?.text = litegramStrings.addPassword
             cell.textLabel?.textColor = theme.list.itemAccentColor
             cell.imageView?.image = UIImage(systemName: "plus.circle.fill")
             cell.imageView?.tintColor = theme.list.itemAccentColor
@@ -246,7 +245,7 @@ public final class LitegramChatsController: ViewController, UITableViewDataSourc
     public func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
         guard let s = Sec(rawValue: indexPath.section) else { return nil }
 
-        let unlockAction = UIContextualAction(style: .destructive, title: "Разблок.") { [weak self] _, _, done in
+        let unlockAction = UIContextualAction(style: .destructive, title: litegramStrings.unlock) { [weak self] _, _, done in
             guard let self = self else { done(false); return }
 
             if s == .chats {
@@ -275,7 +274,7 @@ public final class LitegramChatsController: ViewController, UITableViewDataSourc
         if sender.isOn {
             let ctx = LAContext()
             if ctx.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil) {
-                ctx.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: "Включить биометрию для защиты чатов") { ok, _ in
+                ctx.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: litegramStrings.enableBiometrics) { ok, _ in
                     DispatchQueue.main.async {
                         if ok {
                             LitegramChatLocks.shared.isBiometricEnabled = true
@@ -298,7 +297,7 @@ public final class LitegramChatsController: ViewController, UITableViewDataSourc
         let sheet = ActionSheetController(presentationData: presentationData)
         var items: [ActionSheetItem] = []
 
-        for opt in LitegramChatLocks.autolockOptions {
+        for opt in LitegramChatLocks.autolockOptions(strings: litegramStrings) {
             items.append(ActionSheetButtonItem(title: opt.title, color: .accent, action: { [weak sheet, weak self] in
                 sheet?.dismissAnimated()
                 LitegramChatLocks.shared.autolockSeconds = opt.seconds
@@ -306,7 +305,7 @@ public final class LitegramChatsController: ViewController, UITableViewDataSourc
             }))
         }
 
-        items.append(ActionSheetButtonItem(title: "Своё время", color: .accent, action: { [weak sheet, weak self] in
+        items.append(ActionSheetButtonItem(title: litegramStrings.customTime, color: .accent, action: { [weak sheet, weak self] in
             sheet?.dismissAnimated()
             self?.showCustomTimer()
         }))
@@ -323,10 +322,10 @@ public final class LitegramChatsController: ViewController, UITableViewDataSourc
     }
 
     private func showCustomTimer() {
-        let alert = UIAlertController(title: "Своё время", message: "Введите время в минутах", preferredStyle: .alert)
-        alert.addTextField { $0.keyboardType = .numberPad; $0.placeholder = "Минуты" }
+        let alert = UIAlertController(title: litegramStrings.customTime, message: litegramStrings.enterTimeMinutes, preferredStyle: .alert)
+        alert.addTextField { [weak self] in $0.keyboardType = .numberPad; $0.placeholder = self?.litegramStrings.minutes }
         alert.addAction(UIAlertAction(title: presentationData.strings.Common_Cancel, style: .cancel))
-        alert.addAction(UIAlertAction(title: "OK", style: .default) { [weak self] _ in
+        alert.addAction(UIAlertAction(title: litegramStrings.ok, style: .default) { [weak self] _ in
             if let text = alert.textFields?.first?.text, let mins = Int(text), mins > 0 {
                 LitegramChatLocks.shared.autolockSeconds = mins * 60
                 self?.tableView?.reloadData()
@@ -341,11 +340,11 @@ public final class LitegramChatsController: ViewController, UITableViewDataSourc
         let sheet = ActionSheetController(presentationData: presentationData)
         sheet.setItemGroups([
             ActionSheetItemGroup(items: [
-                ActionSheetButtonItem(title: "🔒 На чат", color: .accent, action: { [weak sheet, weak self] in
+                ActionSheetButtonItem(title: litegramStrings.addToChat, color: .accent, action: { [weak sheet, weak self] in
                     sheet?.dismissAnimated()
                     self?.pickChat()
                 }),
-                ActionSheetButtonItem(title: "📁 На папку", color: .accent, action: { [weak sheet, weak self] in
+                ActionSheetButtonItem(title: litegramStrings.addToFolder, color: .accent, action: { [weak sheet, weak self] in
                     sheet?.dismissAnimated()
                     self?.pickFolder()
                 })
@@ -364,7 +363,7 @@ public final class LitegramChatsController: ViewController, UITableViewDataSourc
             context: context,
             filter: [],
             hasContactSelector: false,
-            title: "Выберите чат"
+            title: litegramStrings.selectChat
         ))
 
         controller.peerSelected = { [weak self, weak controller] (peer: EnginePeer, _: Int64?) in
@@ -373,8 +372,8 @@ public final class LitegramChatsController: ViewController, UITableViewDataSourc
             let pid = peer.id.toInt64()
 
             if LitegramChatLocks.shared.isLocked(pid) {
-                let a = UIAlertController(title: "Чат уже защищён", message: nil, preferredStyle: .alert)
-                a.addAction(UIAlertAction(title: "OK", style: .default))
+                let a = UIAlertController(title: self.litegramStrings.chatAlreadyProtected, message: nil, preferredStyle: .alert)
+                a.addAction(UIAlertAction(title: self.litegramStrings.ok, style: .default))
                 self.view.window?.rootViewController?.present(a, animated: true)
                 return
             }
@@ -397,8 +396,8 @@ public final class LitegramChatsController: ViewController, UITableViewDataSourc
                 return nil
             }
             if userFilters.isEmpty {
-                let a = UIAlertController(title: "Нет папок", message: "Создайте папку чатов в настройках Telegram", preferredStyle: .alert)
-                a.addAction(UIAlertAction(title: "OK", style: .default))
+                let a = UIAlertController(title: self.litegramStrings.noFolders, message: self.litegramStrings.createFolder, preferredStyle: .alert)
+                a.addAction(UIAlertAction(title: self.litegramStrings.ok, style: .default))
                 self.view.window?.rootViewController?.present(a, animated: true)
                 return
             }
@@ -410,8 +409,8 @@ public final class LitegramChatsController: ViewController, UITableViewDataSourc
                     sheet?.dismissAnimated()
                     guard let self = self else { return }
                     if LitegramChatLocks.shared.isFolderLocked(fid) {
-                        let a = UIAlertController(title: "Папка уже защищена", message: nil, preferredStyle: .alert)
-                        a.addAction(UIAlertAction(title: "OK", style: .default))
+                        let a = UIAlertController(title: self.litegramStrings.folderAlreadyProtected, message: nil, preferredStyle: .alert)
+                        a.addAction(UIAlertAction(title: self.litegramStrings.ok, style: .default))
                         self.view.window?.rootViewController?.present(a, animated: true)
                         return
                     }
@@ -435,7 +434,8 @@ public final class LitegramChatsController: ViewController, UITableViewDataSourc
 
     // MARK: - PIN Presentation
 
-    private func applyTheme(to pin: LitegramPinController) {
+    private func applyThemeAndStrings(to pin: LitegramPinController) {
+        pin.strings = litegramStrings
         let pc = presentationData.theme.passcode
         let cols = LitegramPinController.passcodeColors(
             wallpaper: presentationData.chatWallpaper,
@@ -450,21 +450,21 @@ public final class LitegramChatsController: ViewController, UITableViewDataSourc
 
     private func presentPinSet(completion: @escaping (String) -> Void) {
         let pin = LitegramPinController(mode: .set)
-        applyTheme(to: pin)
+        applyThemeAndStrings(to: pin)
         pin.onPinSet = { p in completion(p) }
         self.view.window?.rootViewController?.present(pin, animated: true)
     }
 
     private func presentPinVerifyChat(_ peerId: Int64, then: @escaping () -> Void) {
         let pin = LitegramPinController(mode: .verify(peerId: peerId))
-        applyTheme(to: pin)
+        applyThemeAndStrings(to: pin)
         pin.onPinVerified = then
         self.view.window?.rootViewController?.present(pin, animated: true)
     }
 
     private func presentPinVerifyFolder(_ filterId: Int32, then: @escaping () -> Void) {
         let pin = LitegramPinController(mode: .verifyFolder(filterId: filterId))
-        applyTheme(to: pin)
+        applyThemeAndStrings(to: pin)
         pin.onPinVerified = then
         self.view.window?.rootViewController?.present(pin, animated: true)
     }
@@ -491,7 +491,7 @@ public final class LitegramChatsController: ViewController, UITableViewDataSourc
         let sheet = ActionSheetController(presentationData: presentationData)
         sheet.setItemGroups([
             ActionSheetItemGroup(items: [
-                ActionSheetButtonItem(title: "🔑 Изменить PIN", color: .accent, action: { [weak sheet, weak self] in
+                ActionSheetButtonItem(title: litegramStrings.changePin, color: .accent, action: { [weak sheet, weak self] in
                     sheet?.dismissAnimated()
                     guard let self = self else { return }
                     self.presentPinVerifyChat(chat.peerId) {
@@ -500,7 +500,7 @@ public final class LitegramChatsController: ViewController, UITableViewDataSourc
                         }
                     }
                 }),
-                ActionSheetButtonItem(title: "🗑 Снять защиту", color: .destructive, action: { [weak sheet, weak self] in
+                ActionSheetButtonItem(title: litegramStrings.removeProtection, color: .destructive, action: { [weak sheet, weak self] in
                     sheet?.dismissAnimated()
                     self?.verifyAndRemoveChatLock(chat.peerId)
                 })
@@ -518,7 +518,7 @@ public final class LitegramChatsController: ViewController, UITableViewDataSourc
         let sheet = ActionSheetController(presentationData: presentationData)
         sheet.setItemGroups([
             ActionSheetItemGroup(items: [
-                ActionSheetButtonItem(title: "🔑 Изменить PIN", color: .accent, action: { [weak sheet, weak self] in
+                ActionSheetButtonItem(title: litegramStrings.changePin, color: .accent, action: { [weak sheet, weak self] in
                     sheet?.dismissAnimated()
                     guard let self = self else { return }
                     self.presentPinVerifyFolder(folder.filterId) {
@@ -527,7 +527,7 @@ public final class LitegramChatsController: ViewController, UITableViewDataSourc
                         }
                     }
                 }),
-                ActionSheetButtonItem(title: "🗑 Снять защиту", color: .destructive, action: { [weak sheet, weak self] in
+                ActionSheetButtonItem(title: litegramStrings.removeProtection, color: .destructive, action: { [weak sheet, weak self] in
                     sheet?.dismissAnimated()
                     self?.verifyAndRemoveFolderLock(folder.filterId)
                 })

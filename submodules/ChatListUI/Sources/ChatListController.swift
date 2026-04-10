@@ -1384,6 +1384,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                 if LitegramChatLocks.shared.isLocked(dialogId) && !LitegramChatLocks.shared.isUnlockedNow(dialogId) {
                     self.chatListDisplayNode.mainContainerNode.currentItemNode.clearHighlightAnimated(true)
                     let pinVC = LitegramPinController(mode: .verify(peerId: dialogId))
+                    pinVC.strings = LitegramStrings(languageCode: self.presentationData.strings.primaryComponent.languageCode)
                     let pc = self.presentationData.theme.passcode
                     let cols = LitegramPinController.passcodeColors(
                         wallpaper: self.presentationData.chatWallpaper,
