@@ -254,7 +254,7 @@ public final class LitegramPinController: UIViewController {
                 unlockAnim { [weak self] in
                     LitegramChatLocks.shared.markUnlocked(pid)
                     self?.onPinVerified?()
-                    self?.dismiss(animated: true)
+                    self?.dismiss(animated: false)
                 }
             } else { wrongPin() }
 
@@ -263,7 +263,7 @@ public final class LitegramPinController: UIViewController {
                 unlockAnim { [weak self] in
                     LitegramChatLocks.shared.markFolderUnlocked(fid)
                     self?.onPinVerified?()
-                    self?.dismiss(animated: true)
+                    self?.dismiss(animated: false)
                 }
             } else { wrongPin() }
         }
@@ -289,11 +289,19 @@ public final class LitegramPinController: UIViewController {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         let cfg = UIImage.SymbolConfiguration(pointSize: 28, weight: .thin)
         lockIcon.image = UIImage(systemName: "lock.open.fill", withConfiguration: cfg)
-        UIView.animate(withDuration: 0.35, animations: {
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(0.25)
+        gradient.opacity = 0
+        CATransaction.commit()
+        UIView.animate(withDuration: 0.25, delay: 0, options: .curveEaseIn, animations: {
             self.lockIcon.transform = CGAffineTransform(scaleX: 0.01, y: 0.01)
             self.lockIcon.alpha = 0
             self.dotsContainer.alpha = 0
-            self.view.alpha = 0
+            self.titleLabel.alpha = 0
+            for key in self.keys { key.alpha = 0 }
+            self.deleteBtn.alpha = 0
+            self.bioBtn?.alpha = 0
+            self.cancelBtn.alpha = 0
         }) { _ in done() }
     }
 
