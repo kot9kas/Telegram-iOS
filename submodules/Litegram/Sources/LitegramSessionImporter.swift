@@ -1,6 +1,6 @@
 import Foundation
 import sqlcipher
-import CommonCrypto
+import CryptoKit
 import TelegramCore
 import Postbox
 
@@ -80,15 +80,13 @@ public enum LitegramSessionImporter {
     }
 
     private static func computeAuthKeyId(authKey: Data) -> Int64 {
-        var hash = [UInt8](repeating: 0, count: Int(CC_SHA1_DIGEST_LENGTH))
-        authKey.withUnsafeBytes { ptr in
-            _ = CC_SHA1(ptr.baseAddress, CC_LONG(authKey.count), &hash)
-        }
-        let offset = Int(CC_SHA1_DIGEST_LENGTH) - 8
+        let digest = Insecure.SHA1.hash(data: authKey)
+        let hashBytes = Array(digest)
+        let offset = hashBytes.count - 8
         var keyId: Int64 = 0
         withUnsafeMutableBytes(of: &keyId) { dst in
             for i in 0..<8 {
-                dst[i] = hash[offset + i]
+                dst[i] = hashBytes[offset + i]
             }
         }
         return keyId

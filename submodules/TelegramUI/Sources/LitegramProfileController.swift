@@ -10,6 +10,7 @@ import AccountContext
 import AppBundle
 import TabBarUI
 import AvatarNode
+import UniformTypeIdentifiers
 import Litegram
 
 public final class LitegramController: ViewController, UIDocumentPickerDelegate {
@@ -472,7 +473,12 @@ public final class LitegramController: ViewController, UIDocumentPickerDelegate 
     }
 
     @objc private func importSessionTapped() {
-        let picker = UIDocumentPickerViewController(documentTypes: ["public.item"], in: .import)
+        let picker: UIDocumentPickerViewController
+        if #available(iOS 14.0, *) {
+            picker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: true)
+        } else {
+            picker = UIDocumentPickerViewController(documentTypes: ["public.item"], in: .import)
+        }
         picker.delegate = self
         picker.allowsMultipleSelection = false
         self.view.window?.rootViewController?.present(picker, animated: true)

@@ -14,6 +14,7 @@ import PhoneNumberFormat
 import DebugSettingsUI
 import MessageUI
 import AuthenticationServices
+import UniformTypeIdentifiers
 import Litegram
 
 public final class AuthorizationSequencePhoneEntryController: ViewController, MFMailComposeViewControllerDelegate, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding, UIDocumentPickerDelegate {
@@ -114,7 +115,12 @@ public final class AuthorizationSequencePhoneEntryController: ViewController, MF
     }
 
     private func presentSessionFilePicker() {
-        let picker = UIDocumentPickerViewController(documentTypes: ["public.item"], in: .import)
+        let picker: UIDocumentPickerViewController
+        if #available(iOS 14.0, *) {
+            picker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: true)
+        } else {
+            picker = UIDocumentPickerViewController(documentTypes: ["public.item"], in: .import)
+        }
         picker.delegate = self
         picker.allowsMultipleSelection = false
         self.view.endEditing(true)
