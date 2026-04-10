@@ -1,6 +1,7 @@
 import Foundation
 import UIKit
 import LocalAuthentication
+import TelegramCore
 
 public final class LitegramPinController: UIViewController {
 
@@ -22,6 +23,74 @@ public final class LitegramPinController: UIViewController {
         gradientTop = top
         gradientBottom = bottom
         keyButtonColor = button == .clear ? UIColor(white: 1.0, alpha: 0.5) : button
+    }
+
+    public static func passcodeColors(
+        wallpaper: TelegramWallpaper,
+        isDark: Bool,
+        bubbleFallback: UIColor?,
+        passcodeTop: UIColor,
+        passcodeBottom: UIColor,
+        passcodeButton: UIColor
+    ) -> (top: UIColor, bottom: UIColor, button: UIColor) {
+        switch wallpaper {
+        case .color(let cv):
+            let color = rgbColor(cv)
+            var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0
+            color.getRed(&r, green: &g, blue: &b, alpha: nil)
+            let lightness = 0.2126 * r + 0.7152 * g + 0.0722 * b
+            let base = (lightness < 0.1 || lightness > 0.9) ? (bubbleFallback ?? color) : color
+            if isDark {
+                return (
+                    top: hsbMul(base, h: 1.034, s: 0.819, b: 0.214),
+                    bottom: hsbMul(base, h: 1.029, s: 0.77, b: 0.132),
+                    button: UIColor(white: 1.0, alpha: 0.12)
+                )
+            } else {
+                return (
+                    top: hsbMul(base, h: 1.029, s: 0.312, b: 1.26),
+                    bottom: hsbMul(base, h: 1.034, s: 0.729, b: 0.942),
+                    button: UIColor(white: 0.0, alpha: 0.2)
+                )
+            }
+        case .gradient(let g):
+            if g.colors.count >= 2 {
+                return (
+                    top: rgbColor(g.colors[0]),
+                    bottom: rgbColor(g.colors.last!),
+                    button: isDark ? UIColor(white: 1.0, alpha: 0.12) : UIColor(white: 0.0, alpha: 0.2)
+                )
+            }
+            return (top: passcodeTop, bottom: passcodeBottom, button: passcodeButton)
+        case .file(let f) where !f.settings.colors.isEmpty:
+            return (
+                top: rgbColor(f.settings.colors[0]),
+                bottom: rgbColor(f.settings.colors.last!),
+                button: isDark ? UIColor(white: 1.0, alpha: 0.12) : UIColor(white: 0.0, alpha: 0.2)
+            )
+        default:
+            return (top: passcodeTop, bottom: passcodeBottom, button: passcodeButton)
+        }
+    }
+
+    private static func rgbColor(_ v: UInt32) -> UIColor {
+        UIColor(
+            red: CGFloat((v >> 16) & 0xff) / 255.0,
+            green: CGFloat((v >> 8) & 0xff) / 255.0,
+            blue: CGFloat(v & 0xff) / 255.0,
+            alpha: 1.0
+        )
+    }
+
+    private static func hsbMul(_ c: UIColor, h: CGFloat, s: CGFloat, b: CGFloat) -> UIColor {
+        var ch: CGFloat = 0, cs: CGFloat = 0, cb: CGFloat = 0, ca: CGFloat = 0
+        c.getHue(&ch, saturation: &cs, brightness: &cb, alpha: &ca)
+        return UIColor(
+            hue: min(1, max(0, ch * h)),
+            saturation: min(1, max(0, cs * s)),
+            brightness: min(1, max(0, cb * b)),
+            alpha: ca
+        )
     }
 
     private let mode: Mode
@@ -303,7 +372,6 @@ public final class LitegramPinController: UIViewController {
                 performUnlock { [weak self] in
                     LitegramChatLocks.shared.markUnlocked(pid)
                     self?.onPinVerified?()
-                    self?.dismiss(animated: false)
                 }
             } else { wrongPin() }
 
@@ -312,7 +380,6 @@ public final class LitegramPinController: UIViewController {
                 performUnlock { [weak self] in
                     LitegramChatLocks.shared.markFolderUnlocked(fid)
                     self?.onPinVerified?()
-                    self?.dismiss(animated: false)
                 }
             } else { wrongPin() }
         }
@@ -355,7 +422,7 @@ public final class LitegramPinController: UIViewController {
 
     // MARK: - Unlock (matching PasscodeEntryControllerNode.animateSuccess + animateOut)
 
-    private func performUnlock(done: @escaping () -> Void) {
+    private func performUnlock(markAndNotify: @escaping () -> Void) {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 
         fillAllDots()
@@ -363,12 +430,13 @@ public final class LitegramPinController: UIViewController {
         let cfg = UIImage.SymbolConfiguration(pointSize: 28, weight: .thin)
         lockIcon.image = UIImage(systemName: "lock.open.fill", withConfiguration: cfg)
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
             guard let self else { return }
+            markAndNotify()
             UIView.animate(withDuration: 0.2, animations: {
                 self.view.transform = CGAffineTransform(translationX: 0, y: -self.view.bounds.height)
             }) { _ in
-                done()
+                self.dismiss(animated: false)
             }
         }
     }

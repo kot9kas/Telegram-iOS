@@ -38,7 +38,12 @@ public final class LitegramChatLocks {
             let v = defaults.object(forKey: "lck_autolock") as? Int
             return v ?? 300
         }
-        set { defaults.set(newValue, forKey: "lck_autolock") }
+        set {
+            defaults.set(newValue, forKey: "lck_autolock")
+            unlockTimes.removeAll()
+            cancelAllRelockTimers()
+            NotificationCenter.default.post(name: Self.autolockDidExpireNotification, object: nil)
+        }
     }
 
     public func autolockTitle() -> String {

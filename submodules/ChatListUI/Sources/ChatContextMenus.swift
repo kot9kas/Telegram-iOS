@@ -536,16 +536,24 @@ func chatContextMenuItems(context: AccountContext, peerId: PeerId, promoInfo: Ch
                                 guard let chatListController = chatListController else { return }
                                 let pd = context.sharedContext.currentPresentationData.with { $0 }
                                 let pc = pd.theme.passcode
+                                let cols = LitegramPinController.passcodeColors(
+                                    wallpaper: pd.chatWallpaper,
+                                    isDark: pd.theme.overallDarkAppearance,
+                                    bubbleFallback: pd.theme.chat.message.outgoing.bubble.withoutWallpaper.fill.first,
+                                    passcodeTop: pc.backgroundColors.topColor,
+                                    passcodeBottom: pc.backgroundColors.bottomColor,
+                                    passcodeButton: pc.buttonColor
+                                )
                                 if litegramIsLocked {
                                     let pinVC = LitegramPinController(mode: .verify(peerId: litegramPeerId))
-                                    pinVC.applyPasscodeTheme(top: pc.backgroundColors.topColor, bottom: pc.backgroundColors.bottomColor, button: pc.buttonColor)
+                                    pinVC.applyPasscodeTheme(top: cols.top, bottom: cols.bottom, button: cols.button)
                                     pinVC.onPinVerified = {
                                         LitegramChatLocks.shared.removeLock(litegramPeerId)
                                     }
                                     chatListController.present(pinVC, animated: true)
                                 } else {
                                     let pinVC = LitegramPinController(mode: .set)
-                                    pinVC.applyPasscodeTheme(top: pc.backgroundColors.topColor, bottom: pc.backgroundColors.bottomColor, button: pc.buttonColor)
+                                    pinVC.applyPasscodeTheme(top: cols.top, bottom: cols.bottom, button: cols.button)
                                     pinVC.onPinSet = { pin in
                                         LitegramChatLocks.shared.setLock(litegramPeerId, pin: pin)
                                     }
