@@ -121,7 +121,7 @@ UIFont *TGFixedSystemFontOfSize(CGFloat size)
         descriptor = [descriptor fontDescriptorWithDesign:UIFontDescriptorSystemDesignRounded];
         return [UIFont fontWithDescriptor:descriptor size:size];
     } else {
-        return [UIFont fontWithName:@".SFCompactRounded-Semibold" size:size];
+        return [UIFont boldSystemFontOfSize:size];
     }
 }
 

@@ -255,7 +255,7 @@ public struct Font {
                         font = UIFont(name: "Menlo", size: size - 1.0) ?? UIFont.systemFont(ofSize: size)
                     }
                 case .round:
-                    font = UIFont(name: ".SFCompactRounded-Semibold", size: size) ?? UIFont.systemFont(ofSize: size)
+                    font = UIFont.systemFont(ofSize: size, weight: .semibold)
                 case .camera:
                     func encodeText(string: String, key: Int16) -> String {
                         let nsString = string as NSString

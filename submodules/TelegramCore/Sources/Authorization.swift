@@ -5,17 +5,7 @@ import TelegramApi
 import MtProtoKit
 
 private let iCloudKVSAvailable: Bool = {
-    if let _ = Bundle.main.infoDictionary?["com.apple.developer.ubiquity-kvstore-identifier"] as? String {
-        return true
-    }
-    if let entitlements = Bundle.main.object(forInfoDictionaryKey: "Entitlements") {
-        return true
-    }
-    let store = NSUbiquitousKeyValueStore.default
-    store.set("probe", forKey: "_kvs_probe")
-    let ok = store.synchronize()
-    store.removeObject(forKey: "_kvs_probe")
-    return ok
+    return FileManager.default.ubiquityIdentityToken != nil
 }()
 
 private func kvsGetTokens() -> [Data] {
