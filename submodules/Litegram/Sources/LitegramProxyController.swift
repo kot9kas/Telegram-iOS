@@ -185,7 +185,11 @@ public final class LitegramProxyController {
 
     private func preferredServer(from servers: [LitegramServerInfo]) -> LitegramServerInfo? {
         guard let savedHost = LitegramConfig.selectedServerHost else { return nil }
-        return servers.first(where: { $0.host == savedHost })
+        if let match = servers.first(where: { $0.host == savedHost }) {
+            return match
+        }
+        LitegramConfig.selectedServerHost = nil
+        return nil
     }
 
     private func connectAnonymous() {
