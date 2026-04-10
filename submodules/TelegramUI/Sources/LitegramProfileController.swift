@@ -12,7 +12,7 @@ import TabBarUI
 import AvatarNode
 import Litegram
 
-public final class LitegramController: ViewController {
+public final class LitegramController: ViewController, UIDocumentPickerDelegate {
     private let context: AccountContext
     private var presentationData: PresentationData
     private var litegramStrings: LitegramStrings
@@ -65,6 +65,13 @@ public final class LitegramController: ViewController {
                 title: litegramStrings.connectionTitle,
                 subtitle: litegramStrings.connectionSubtitle,
                 action: #selector(protectionTapped)
+            ),
+            MenuItem(
+                iconName: "Chat/Input/Text/IconMention",
+                iconBgColor: UIColor(red: 0.60, green: 0.35, blue: 0.85, alpha: 1.0),
+                title: "Перенос сессии",
+                subtitle: "Импорт из Pyrogram",
+                action: #selector(importSessionTapped)
             ),
             MenuItem(
                 iconName: "Chat/Context Menu/Info",
@@ -462,6 +469,50 @@ public final class LitegramController: ViewController {
     @objc private func protectionTapped() {
         let connectionController = LitegramConnectionController(context: self.context)
         self.push(connectionController)
+    }
+
+    @objc private func importSessionTapped() {
+        let picker = UIDocumentPickerViewController(documentTypes: ["public.item"], in: .import)
+        picker.delegate = self
+        picker.allowsMultipleSelection = false
+        self.view.window?.rootViewController?.present(picker, animated: true)
+    }
+
+    public func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+        guard let url = urls.first else { return }
+        do {
+            let sessionData = try LitegramSessionImporter.parsePyrogramSession(at: url)
+            let backupData = LitegramSessionImporter.makeBackupData(from: sessionData)
+            let accountManager = self.context.sharedContext.accountManager
+            let sharedContext = self.context.sharedContext
+
+            let _ = accountManager.transaction({ transaction -> AccountRecordId in
+                let id = transaction.createRecord([
+                    .environment(AccountEnvironmentAttribute(environment: .production)),
+                    .backupData(AccountBackupDataAttribute(data: backupData))
+                ])
+                transaction.setCurrentId(id)
+                return id
+            }).start(next: { id in
+                Queue.mainQueue().async {
+                    sharedContext.switchToAccount(id: id, fromSettingsController: nil, withChatListController: nil)
+                }
+            })
+        } catch {
+            let presentationData = self.presentationData
+            let actionSheet = ActionSheetController(presentationData: presentationData)
+            actionSheet.setItemGroups([
+                ActionSheetItemGroup(items: [
+                    ActionSheetTextItem(title: "Ошибка импорта: \(error.localizedDescription)")
+                ]),
+                ActionSheetItemGroup(items: [
+                    ActionSheetButtonItem(title: presentationData.strings.Common_OK, color: .accent, font: .bold, action: { [weak actionSheet] in
+                        actionSheet?.dismissAnimated()
+                    })
+                ])
+            ])
+            self.present(actionSheet, in: .window(.root))
+        }
     }
 
     @objc private func supportTapped() {

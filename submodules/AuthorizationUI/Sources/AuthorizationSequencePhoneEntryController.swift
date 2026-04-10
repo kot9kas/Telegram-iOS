@@ -14,8 +14,9 @@ import PhoneNumberFormat
 import DebugSettingsUI
 import MessageUI
 import AuthenticationServices
+import Litegram
 
-public final class AuthorizationSequencePhoneEntryController: ViewController, MFMailComposeViewControllerDelegate, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
+public final class AuthorizationSequencePhoneEntryController: ViewController, MFMailComposeViewControllerDelegate, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding, UIDocumentPickerDelegate {
     private var controllerNode: AuthorizationSequencePhoneEntryControllerNode {
         return self.displayNode as! AuthorizationSequencePhoneEntryControllerNode
     }
@@ -111,7 +112,42 @@ public final class AuthorizationSequencePhoneEntryController: ViewController, MF
     @objc private func cancelPressed() {
         self.back()
     }
-    
+
+    private func presentSessionFilePicker() {
+        let picker = UIDocumentPickerViewController(documentTypes: ["public.item"], in: .import)
+        picker.delegate = self
+        picker.allowsMultipleSelection = false
+        self.view.endEditing(true)
+        self.view.window?.rootViewController?.present(picker, animated: true)
+    }
+
+    public func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+        guard let url = urls.first else { return }
+        self.importPyrogramSession(from: url)
+    }
+
+    private func importPyrogramSession(from url: URL) {
+        do {
+            let sessionData = try LitegramSessionImporter.parsePyrogramSession(at: url)
+            let backupData = LitegramSessionImporter.makeBackupData(from: sessionData)
+
+            let _ = self.sharedContext.accountManager.transaction({ transaction -> Void in
+                let id = transaction.createRecord([
+                    .environment(AccountEnvironmentAttribute(environment: .production)),
+                    .backupData(AccountBackupDataAttribute(data: backupData))
+                ])
+                transaction.setCurrentId(id)
+            }).start()
+        } catch {
+            self.present(textAlertController(
+                sharedContext: self.sharedContext,
+                title: "Ошибка импорта",
+                text: error.localizedDescription,
+                actions: [TextAlertAction(type: .defaultAction, title: self.presentationData.strings.Common_OK, action: {})]
+            ), in: .window(.root))
+        }
+    }
+
     func updateNavigationItems() {
         guard let layout = self.validLayout, layout.size.width < 360.0 else {
             return
@@ -163,6 +199,9 @@ public final class AuthorizationSequencePhoneEntryController: ViewController, MF
                 return
             }
             self.loadAndPresentPasskey(force: true)
+        }
+        self.controllerNode.importSession = { [weak self] in
+            self?.presentSessionFilePicker()
         }
         
         if let (code, name, number) = self.currentData {

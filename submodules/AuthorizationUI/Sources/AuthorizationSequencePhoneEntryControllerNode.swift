@@ -320,14 +320,16 @@ final class AuthorizationSequencePhoneEntryControllerNode: ASDisplayNode {
     private let phoneAndCountryNode: PhoneAndCountryNode
     private let contactSyncNode: ContactSyncNode
     private let proceedNode: SolidRoundedButtonNode
-    
+    private let importSessionNode: HighlightableButtonNode
+
     private var qrNode: ASImageNode?
     private let exportTokenDisposable = MetaDisposable()
     private let tokenEventsDisposable = MetaDisposable()
     var accountUpdated: ((UnauthorizedAccount) -> Void)?
     
     var retryPasskey: (() -> Void)?
-    
+    var importSession: (() -> Void)?
+
     private let debugAction: () -> Void
     
     var currentNumber: String {
@@ -430,6 +432,9 @@ final class AuthorizationSequencePhoneEntryControllerNode: ASDisplayNode {
         self.proceedNode.isEnabled = false
         self.proceedNode.accessibilityIdentifier = "Auth.PhoneEntry.ContinueButton"
 
+        self.importSessionNode = HighlightableButtonNode()
+        self.importSessionNode.setTitle("Импорт сессии (Pyrogram)", with: Font.regular(16.0), with: theme.list.itemAccentColor, for: .normal)
+
         super.init()
         
         self.setViewBlock({
@@ -445,6 +450,7 @@ final class AuthorizationSequencePhoneEntryControllerNode: ASDisplayNode {
         self.addSubnode(self.phoneAndCountryNode)
         self.addSubnode(self.contactSyncNode)
         self.addSubnode(self.proceedNode)
+        self.addSubnode(self.importSessionNode)
         self.addSubnode(self.animationNode)
         self.addSubnode(self.managedAnimationNode)
         self.contactSyncNode.isHidden = true
@@ -491,7 +497,9 @@ final class AuthorizationSequencePhoneEntryControllerNode: ASDisplayNode {
         self.proceedNode.pressed = { [weak self] in
             self?.checkPhone?()
         }
-        
+
+        self.importSessionNode.addTarget(self, action: #selector(self.importSessionTapped), forControlEvents: .touchUpInside)
+
         self.animationNode.completed = { [weak self] _ in
             self?.animationNode.removeFromSupernode()
             self?.managedAnimationNode.isHidden = false
@@ -658,7 +666,12 @@ final class AuthorizationSequencePhoneEntryControllerNode: ASDisplayNode {
         }
         
         transition.updateFrame(node: self.proceedNode, frame: buttonFrame)
-        
+
+        let importSize = self.importSessionNode.measure(CGSize(width: maximumWidth, height: 44.0))
+        let importFrame = CGRect(origin: CGPoint(x: floorToScreenPixels((layout.size.width - importSize.width) / 2.0), y: buttonFrame.minY - importSize.height - 16.0), size: importSize)
+        transition.updateFrame(node: self.importSessionNode, frame: importFrame)
+        self.importSessionNode.isHidden = self.proceedNode.isHidden
+
         self.animationNode.updateLayout(size: animationSize)
         
         let _ = layoutAuthorizationItems(bounds: CGRect(origin: CGPoint(x: 0.0, y: insets.top), size: CGSize(width: layout.size.width, height: layout.size.height - insets.top - insets.bottom - additionalBottomInset)), items: items, transition: transition, failIfDoesNotFit: false)
@@ -670,6 +683,10 @@ final class AuthorizationSequencePhoneEntryControllerNode: ASDisplayNode {
         self.noticeActivateAreaNode.frame = self.noticeNode.frame
     }
     
+    @objc private func importSessionTapped() {
+        self.importSession?()
+    }
+
     func activateInput() {
         self.phoneAndCountryNode.phoneInputNode.numberField.textField.becomeFirstResponder()
     }

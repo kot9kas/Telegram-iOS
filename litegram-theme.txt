@@ -1,4 +1,4 @@
-name: Amethyst Glow
+name: Original
 shortname: CnQmN19GGAm7hJRg
 basedOn: night
 dark: true
