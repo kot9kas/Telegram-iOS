@@ -1393,7 +1393,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                         passcodeBottom: pc.backgroundColors.bottomColor,
                         passcodeButton: pc.buttonColor
                     )
-                    pinVC.applyPasscodeTheme(top: cols.top, bottom: cols.bottom, button: cols.button)
+                    pinVC.applyPasscodeTheme(top: cols.top, bottom: cols.bottom, button: cols.button, isDark: self.presentationData.theme.overallDarkAppearance)
                     pinVC.onPinVerified = { [weak self] in
                         guard let self else { return }
                         LitegramChatLocks.shared.currentlyViewingLockedPeerId = dialogId

@@ -17,12 +17,12 @@ public final class LitegramPinController: UIViewController {
 
     public var gradientTop: UIColor = UIColor(red: 0.275, green: 0.451, blue: 0.620, alpha: 1.0)
     public var gradientBottom: UIColor = UIColor(red: 0.165, green: 0.349, blue: 0.510, alpha: 1.0)
-    public var keyButtonColor: UIColor = UIColor(white: 1.0, alpha: 0.5)
+    public var isDarkTheme = false
 
-    public func applyPasscodeTheme(top: UIColor, bottom: UIColor, button: UIColor) {
+    public func applyPasscodeTheme(top: UIColor, bottom: UIColor, button: UIColor, isDark: Bool = false) {
         gradientTop = top
         gradientBottom = bottom
-        keyButtonColor = button == .clear ? UIColor(white: 1.0, alpha: 0.5) : button
+        isDarkTheme = isDark
     }
 
     public static func passcodeColors(
@@ -196,7 +196,7 @@ public final class LitegramPinController: UIViewController {
 
         let digits = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
         for (i, d) in digits.enumerated() {
-            let btn = PinKeyButton(digit: d, letters: Self.subtitles[i], size: Self.btnSize, buttonColor: keyButtonColor)
+            let btn = PinKeyButton(digit: d, letters: Self.subtitles[i], size: Self.btnSize, isDark: isDarkTheme)
             btn.onTap = { [weak self] ch in self?.digitEntered(ch) }
             view.addSubview(btn)
             keyButtons.append(btn)
@@ -477,25 +477,67 @@ public final class LitegramPinController: UIViewController {
     }
 }
 
-// MARK: - PinKeyButton (matching PasscodeEntryButtonNode)
+// MARK: - PinKeyButton (matching PasscodeEntryButtonNode with NavigationBackgroundNode blur)
 
 private final class PinKeyButton: UIControl {
     var onTap: ((String) -> Void)?
     private let digit: String
-    private let imgView = UIImageView()
-    private var normalImg: UIImage?
-    private var highlightImg: UIImage?
+    private let hasSubtitle: Bool
 
-    init(digit: String, letters: String, size: CGFloat, buttonColor: UIColor) {
+    private let blurView: UIVisualEffectView
+    private let tintView = UIView()
+    private let highlightView = UIView()
+    private let digitLabel = UILabel()
+    private let lettersLabel = UILabel()
+
+    init(digit: String, letters: String, size: CGFloat, isDark: Bool) {
         self.digit = digit
-        super.init(frame: .zero)
+        self.hasSubtitle = !letters.isEmpty
 
-        normalImg = Self.render(digit: digit, letters: letters, size: size, color: buttonColor, hl: false)
-        highlightImg = Self.render(digit: digit, letters: letters, size: size, color: buttonColor, hl: true)
+        let style: UIBlurEffect.Style = isDark ? .dark : .light
+        self.blurView = UIVisualEffectView(effect: UIBlurEffect(style: style))
 
-        imgView.image = normalImg
-        imgView.contentMode = .scaleToFill
-        addSubview(imgView)
+        super.init(frame: CGRect(x: 0, y: 0, width: size, height: size))
+
+        let r = size / 2
+
+        blurView.layer.cornerRadius = r
+        blurView.clipsToBounds = true
+        blurView.isUserInteractionEnabled = false
+        addSubview(blurView)
+
+        tintView.backgroundColor = isDark
+            ? UIColor(white: 1.0, alpha: 0.05)
+            : UIColor(white: 0.0, alpha: 0.15)
+        tintView.layer.cornerRadius = r
+        tintView.clipsToBounds = true
+        tintView.isUserInteractionEnabled = false
+        addSubview(tintView)
+
+        highlightView.backgroundColor = UIColor(white: 1.0, alpha: 0.65)
+        highlightView.layer.cornerRadius = r
+        highlightView.clipsToBounds = true
+        highlightView.isUserInteractionEnabled = false
+        highlightView.alpha = 0
+        addSubview(highlightView)
+
+        digitLabel.text = digit
+        digitLabel.font = .systemFont(ofSize: 36, weight: .regular)
+        digitLabel.textColor = .white
+        digitLabel.textAlignment = .center
+        addSubview(digitLabel)
+
+        let trimmed = letters.trimmingCharacters(in: .whitespaces)
+        if !trimmed.isEmpty {
+            let attrs: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 10, weight: .bold),
+                .foregroundColor: UIColor.white,
+                .kern: 2.0 as NSNumber
+            ]
+            lettersLabel.attributedText = NSAttributedString(string: letters, attributes: attrs)
+            lettersLabel.textAlignment = .center
+            addSubview(lettersLabel)
+        }
 
         addTarget(self, action: #selector(fired), for: .touchDown)
     }
@@ -504,73 +546,38 @@ private final class PinKeyButton: UIControl {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        imgView.frame = bounds
+        blurView.frame = bounds
+        tintView.frame = bounds
+        highlightView.frame = bounds
+
+        let dSize = digitLabel.intrinsicContentSize
+        if hasSubtitle {
+            let lH = ceil(UIFont.systemFont(ofSize: 10, weight: .bold).lineHeight)
+            let totalH = ceil(dSize.height) + 3.0 + lH
+            let topY = floor((bounds.height - totalH) / 2.0)
+            digitLabel.frame = CGRect(x: 0, y: topY, width: bounds.width, height: ceil(dSize.height))
+            if lettersLabel.superview != nil {
+                lettersLabel.frame = CGRect(x: 0, y: topY + ceil(dSize.height) + 3.0, width: bounds.width, height: lH)
+            }
+        } else {
+            digitLabel.frame = CGRect(
+                x: 0,
+                y: floor((bounds.height - dSize.height) / 2.0),
+                width: bounds.width,
+                height: ceil(dSize.height)
+            )
+        }
     }
 
     override var isHighlighted: Bool {
         didSet {
-            let target = isHighlighted ? highlightImg : normalImg
-            let prev = imgView.layer.contents
-            imgView.layer.removeAnimation(forKey: "contents")
-            imgView.image = target
-
-            if let prev = prev, let cg = target?.cgImage {
-                let dur = isHighlighted ? 0.05 : 0.45
-                let a = CABasicAnimation(keyPath: "contents")
-                a.fromValue = prev
-                a.toValue = cg
-                a.duration = dur
-                a.timingFunction = CAMediaTimingFunction(name: .easeOut)
-                imgView.layer.add(a, forKey: "contents")
+            if isHighlighted {
+                UIView.animate(withDuration: 0.05) { self.highlightView.alpha = 1 }
+            } else {
+                UIView.animate(withDuration: 0.45) { self.highlightView.alpha = 0 }
             }
         }
     }
 
     @objc private func fired() { onTap?(digit) }
-
-    private static func render(digit: String, letters: String, size: CGFloat, color: UIColor, hl: Bool) -> UIImage {
-        let sz = CGSize(width: size, height: size)
-        return UIGraphicsImageRenderer(size: sz).image { ctx in
-            let c = ctx.cgContext
-            let b = CGRect(origin: .zero, size: sz)
-
-            c.clear(b)
-            c.beginPath()
-            c.addEllipse(in: b)
-            c.clip()
-
-            c.setAlpha(0.8)
-            c.setFillColor(color.cgColor)
-            c.fill(b)
-
-            if hl {
-                c.setFillColor(UIColor(white: 1.0, alpha: 0.65).cgColor)
-                c.fillEllipse(in: b)
-            }
-
-            c.setAlpha(1.0)
-
-            let dFont = UIFont.systemFont(ofSize: 36, weight: .regular)
-            let dAttr: [NSAttributedString.Key: Any] = [.font: dFont, .foregroundColor: UIColor.white]
-            let dNS = digit as NSString
-            let dSz = dNS.size(withAttributes: dAttr)
-
-            let hasSlot = !letters.isEmpty
-            let dY: CGFloat = hasSlot ? b.height * 0.18 : (b.height - dSz.height) / 2
-
-            dNS.draw(at: CGPoint(x: (b.width - dSz.width) / 2, y: dY), withAttributes: dAttr)
-
-            if !letters.trimmingCharacters(in: .whitespaces).isEmpty {
-                let lFont = UIFont.systemFont(ofSize: 10, weight: .bold)
-                let lAttr: [NSAttributedString.Key: Any] = [
-                    .font: lFont,
-                    .foregroundColor: UIColor.white,
-                    .kern: 2.0 as NSNumber
-                ]
-                let lNS = letters as NSString
-                let lSz = lNS.size(withAttributes: lAttr)
-                lNS.draw(at: CGPoint(x: (b.width - lSz.width) / 2, y: dY + dSz.height - 2), withAttributes: lAttr)
-            }
-        }
-    }
 }

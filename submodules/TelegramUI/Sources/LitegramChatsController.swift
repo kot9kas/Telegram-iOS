@@ -445,7 +445,7 @@ public final class LitegramChatsController: ViewController, UITableViewDataSourc
             passcodeBottom: pc.backgroundColors.bottomColor,
             passcodeButton: pc.buttonColor
         )
-        pin.applyPasscodeTheme(top: cols.top, bottom: cols.bottom, button: cols.button)
+        pin.applyPasscodeTheme(top: cols.top, bottom: cols.bottom, button: cols.button, isDark: presentationData.theme.overallDarkAppearance)
     }
 
     private func presentPinSet(completion: @escaping (String) -> Void) {

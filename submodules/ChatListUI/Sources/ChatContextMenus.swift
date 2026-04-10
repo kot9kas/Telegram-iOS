@@ -544,16 +544,17 @@ func chatContextMenuItems(context: AccountContext, peerId: PeerId, promoInfo: Ch
                                     passcodeBottom: pc.backgroundColors.bottomColor,
                                     passcodeButton: pc.buttonColor
                                 )
+                                let litegramIsDark = pd.theme.overallDarkAppearance
                                 if litegramIsLocked {
                                     let pinVC = LitegramPinController(mode: .verify(peerId: litegramPeerId))
-                                    pinVC.applyPasscodeTheme(top: cols.top, bottom: cols.bottom, button: cols.button)
+                                    pinVC.applyPasscodeTheme(top: cols.top, bottom: cols.bottom, button: cols.button, isDark: litegramIsDark)
                                     pinVC.onPinVerified = {
                                         LitegramChatLocks.shared.removeLock(litegramPeerId)
                                     }
                                     chatListController.present(pinVC, animated: true)
                                 } else {
                                     let pinVC = LitegramPinController(mode: .set)
-                                    pinVC.applyPasscodeTheme(top: cols.top, bottom: cols.bottom, button: cols.button)
+                                    pinVC.applyPasscodeTheme(top: cols.top, bottom: cols.bottom, button: cols.button, isDark: litegramIsDark)
                                     pinVC.onPinSet = { pin in
                                         LitegramChatLocks.shared.setLock(litegramPeerId, pin: pin)
                                     }

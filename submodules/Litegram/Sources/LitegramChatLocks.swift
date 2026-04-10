@@ -8,6 +8,7 @@ public final class LitegramChatLocks {
     private let defaults: UserDefaults
     private var unlockTimes: [Int64: Date] = [:]
     private var relockTimers: [Int64: DispatchWorkItem] = [:]
+    private var bypassPeers = Set<Int64>()
     public var currentlyViewingLockedPeerId: Int64?
 
     private init() {
@@ -41,6 +42,7 @@ public final class LitegramChatLocks {
         set {
             defaults.set(newValue, forKey: "lck_autolock")
             unlockTimes.removeAll()
+            bypassPeers.removeAll()
             cancelAllRelockTimers()
             NotificationCenter.default.post(name: Self.autolockDidExpireNotification, object: nil)
         }
@@ -159,10 +161,12 @@ public final class LitegramChatLocks {
 
     public func markUnlocked(_ peerId: Int64) {
         unlockTimes[peerId] = Date()
+        bypassPeers.insert(peerId)
         scheduleRelockTimer(key: peerId)
     }
 
     public func isUnlockedNow(_ peerId: Int64) -> Bool {
+        if bypassPeers.remove(peerId) != nil { return true }
         guard let t = unlockTimes[peerId] else { return false }
         return Date().timeIntervalSince(t) < Double(autolockSeconds)
     }
@@ -170,11 +174,13 @@ public final class LitegramChatLocks {
     public func markFolderUnlocked(_ filterId: Int32) {
         let key = Int64(filterId) | (1 << 40)
         unlockTimes[key] = Date()
+        bypassPeers.insert(key)
         scheduleRelockTimer(key: key)
     }
 
     public func isFolderUnlockedNow(_ filterId: Int32) -> Bool {
         let key = Int64(filterId) | (1 << 40)
+        if bypassPeers.remove(key) != nil { return true }
         guard let t = unlockTimes[key] else { return false }
         return Date().timeIntervalSince(t) < Double(autolockSeconds)
     }
