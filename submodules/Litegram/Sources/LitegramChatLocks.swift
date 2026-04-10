@@ -3,9 +3,11 @@ import CryptoKit
 
 public final class LitegramChatLocks {
     public static let shared = LitegramChatLocks()
+    public static let autolockDidExpireNotification = Notification.Name("LitegramChatLocksAutolockExpired")
 
     private let defaults: UserDefaults
     private var unlockTimes: [Int64: Date] = [:]
+    private var relockTimers: [Int64: DispatchWorkItem] = [:]
 
     private init() {
         defaults = UserDefaults(suiteName: "litegram.chatlocks") ?? .standard
@@ -151,6 +153,7 @@ public final class LitegramChatLocks {
 
     public func markUnlocked(_ peerId: Int64) {
         unlockTimes[peerId] = Date()
+        scheduleRelockTimer(key: peerId)
     }
 
     public func isUnlockedNow(_ peerId: Int64) -> Bool {
@@ -161,12 +164,28 @@ public final class LitegramChatLocks {
     public func markFolderUnlocked(_ filterId: Int32) {
         let key = Int64(filterId) | (1 << 40)
         unlockTimes[key] = Date()
+        scheduleRelockTimer(key: key)
     }
 
     public func isFolderUnlockedNow(_ filterId: Int32) -> Bool {
         let key = Int64(filterId) | (1 << 40)
         guard let t = unlockTimes[key] else { return false }
         return Date().timeIntervalSince(t) < Double(autolockSeconds)
+    }
+
+    private func scheduleRelockTimer(key: Int64) {
+        relockTimers[key]?.cancel()
+        let seconds = autolockSeconds
+        guard seconds > 0 else {
+            NotificationCenter.default.post(name: Self.autolockDidExpireNotification, object: nil)
+            return
+        }
+        let work = DispatchWorkItem { [weak self] in
+            self?.relockTimers.removeValue(forKey: key)
+            NotificationCenter.default.post(name: LitegramChatLocks.autolockDidExpireNotification, object: nil)
+        }
+        relockTimers[key] = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(seconds), execute: work)
     }
 
     public var hasAnyLock: Bool {

@@ -774,6 +774,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     }
     
     deinit {
+        NotificationCenter.default.removeObserver(self, name: LitegramChatLocks.autolockDidExpireNotification, object: nil)
         self.openMessageFromSearchDisposable.dispose()
         self.badgeDisposable?.dispose()
         self.badgeIconDisposable?.dispose()
@@ -2318,8 +2319,18 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     public override func displayNodeDidLoad() {
         super.displayNodeDidLoad()
         
+        NotificationCenter.default.addObserver(self, selector: #selector(self.litegramAutolockExpired), name: LitegramChatLocks.autolockDidExpireNotification, object: nil)
+        
         Queue.mainQueue().after(1.0) {
             self.context.prefetchManager?.prepareNextGreetingSticker()
+        }
+    }
+    
+    @objc private func litegramAutolockExpired() {
+        self.chatListDisplayNode.mainContainerNode.updateState(onlyCurrent: false) { state in
+            var state = state
+            state.lockVersion += 1
+            return state
         }
     }
     

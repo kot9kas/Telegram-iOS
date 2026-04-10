@@ -292,6 +292,7 @@ public struct ChatListNodeState: Equatable {
     public var selectedPeerMap: [EnginePeer.Id: EnginePeer]
     public var selectedThreadIds: Set<Int64>
     public var archiveStoryState: StoryState?
+    public var lockVersion: Int = 0
     
     public init(
         presentationData: ChatListPresentationData,
@@ -366,6 +367,9 @@ public struct ChatListNodeState: Equatable {
             return false
         }
         if lhs.archiveStoryState != rhs.archiveStoryState {
+            return false
+        }
+        if lhs.lockVersion != rhs.lockVersion {
             return false
         }
         return true
