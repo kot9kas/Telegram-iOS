@@ -171,6 +171,12 @@ public final class LitegramApi {
                         }
                     }
                 }
+                servers.sort { a, b in
+                    let aIsRU = a.country.uppercased() == "RU"
+                    let bIsRU = b.country.uppercased() == "RU"
+                    if aIsRU != bIsRU { return aIsRU }
+                    return false
+                }
                 completion(.success(servers))
             case let .failure(error):
                 completion(.failure(error))
