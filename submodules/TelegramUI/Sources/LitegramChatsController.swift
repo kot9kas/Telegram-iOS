@@ -160,12 +160,12 @@ public final class LitegramChatsController: ViewController {
     private func showChatPicker() {
         let controller = context.sharedContext.makePeerSelectionController(PeerSelectionControllerParams(
             context: context,
-            filter: [.onlyPrivateChats, .includeNonMemberGroups, .includeBotChats],
+            filter: [],
             hasContactSelector: false,
             title: "Выберите чат"
         ))
 
-        controller.peerSelected = { [weak self, weak controller] peer, _ in
+        controller.peerSelected = { [weak self, weak controller] (peer: EnginePeer, _: Int64?) in
             controller?.dismiss(animated: true)
             guard let self = self else { return }
             let dialogId = peer.id.id._internalGetInt64Value()
@@ -206,12 +206,12 @@ public final class LitegramChatsController: ViewController {
     private func showGroupChatPicker(groupName: String) {
         let controller = context.sharedContext.makePeerSelectionController(PeerSelectionControllerParams(
             context: context,
-            filter: [.onlyPrivateChats, .includeNonMemberGroups, .includeBotChats],
+            filter: [],
             hasContactSelector: false,
             title: "Выберите чаты"
         ))
 
-        controller.peerSelected = { [weak self, weak controller] peer, _ in
+        controller.peerSelected = { [weak self, weak controller] (peer: EnginePeer, _: Int64?) in
             controller?.dismiss(animated: true)
             guard let self = self else { return }
             let dialogId = peer.id.id._internalGetInt64Value()
@@ -319,12 +319,12 @@ public final class LitegramChatsController: ViewController {
     private func addChatToExistingGroup(_ groupId: Int) {
         let controller = context.sharedContext.makePeerSelectionController(PeerSelectionControllerParams(
             context: context,
-            filter: [.onlyPrivateChats, .includeNonMemberGroups, .includeBotChats],
+            filter: [],
             hasContactSelector: false,
             title: "Добавить чат"
         ))
 
-        controller.peerSelected = { [weak self, weak controller] peer, _ in
+        controller.peerSelected = { [weak self, weak controller] (peer: EnginePeer, _: Int64?) in
             controller?.dismiss(animated: true)
             let dialogId = peer.id.id._internalGetInt64Value()
             LitegramChatLocks.shared.addChatToGroup(groupId, dialogId: dialogId)
