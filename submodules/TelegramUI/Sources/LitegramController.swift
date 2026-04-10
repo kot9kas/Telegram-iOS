@@ -175,7 +175,11 @@ public final class LitegramConnectionController: ViewController, UITableViewData
             self.connectedAnimNode?.visibility = true
             self.disconnectedAnimNode?.visibility = true
             self.offAnimNode?.visibility = true
-            self.activeAnimNode?.playOnce()
+            if self.activeAnimNode === self.offAnimNode {
+                self.activeAnimNode?.playLoop()
+            } else {
+                self.activeAnimNode?.playOnce()
+            }
         }
     }
 
@@ -195,7 +199,11 @@ public final class LitegramConnectionController: ViewController, UITableViewData
                 self.connectedAnimNode?.visibility = true
                 self.disconnectedAnimNode?.visibility = true
                 self.offAnimNode?.visibility = true
-                self.activeAnimNode?.playOnce()
+                if self.activeAnimNode === self.offAnimNode {
+                    self.activeAnimNode?.playLoop()
+                } else {
+                    self.activeAnimNode?.playOnce()
+                }
             }
         }
     }
@@ -352,7 +360,7 @@ public final class LitegramConnectionController: ViewController, UITableViewData
 
         let offAnim = DefaultAnimatedStickerNodeImpl()
         offAnim.automaticallyLoadFirstFrame = true
-        offAnim.setup(source: AnimatedStickerNodeLocalFileSource(name: "litegram_disconnected"), width: pixelSize, height: pixelSize, playbackMode: .once, mode: .direct(cachePathPrefix: nil))
+        offAnim.setup(source: AnimatedStickerNodeLocalFileSource(name: "litegram_disconnected"), width: pixelSize, height: pixelSize, playbackMode: .loop, mode: .direct(cachePathPrefix: nil))
         offAnim.isHidden = true
         header.addSubnode(offAnim)
         self.offAnimNode = offAnim
@@ -614,7 +622,11 @@ public final class LitegramConnectionController: ViewController, UITableViewData
     // MARK: - Actions
 
     @objc private func headerTapped() {
-        self.activeAnimNode?.playOnce()
+        if self.activeAnimNode === self.offAnimNode {
+            self.activeAnimNode?.playLoop()
+        } else {
+            self.activeAnimNode?.playOnce()
+        }
     }
 
     private func selectServer(at index: Int) {
@@ -746,7 +758,11 @@ public final class LitegramConnectionController: ViewController, UITableViewData
             self.activeAnimNode = targetNode
             self.animSetupPending = true
             targetNode?.visibility = true
-            targetNode?.playOnce()
+            if targetNode === self.offAnimNode {
+                targetNode?.playLoop()
+            } else {
+                targetNode?.playOnce()
+            }
         }
 
         self.connectButtonNode?.setTitle(btnTitle, with: UIFont.systemFont(ofSize: 17, weight: .semibold), with: .white, for: .normal)
