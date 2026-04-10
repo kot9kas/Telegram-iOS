@@ -1379,7 +1379,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                     return
                 }
                 
-                let dialogId = peer.id.id._internalGetInt64Value()
+                let dialogId = peer.id.toInt64()
                 if LitegramChatLocks.shared.isLocked(dialogId) && !LitegramChatLocks.shared.isUnlockedNow(dialogId) {
                     self.chatListDisplayNode.mainContainerNode.currentItemNode.clearHighlightAnimated(true)
                     let pinVC = LitegramPinController(mode: .verify(dialogId: dialogId), onPinVerified: { [weak self] in

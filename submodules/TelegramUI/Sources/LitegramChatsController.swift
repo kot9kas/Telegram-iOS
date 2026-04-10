@@ -3,6 +3,7 @@ import UIKit
 import Display
 import AsyncDisplayKit
 import SwiftSignalKit
+import Postbox
 import TelegramCore
 import TelegramPresentationData
 import AccountContext
@@ -126,18 +127,20 @@ public final class LitegramChatsController: ViewController {
             return
         }
 
-        let peerIds = dialogIds.map { EnginePeer.Id(Int64($0)) }
+        peerDisposable?.dispose()
+
+        let peerIds = dialogIds.map { PeerId($0) }
         let signals = peerIds.map { peerId in
             self.context.engine.data.get(TelegramEngine.EngineData.Item.Peer.Peer(id: peerId))
         }
 
         peerDisposable = (combineLatest(signals)
         |> take(1)
-        |> deliverOnMainQueue).startStrict(next: { [weak self] peers in
+        |> deliverOnMainQueue).startStandalone(next: { [weak self] peers in
             for peer in peers {
                 guard let peer = peer else { continue }
                 if let self = self {
-                    self.peerNames[peer.id.id._internalGetInt64Value()] = peer.displayTitle(strings: self.presentationData.strings, displayOrder: .firstLast)
+                    self.peerNames[peer.id.toInt64()] = peer.displayTitle(strings: self.presentationData.strings, displayOrder: .firstLast)
                 }
             }
             completion()
@@ -169,7 +172,7 @@ public final class LitegramChatsController: ViewController {
         controller.peerSelected = { [weak self, weak controller] (peer: EnginePeer, _: Int64?) in
             controller?.dismiss(animated: true)
             guard let self = self else { return }
-            let dialogId = peer.id.id._internalGetInt64Value()
+            let dialogId = peer.id.toInt64()
 
             if LitegramChatLocks.shared.isLocked(dialogId) {
                 let alert = UIAlertController(title: "Чат уже защищён", message: nil, preferredStyle: .alert)
@@ -215,7 +218,7 @@ public final class LitegramChatsController: ViewController {
         controller.peerSelected = { [weak self, weak controller] (peer: EnginePeer, _: Int64?) in
             controller?.dismiss(animated: true)
             guard let self = self else { return }
-            let dialogId = peer.id.id._internalGetInt64Value()
+            let dialogId = peer.id.toInt64()
 
             let pinVC = LitegramPinController(mode: .set, onPinSet: { [weak self] pin, hint in
                 let gid = LitegramChatLocks.shared.createGroup(name: groupName, pin: pin, chatIds: [dialogId])
@@ -327,7 +330,7 @@ public final class LitegramChatsController: ViewController {
 
         controller.peerSelected = { [weak self, weak controller] (peer: EnginePeer, _: Int64?) in
             controller?.dismiss(animated: true)
-            let dialogId = peer.id.id._internalGetInt64Value()
+            let dialogId = peer.id.toInt64()
             LitegramChatLocks.shared.addChatToGroup(groupId, dialogId: dialogId)
             self?.reloadData()
         }

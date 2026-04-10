@@ -26,16 +26,31 @@ public final class LitegramPinController: UIViewController {
 
     private let gradientLayer = CAGradientLayer()
     private let lockImageView = UIImageView()
-    private var dotViews: [UIView] = []
+    private var dotLayers: [CAShapeLayer] = []
     private let titleLabel = UILabel()
     private let subtitleLabel = UILabel()
-    private var numpadButtons: [UIButton] = []
-    private let backButton = UIButton(type: .system)
+
+    private var keyButtons: [PinKeyButton] = []
+    private let deleteButton = UIButton(type: .system)
     private var biometricButton: UIButton?
+    private let cancelButton = UIButton(type: .system)
     private let hintButton = UIButton(type: .system)
 
-    private static let accentColor = UIColor(red: 0.67, green: 0.49, blue: 1.0, alpha: 1.0)
-    private static let accentDimColor = UIColor(red: 0.48, green: 0.37, blue: 0.65, alpha: 1.0)
+    private let dotsContainer = UIView()
+    private let keypadContainer = UIView()
+
+    private static let dotDiameter: CGFloat = 13.0
+    private static let dotSpacing: CGFloat = 24.0
+    private static let buttonSize: CGFloat = 75.0
+    private static let keypadHSpacing: CGFloat = 28.0
+    private static let keypadVSpacing: CGFloat = 16.0
+
+    private static let keyLetters: [String] = [
+        " ", "A B C", "D E F",
+        "G H I", "J K L", "M N O",
+        "P Q R S", "T U V", "W X Y Z",
+        "", "", ""
+    ]
 
     public init(mode: Mode, onPinSet: OnPinSet? = nil, onPinVerified: OnPinVerified? = nil, onDismiss: OnDismiss? = nil) {
         self.mode = mode
@@ -47,157 +62,256 @@ public final class LitegramPinController: UIViewController {
         self.modalTransitionStyle = .crossDissolve
     }
 
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
+    required init?(coder: NSCoder) { fatalError() }
+
+    public override var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }
+    public override var prefersHomeIndicatorAutoHidden: Bool { true }
 
     public override func viewDidLoad() {
         super.viewDidLoad()
-        setupUI()
+        setupGradient()
+        setupLockIcon()
+        setupLabels()
+        setupDots()
+        setupKeypad()
+        setupAccessoryButtons()
         updateTitle()
     }
 
     public override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        if case .verify = mode {
+        switch mode {
+        case .verify, .verifyFolder, .verifyGroup:
             attemptBiometric()
-        } else if case .verifyFolder = mode {
-            attemptBiometric()
-        } else if case .verifyGroup = mode {
-            attemptBiometric()
+        default:
+            break
         }
     }
 
     public override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         gradientLayer.frame = view.bounds
-        layoutElements()
+        layoutAllElements()
     }
 
-    // MARK: - UI Setup
+    // MARK: - Gradient
 
-    private func setupUI() {
-        gradientLayer.colors = [Self.accentDimColor.cgColor, Self.accentColor.cgColor]
-        gradientLayer.startPoint = CGPoint(x: 0, y: 0)
-        gradientLayer.endPoint = CGPoint(x: 1, y: 1)
+    private func setupGradient() {
+        gradientLayer.colors = [
+            UIColor(red: 0.275, green: 0.451, blue: 0.620, alpha: 1.0).cgColor,
+            UIColor(red: 0.165, green: 0.349, blue: 0.510, alpha: 1.0).cgColor
+        ]
+        gradientLayer.startPoint = CGPoint(x: 0.5, y: 0)
+        gradientLayer.endPoint = CGPoint(x: 0.5, y: 1)
         view.layer.insertSublayer(gradientLayer, at: 0)
+    }
 
-        let lockConfig = UIImage.SymbolConfiguration(pointSize: 40, weight: .medium)
-        lockImageView.image = UIImage(systemName: "lock.fill", withConfiguration: lockConfig)
+    // MARK: - Lock icon
+
+    private func setupLockIcon() {
+        let config = UIImage.SymbolConfiguration(pointSize: 32, weight: .thin)
+        lockImageView.image = UIImage(systemName: "lock.fill", withConfiguration: config)
         lockImageView.tintColor = .white
         lockImageView.contentMode = .scaleAspectFit
         view.addSubview(lockImageView)
+    }
 
+    // MARK: - Labels
+
+    private func setupLabels() {
         titleLabel.textColor = .white
-        titleLabel.font = .systemFont(ofSize: 20, weight: .semibold)
+        titleLabel.font = .systemFont(ofSize: 17, weight: .semibold)
         titleLabel.textAlignment = .center
         view.addSubview(titleLabel)
 
-        subtitleLabel.textColor = UIColor.white.withAlphaComponent(0.7)
+        subtitleLabel.textColor = UIColor.white.withAlphaComponent(0.6)
         subtitleLabel.font = .systemFont(ofSize: 14)
         subtitleLabel.textAlignment = .center
+        subtitleLabel.numberOfLines = 0
         view.addSubview(subtitleLabel)
+    }
 
+    // MARK: - Dots
+
+    private func setupDots() {
+        dotsContainer.backgroundColor = .clear
+        view.addSubview(dotsContainer)
         for _ in 0..<4 {
-            let dot = UIView()
-            dot.layer.cornerRadius = 7
-            dot.layer.borderWidth = 2
-            dot.layer.borderColor = UIColor.white.cgColor
-            dot.backgroundColor = .clear
-            view.addSubview(dot)
-            dotViews.append(dot)
+            let layer = CAShapeLayer()
+            layer.strokeColor = UIColor.white.cgColor
+            layer.lineWidth = 1.5
+            layer.fillColor = UIColor.clear.cgColor
+            let r = Self.dotDiameter / 2
+            layer.path = UIBezierPath(arcCenter: CGPoint(x: r, y: r), radius: r - 0.75, startAngle: 0, endAngle: .pi * 2, clockwise: true).cgPath
+            dotsContainer.layer.addSublayer(layer)
+            dotLayers.append(layer)
         }
+    }
 
-        for i in 0..<12 {
-            let btn = UIButton(type: .system)
-            btn.titleLabel?.font = .systemFont(ofSize: 32, weight: .light)
-            btn.setTitleColor(.white, for: .normal)
-            btn.tag = i
+    // MARK: - Keypad
 
-            if i < 9 {
-                btn.setTitle("\(i + 1)", for: .normal)
-            } else if i == 9 {
-                if canUseBiometric {
-                    let bioConfig = UIImage.SymbolConfiguration(pointSize: 24)
-                    btn.setImage(UIImage(systemName: "touchid", withConfiguration: bioConfig), for: .normal)
-                    btn.tintColor = .white
-                    self.biometricButton = btn
-                } else {
-                    btn.isUserInteractionEnabled = false
-                }
-            } else if i == 10 {
-                btn.setTitle("0", for: .normal)
-            } else {
-                let delConfig = UIImage.SymbolConfiguration(pointSize: 20, weight: .medium)
-                btn.setImage(UIImage(systemName: "delete.left", withConfiguration: delConfig), for: .normal)
-                btn.tintColor = .white
+    private func setupKeypad() {
+        keypadContainer.backgroundColor = .clear
+        view.addSubview(keypadContainer)
+
+        let digits = ["1","2","3","4","5","6","7","8","9","","0",""]
+        for (i, digit) in digits.enumerated() {
+            if i == 9 || i == 11 { continue }
+            let letters = Self.keyLetters[i]
+            let btn = PinKeyButton(digit: digit, letters: letters, size: Self.buttonSize)
+            btn.onTap = { [weak self] d in self?.digitEntered(d) }
+            keypadContainer.addSubview(btn)
+            keyButtons.append(btn)
+        }
+    }
+
+    // MARK: - Accessory buttons (delete, biometric, cancel, hint)
+
+    private func setupAccessoryButtons() {
+        let delConfig = UIImage.SymbolConfiguration(pointSize: 22, weight: .regular)
+        deleteButton.setImage(UIImage(systemName: "delete.left", withConfiguration: delConfig), for: .normal)
+        deleteButton.tintColor = .white
+        deleteButton.addTarget(self, action: #selector(deleteTapped), for: .touchUpInside)
+        deleteButton.alpha = 0
+        view.addSubview(deleteButton)
+
+        if canUseBiometric {
+            let bioBtn = UIButton(type: .system)
+            let biometryType = detectBiometryType()
+            let iconName: String
+            switch biometryType {
+            case .faceID:
+                iconName = "faceid"
+            default:
+                iconName = "touchid"
             }
-
-            btn.addTarget(self, action: #selector(numpadTapped(_:)), for: .touchUpInside)
-            view.addSubview(btn)
-            numpadButtons.append(btn)
+            let bioConfig = UIImage.SymbolConfiguration(pointSize: 30, weight: .thin)
+            bioBtn.setImage(UIImage(systemName: iconName, withConfiguration: bioConfig), for: .normal)
+            bioBtn.tintColor = .white
+            bioBtn.addTarget(self, action: #selector(biometricTapped), for: .touchUpInside)
+            view.addSubview(bioBtn)
+            biometricButton = bioBtn
         }
 
-        backButton.setImage(UIImage(systemName: "xmark", withConfiguration: UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)), for: .normal)
-        backButton.tintColor = .white
-        backButton.addTarget(self, action: #selector(closeTapped), for: .touchUpInside)
-        view.addSubview(backButton)
+        cancelButton.setTitle("Отмена", for: .normal)
+        cancelButton.setTitleColor(.white, for: .normal)
+        cancelButton.titleLabel?.font = .systemFont(ofSize: 17)
+        cancelButton.addTarget(self, action: #selector(closeTapped), for: .touchUpInside)
+        view.addSubview(cancelButton)
 
         hintButton.setTitle("Подсказка", for: .normal)
-        hintButton.setTitleColor(UIColor.white.withAlphaComponent(0.7), for: .normal)
+        hintButton.setTitleColor(UIColor.white.withAlphaComponent(0.6), for: .normal)
         hintButton.titleLabel?.font = .systemFont(ofSize: 14)
         hintButton.addTarget(self, action: #selector(hintTapped), for: .touchUpInside)
         hintButton.isHidden = true
         view.addSubview(hintButton)
 
-        if case .verify(let dialogId) = mode, LitegramChatLocks.shared.getHint(dialogId) != nil {
-            hintButton.isHidden = false
-        } else if case .verifyFolder(let filterId) = mode, LitegramChatLocks.shared.getFolderHint(filterId) != nil {
-            hintButton.isHidden = false
-        } else if case .verifyGroup(let groupId) = mode, LitegramChatLocks.shared.getGroupHint(groupId) != nil {
-            hintButton.isHidden = false
+        switch mode {
+        case .verify(let dialogId):
+            hintButton.isHidden = LitegramChatLocks.shared.getHint(dialogId) == nil
+        case .verifyFolder(let filterId):
+            hintButton.isHidden = LitegramChatLocks.shared.getFolderHint(filterId) == nil
+        case .verifyGroup(let groupId):
+            hintButton.isHidden = LitegramChatLocks.shared.getGroupHint(groupId) == nil
+        default: break
         }
     }
 
-    private func layoutElements() {
+    // MARK: - Layout
+
+    private func layoutAllElements() {
         let w = view.bounds.width
+        let h = view.bounds.height
         let safeTop = view.safeAreaInsets.top
+        let isLandscape = w > h
 
-        backButton.frame = CGRect(x: 16, y: safeTop + 12, width: 44, height: 44)
+        let kbTotalW = Self.buttonSize * 3 + Self.keypadHSpacing * 2
+        let kbTotalH = Self.buttonSize * 4 + Self.keypadVSpacing * 3
 
-        let centerY = view.bounds.height * 0.28
+        if isLandscape {
+            layoutLandscape(w: w, h: h, safeTop: safeTop, kbW: kbTotalW, kbH: kbTotalH)
+        } else {
+            layoutPortrait(w: w, h: h, safeTop: safeTop, kbW: kbTotalW, kbH: kbTotalH)
+        }
 
-        lockImageView.frame = CGRect(x: (w - 50) / 2, y: centerY - 60, width: 50, height: 50)
-        titleLabel.frame = CGRect(x: 20, y: lockImageView.frame.maxY + 16, width: w - 40, height: 28)
+        layoutKeyButtons(in: keypadContainer.bounds, kbW: kbTotalW, kbH: kbTotalH)
+    }
+
+    private func layoutPortrait(w: CGFloat, h: CGFloat, safeTop: CGFloat, kbW: CGFloat, kbH: CGFloat) {
+        let topSection = min(h * 0.32, 280.0)
+
+        lockImageView.frame = CGRect(x: (w - 36) / 2, y: topSection - 110, width: 36, height: 36)
+        titleLabel.frame = CGRect(x: 20, y: lockImageView.frame.maxY + 14, width: w - 40, height: 22)
         subtitleLabel.frame = CGRect(x: 20, y: titleLabel.frame.maxY + 4, width: w - 40, height: 20)
 
-        let dotSize: CGFloat = 14
-        let dotSpacing: CGFloat = 24
-        let totalDotsWidth = dotSize * 4 + dotSpacing * 3
-        let dotsStartX = (w - totalDotsWidth) / 2
-        let dotsY = subtitleLabel.frame.maxY + 28
+        let dotsW = Self.dotDiameter * 4 + Self.dotSpacing * 3
+        dotsContainer.frame = CGRect(x: (w - dotsW) / 2, y: subtitleLabel.frame.maxY + 24, width: dotsW, height: Self.dotDiameter)
+        layoutDots()
 
-        for (i, dot) in dotViews.enumerated() {
-            dot.frame = CGRect(x: dotsStartX + CGFloat(i) * (dotSize + dotSpacing), y: dotsY, width: dotSize, height: dotSize)
+        let kbY = dotsContainer.frame.maxY + 30
+        keypadContainer.frame = CGRect(x: (w - kbW) / 2, y: kbY, width: kbW, height: kbH)
+
+        let bottomRowY = kbY + Self.buttonSize * 3 + Self.keypadVSpacing * 3
+        let leftX = (w - kbW) / 2
+        let rightX = leftX + kbW - Self.buttonSize
+
+        if let bioBtn = biometricButton {
+            bioBtn.frame = CGRect(x: leftX, y: bottomRowY, width: Self.buttonSize, height: Self.buttonSize)
         }
+        deleteButton.frame = CGRect(x: rightX, y: bottomRowY, width: Self.buttonSize, height: Self.buttonSize)
 
-        let numpadTop = dotsY + dotSize + 40
-        let btnSize: CGFloat = 70
-        let hSpacing: CGFloat = 28
-        let vSpacing: CGFloat = 14
-        let totalWidth = btnSize * 3 + hSpacing * 2
-        let startX = (w - totalWidth) / 2
+        cancelButton.frame = CGRect(x: leftX, y: bottomRowY + Self.buttonSize + 10, width: 80, height: 30)
+        hintButton.frame = CGRect(x: (w - 120) / 2, y: cancelButton.frame.minY, width: 120, height: 30)
+    }
 
-        for (i, btn) in numpadButtons.enumerated() {
-            let row = i / 3
-            let col = i % 3
-            let x = startX + CGFloat(col) * (btnSize + hSpacing)
-            let y = numpadTop + CGFloat(row) * (btnSize + vSpacing)
-            btn.frame = CGRect(x: x, y: y, width: btnSize, height: btnSize)
-            btn.layer.cornerRadius = btnSize / 2
+    private func layoutLandscape(w: CGFloat, h: CGFloat, safeTop: CGFloat, kbW: CGFloat, kbH: CGFloat) {
+        let leftHalf = w * 0.35
+        lockImageView.frame = CGRect(x: (leftHalf - 36) / 2, y: safeTop + 30, width: 36, height: 36)
+        titleLabel.frame = CGRect(x: 10, y: lockImageView.frame.maxY + 10, width: leftHalf - 20, height: 22)
+        subtitleLabel.frame = CGRect(x: 10, y: titleLabel.frame.maxY + 4, width: leftHalf - 20, height: 20)
+
+        let dotsW = Self.dotDiameter * 4 + Self.dotSpacing * 3
+        dotsContainer.frame = CGRect(x: (leftHalf - dotsW) / 2, y: subtitleLabel.frame.maxY + 20, width: dotsW, height: Self.dotDiameter)
+        layoutDots()
+
+        let scale: CGFloat = min(1.0, (h - safeTop - 20) / kbH)
+        let scaledKbW = kbW * scale
+        let scaledKbH = kbH * scale
+        let kbX = leftHalf + (w - leftHalf - scaledKbW) / 2
+        let kbY = (h - scaledKbH) / 2
+        keypadContainer.frame = CGRect(x: kbX, y: kbY, width: scaledKbW, height: scaledKbH)
+
+        cancelButton.frame = CGRect(x: 20, y: h - 50, width: 80, height: 30)
+        hintButton.frame = CGRect(x: (leftHalf - 120) / 2, y: cancelButton.frame.minY, width: 120, height: 30)
+        deleteButton.frame = CGRect(x: kbX + scaledKbW - Self.buttonSize * scale, y: kbY + 3 * (Self.buttonSize + Self.keypadVSpacing) * scale, width: Self.buttonSize * scale, height: Self.buttonSize * scale)
+        if let bioBtn = biometricButton {
+            bioBtn.frame = CGRect(x: kbX, y: deleteButton.frame.minY, width: Self.buttonSize * scale, height: Self.buttonSize * scale)
         }
+    }
 
-        hintButton.frame = CGRect(x: (w - 120) / 2, y: numpadTop + 4 * (btnSize + vSpacing) + 8, width: 120, height: 30)
+    private func layoutDots() {
+        for (i, layer) in dotLayers.enumerated() {
+            let x = CGFloat(i) * (Self.dotDiameter + Self.dotSpacing)
+            layer.frame = CGRect(x: x, y: 0, width: Self.dotDiameter, height: Self.dotDiameter)
+        }
+    }
+
+    private func layoutKeyButtons(in bounds: CGRect, kbW: CGFloat, kbH: CGFloat) {
+        let positions: [(row: Int, col: Int, digit: String)] = [
+            (0, 0, "1"), (0, 1, "2"), (0, 2, "3"),
+            (1, 0, "4"), (1, 1, "5"), (1, 2, "6"),
+            (2, 0, "7"), (2, 1, "8"), (2, 2, "9"),
+            (3, 1, "0")
+        ]
+        var btnIndex = 0
+        for pos in positions {
+            guard btnIndex < keyButtons.count else { break }
+            let btn = keyButtons[btnIndex]
+            let x = CGFloat(pos.col) * (Self.buttonSize + Self.keypadHSpacing)
+            let y = CGFloat(pos.row) * (Self.buttonSize + Self.keypadVSpacing)
+            btn.frame = CGRect(x: x, y: y, width: Self.buttonSize, height: Self.buttonSize)
+            btnIndex += 1
+        }
     }
 
     // MARK: - Title
@@ -214,58 +328,52 @@ public final class LitegramPinController: UIViewController {
             }
         case .verify, .verifyFolder, .verifyGroup:
             titleLabel.text = "Введите PIN"
-            subtitleLabel.text = "Чат защищён PIN-кодом"
+            subtitleLabel.text = nil
         }
     }
 
-    // MARK: - Dots
+    // MARK: - Dots update
 
     private func updateDots() {
-        for (i, dot) in dotViews.enumerated() {
-            UIView.animate(withDuration: 0.15) {
-                dot.backgroundColor = i < self.enteredPin.count ? .white : .clear
-            }
-            if i == enteredPin.count - 1 && !enteredPin.isEmpty {
-                dot.transform = CGAffineTransform(scaleX: 1.3, y: 1.3)
-                UIView.animate(withDuration: 0.2, delay: 0, usingSpringWithDamping: 0.5, initialSpringVelocity: 0, options: [], animations: {
-                    dot.transform = .identity
-                })
+        for (i, layer) in dotLayers.enumerated() {
+            let filled = i < enteredPin.count
+            CATransaction.begin()
+            CATransaction.setAnimationDuration(0.15)
+            layer.fillColor = filled ? UIColor.white.cgColor : UIColor.clear.cgColor
+            CATransaction.commit()
+
+            if filled && i == enteredPin.count - 1 {
+                let pulse = CAKeyframeAnimation(keyPath: "transform.scale")
+                pulse.values = [1.0, 1.4, 1.0]
+                pulse.keyTimes = [0, 0.4, 1.0]
+                pulse.duration = 0.2
+                layer.add(pulse, forKey: "pulse")
             }
         }
+        deleteButton.alpha = enteredPin.isEmpty ? 0 : 1
     }
 
-    // MARK: - Numpad
+    // MARK: - Input
 
-    @objc private func numpadTapped(_ sender: UIButton) {
-        let tag = sender.tag
-        if tag == 11 {
-            guard !enteredPin.isEmpty else { return }
-            enteredPin.removeLast()
-            updateDots()
-            return
-        }
-        if tag == 9 {
-            if sender === biometricButton {
-                attemptBiometric()
-            }
-            return
-        }
-        let digit: String
-        if tag == 10 {
-            digit = "0"
-        } else {
-            digit = "\(tag + 1)"
-        }
-
+    private func digitEntered(_ digit: String) {
         guard enteredPin.count < 4 else { return }
         enteredPin.append(digit)
         updateDots()
-
         if enteredPin.count == 4 {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
                 self?.handlePinComplete()
             }
         }
+    }
+
+    @objc private func deleteTapped() {
+        guard !enteredPin.isEmpty else { return }
+        enteredPin.removeLast()
+        updateDots()
+    }
+
+    @objc private func biometricTapped() {
+        attemptBiometric()
     }
 
     private func handlePinComplete() {
@@ -279,11 +387,14 @@ public final class LitegramPinController: UIViewController {
                     }
                 } else {
                     shakeAnimation()
+                    subtitleLabel.text = "PIN не совпал, попробуйте снова"
                     isConfirmStep = false
                     firstPin = nil
                     enteredPin = ""
                     updateDots()
-                    updateTitle()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                        self?.updateTitle()
+                    }
                 }
             } else {
                 firstPin = enteredPin
@@ -301,9 +412,7 @@ public final class LitegramPinController: UIViewController {
                     self.dismissAnimated()
                 }
             } else {
-                shakeAnimation()
-                enteredPin = ""
-                updateDots()
+                wrongPin()
             }
 
         case .verifyFolder(let filterId):
@@ -314,9 +423,7 @@ public final class LitegramPinController: UIViewController {
                     self.dismissAnimated()
                 }
             } else {
-                shakeAnimation()
-                enteredPin = ""
-                updateDots()
+                wrongPin()
             }
 
         case .verifyGroup(let groupId):
@@ -326,11 +433,15 @@ public final class LitegramPinController: UIViewController {
                     self.dismissAnimated()
                 }
             } else {
-                shakeAnimation()
-                enteredPin = ""
-                updateDots()
+                wrongPin()
             }
         }
+    }
+
+    private func wrongPin() {
+        shakeAnimation()
+        enteredPin = ""
+        updateDots()
     }
 
     // MARK: - Hint
@@ -344,38 +455,34 @@ public final class LitegramPinController: UIViewController {
             hintText = LitegramChatLocks.shared.getFolderHint(filterId)
         case .verifyGroup(let groupId):
             hintText = LitegramChatLocks.shared.getGroupHint(groupId)
-        default:
-            break
+        default: break
         }
         guard let hint = hintText else { return }
 
         let toast = UILabel()
-        toast.text = hint
+        toast.text = "  \(hint)  "
         toast.textColor = .white
         toast.font = .systemFont(ofSize: 14, weight: .medium)
         toast.backgroundColor = UIColor.black.withAlphaComponent(0.6)
         toast.textAlignment = .center
-        toast.layer.cornerRadius = 16
+        toast.layer.cornerRadius = 18
         toast.clipsToBounds = true
-        let size = toast.sizeThatFits(CGSize(width: view.bounds.width - 80, height: 40))
-        toast.frame = CGRect(x: (view.bounds.width - size.width - 32) / 2, y: view.safeAreaInsets.top + 60, width: size.width + 32, height: 36)
+        toast.sizeToFit()
+        toast.frame.size.width += 32
+        toast.frame.size.height = 36
+        toast.center.x = view.bounds.midX
+        toast.frame.origin.y = view.safeAreaInsets.top + 50
         view.addSubview(toast)
 
-        UIView.animate(withDuration: 0.3, delay: 2.0, options: [], animations: {
-            toast.alpha = 0
-        }) { _ in
+        UIView.animate(withDuration: 0.3, delay: 2.5, options: [], animations: { toast.alpha = 0 }) { _ in
             toast.removeFromSuperview()
         }
     }
 
     private func askForHint(completion: @escaping (String?) -> Void) {
         let alert = UIAlertController(title: "Подсказка к PIN", message: "Введите подсказку (необязательно)", preferredStyle: .alert)
-        alert.addTextField { field in
-            field.placeholder = "Подсказка"
-        }
-        alert.addAction(UIAlertAction(title: "Пропустить", style: .cancel) { _ in
-            completion(nil)
-        })
+        alert.addTextField { $0.placeholder = "Подсказка" }
+        alert.addAction(UIAlertAction(title: "Пропустить", style: .cancel) { _ in completion(nil) })
         alert.addAction(UIAlertAction(title: "Сохранить", style: .default) { _ in
             completion(alert.textFields?.first?.text)
         })
@@ -386,26 +493,25 @@ public final class LitegramPinController: UIViewController {
 
     private func shakeAnimation() {
         let anim = CAKeyframeAnimation(keyPath: "transform.translation.x")
-        anim.values = [0, -10, 10, -8, 8, -4, 4, 0]
-        anim.duration = 0.4
-        for dot in dotViews {
-            dot.layer.add(anim, forKey: "shake")
-        }
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.error)
+        anim.values = [0, -12, 12, -10, 10, -6, 6, 0]
+        anim.duration = 0.45
+        dotsContainer.layer.add(anim, forKey: "shake")
+        UINotificationFeedbackGenerator().notificationOccurred(.error)
     }
 
     private func playUnlockAnimation(completion: @escaping () -> Void) {
-        UIView.animate(withDuration: 0.3, animations: {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+
+        let config = UIImage.SymbolConfiguration(pointSize: 32, weight: .thin)
+        lockImageView.image = UIImage(systemName: "lock.open.fill", withConfiguration: config)
+
+        UIView.animate(withDuration: 0.4, animations: {
             self.lockImageView.transform = CGAffineTransform(scaleX: 0.01, y: 0.01)
             self.lockImageView.alpha = 0
-            for dot in self.dotViews {
-                dot.alpha = 0
-            }
+            self.dotsContainer.alpha = 0
+            self.view.alpha = 0
         }) { _ in
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                completion()
-            }
+            completion()
         }
     }
 
@@ -420,27 +526,117 @@ public final class LitegramPinController: UIViewController {
 
     // MARK: - Biometric
 
+    private func detectBiometryType() -> LABiometryType {
+        let ctx = LAContext()
+        _ = ctx.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
+        return ctx.biometryType
+    }
+
     private var canUseBiometric: Bool {
         guard LitegramChatLocks.shared.isBiometricEnabled else { return false }
         switch mode {
-        case .set:
-            return false
-        default:
-            break
+        case .set: return false
+        default: break
         }
-        let context = LAContext()
-        return context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
+        let ctx = LAContext()
+        return ctx.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
     }
 
     private func attemptBiometric() {
         guard canUseBiometric else { return }
-        let context = LAContext()
-        context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: "Разблокировать чат") { [weak self] success, _ in
+        let ctx = LAContext()
+        ctx.localizedCancelTitle = "Ввести PIN"
+        ctx.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: "Разблокировать чат") { [weak self] success, _ in
             guard success else { return }
             DispatchQueue.main.async {
                 self?.enteredPin = "__bio__"
                 self?.handlePinComplete()
             }
+        }
+    }
+}
+
+// MARK: - PinKeyButton (circular numpad key)
+
+private final class PinKeyButton: UIControl {
+    var onTap: ((String) -> Void)?
+    private let digit: String
+    private let digitLabel = UILabel()
+    private let lettersLabel = UILabel()
+    private let circleLayer = CAShapeLayer()
+
+    init(digit: String, letters: String, size: CGFloat) {
+        self.digit = digit
+        super.init(frame: .zero)
+
+        let r = size / 2
+        circleLayer.path = UIBezierPath(arcCenter: CGPoint(x: r, y: r), radius: r, startAngle: 0, endAngle: .pi * 2, clockwise: true).cgPath
+        circleLayer.fillColor = UIColor(white: 1.0, alpha: 0.12).cgColor
+        layer.addSublayer(circleLayer)
+
+        digitLabel.text = digit
+        digitLabel.font = .systemFont(ofSize: 36, weight: .thin)
+        digitLabel.textColor = .white
+        digitLabel.textAlignment = .center
+        addSubview(digitLabel)
+
+        if !letters.trimmingCharacters(in: .whitespaces).isEmpty {
+            lettersLabel.text = letters
+            lettersLabel.font = .systemFont(ofSize: 9, weight: .medium)
+            lettersLabel.textColor = .white
+            lettersLabel.textAlignment = .center
+            lettersLabel.tracking = 2.0
+            addSubview(lettersLabel)
+        }
+
+        addTarget(self, action: #selector(handleTap), for: .touchUpInside)
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        circleLayer.frame = bounds
+        let r = bounds.width / 2
+        circleLayer.path = UIBezierPath(arcCenter: CGPoint(x: r, y: r), radius: r, startAngle: 0, endAngle: .pi * 2, clockwise: true).cgPath
+
+        if lettersLabel.superview != nil {
+            digitLabel.frame = CGRect(x: 0, y: bounds.height * 0.18, width: bounds.width, height: bounds.height * 0.46)
+            lettersLabel.frame = CGRect(x: 0, y: digitLabel.frame.maxY - 2, width: bounds.width, height: 14)
+        } else {
+            digitLabel.frame = CGRect(x: 0, y: bounds.height * 0.22, width: bounds.width, height: bounds.height * 0.56)
+        }
+    }
+
+    override var isHighlighted: Bool {
+        didSet {
+            UIView.animate(withDuration: 0.1) {
+                self.circleLayer.fillColor = self.isHighlighted
+                    ? UIColor(white: 1.0, alpha: 0.35).cgColor
+                    : UIColor(white: 1.0, alpha: 0.12).cgColor
+            }
+        }
+    }
+
+    @objc private func handleTap() {
+        onTap?(digit)
+    }
+}
+
+private extension UILabel {
+    var tracking: CGFloat {
+        get { return 0 }
+        set {
+            guard let text = self.text else { return }
+            let attr = NSMutableAttributedString(string: text)
+            attr.addAttribute(.kern, value: newValue, range: NSRange(location: 0, length: text.count))
+            if let font = self.font {
+                attr.addAttribute(.font, value: font, range: NSRange(location: 0, length: text.count))
+            }
+            if let color = self.textColor {
+                attr.addAttribute(.foregroundColor, value: color, range: NSRange(location: 0, length: text.count))
+            }
+            self.attributedText = attr
         }
     }
 }

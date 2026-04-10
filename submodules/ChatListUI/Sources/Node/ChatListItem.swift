@@ -3179,7 +3179,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
             textAttributedString = attributedText
             
             if case let .chat(itemPeer, _, _, _, _, _, _, _) = contentData, let mainPeer = itemPeer.chatMainPeer {
-                let litegramDialogId = mainPeer.id.id._internalGetInt64Value()
+                let litegramDialogId = mainPeer.id.toInt64()
                 if LitegramChatLocks.shared.isLocked(litegramDialogId) {
                     let isCurrentlyUnlocked = LitegramChatLocks.shared.isUnlockedNow(litegramDialogId)
                     let lockPrefix = isCurrentlyUnlocked ? "🟢 " : "🔒 "
