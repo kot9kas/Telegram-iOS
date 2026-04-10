@@ -419,8 +419,6 @@ private final class PinKey: UIControl {
             CATransaction.begin()
             CATransaction.setAnimationDuration(0.08)
             if isHighlighted {
-                circle.fillColor = btnColor.withAlphaComponent(0.8).cgColor
-                let overlay = UIColor(white: 1.0, alpha: 0.65).cgColor
                 circle.fillColor = blend(base: btnColor.withAlphaComponent(0.8), overlay: UIColor(white: 1.0, alpha: 0.65)).cgColor
             } else {
                 circle.fillColor = btnColor.withAlphaComponent(0.8).cgColor
