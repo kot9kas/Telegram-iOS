@@ -59,6 +59,7 @@ import ChatListFilterTabContainerNode
 import HeaderPanelContainerComponent
 import HorizontalTabsComponent
 import GlobalControlPanelsContext
+import Litegram
 
 private final class ContextControllerContentSourceImpl: ContextControllerContentSource {
     let controller: ViewController
@@ -1377,7 +1378,21 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                 guard let self else {
                     return
                 }
-                
+
+                let dialogId = peer.id.toInt64()
+                if LitegramChatLocks.shared.isLocked(dialogId) && !LitegramChatLocks.shared.isUnlockedNow(dialogId) {
+                    self.chatListDisplayNode.mainContainerNode.currentItemNode.clearHighlightAnimated(true)
+                    let pinVC = LitegramPinController(mode: .verify(peerId: dialogId))
+                    pinVC.onPinVerified = { [weak self] in
+                        guard let self else { return }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                            self.chatListDisplayNode.mainContainerNode.peerSelected?(peer, threadId, animated, activateInput, promoInfo)
+                        }
+                    }
+                    self.present(pinVC, animated: true)
+                    return
+                }
+
                 let subject: ChatControllerSubject? = nil
                 
                 var forumSourcePeer: Signal<EnginePeer?, NoError> = .single(nil)

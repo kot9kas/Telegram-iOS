@@ -13,6 +13,7 @@ import PresentationDataUtils
 import UndoUI
 import PremiumUI
 import TelegramPresentationData
+import Litegram
 import TelegramStringFormatting
 import ChatTimerScreen
 import NotificationPeerExceptionController
@@ -528,6 +529,28 @@ func chatContextMenuItems(context: AccountContext, peerId: PeerId, promoInfo: Ch
                             }
                         }
                         
+                        let litegramPeerId = peerId.toInt64()
+                        let litegramIsLocked = LitegramChatLocks.shared.isLocked(litegramPeerId)
+                        items.append(.action(ContextMenuActionItem(text: litegramIsLocked ? "Снять PIN-код" : "Установить PIN-код", icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Lock"), color: theme.contextMenu.primaryColor) }, action: { c, f in
+                            c?.dismiss(completion: {
+                                guard let chatListController = chatListController else { return }
+                                if litegramIsLocked {
+                                    let pinVC = LitegramPinController(mode: .verify(peerId: litegramPeerId))
+                                    pinVC.onPinVerified = {
+                                        LitegramChatLocks.shared.removeLock(litegramPeerId)
+                                    }
+                                    chatListController.present(pinVC, animated: true)
+                                } else {
+                                    let pinVC = LitegramPinController(mode: .set)
+                                    pinVC.onPinSet = { pin in
+                                        LitegramChatLocks.shared.setLock(litegramPeerId, pin: pin)
+                                    }
+                                    chatListController.present(pinVC, animated: true)
+                                }
+                            })
+                            f(.default)
+                        })))
+
                         if case .chatList = source, peerGroup != nil {
                             items.append(.action(ContextMenuActionItem(text: strings.ChatList_Context_Delete, textColor: .destructive, icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Delete"), color: theme.contextMenu.destructiveColor) }, action: { _, f in
                                 if let chatListController = chatListController {

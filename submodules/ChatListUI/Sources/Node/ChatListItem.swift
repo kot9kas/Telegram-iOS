@@ -27,6 +27,7 @@ import EmojiStatusComponent
 import AvatarVideoNode
 import AppBundle
 import MultilineTextComponent
+import Litegram
 import MultilineTextWithEntitiesComponent
 import ShimmerEffect
 
@@ -3176,7 +3177,25 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
             }
             
             textAttributedString = attributedText
-            
+
+            if case let .chat(itemPeer, _, _, _, _, _, _, _) = contentData, let mainPeer = itemPeer.chatMainPeer {
+                let lckId = mainPeer.id.toInt64()
+                if LitegramChatLocks.shared.isLocked(lckId) {
+                    let unlocked = LitegramChatLocks.shared.isUnlockedNow(lckId)
+                    let prefix = unlocked ? "🟢 " : "🔒 "
+                    if let t = titleAttributedString {
+                        let m = NSMutableAttributedString(string: prefix)
+                        m.append(t)
+                        titleAttributedString = m
+                    }
+                    if !unlocked {
+                        textAttributedString = NSAttributedString(string: "🔒 Чат защищён", font: textFont, textColor: theme.messageTextColor)
+                        authorAttributedString = nil
+                        contentImageSpecs = []
+                    }
+                }
+            }
+
             let dateText: String
             var topIndex: MessageIndex?
             switch item.content {
