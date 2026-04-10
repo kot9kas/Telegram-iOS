@@ -28,6 +28,7 @@ public final class LitegramConnectionController: ViewController, UITableViewData
     private var headerGradientLayer: CAGradientLayer?
     private var connectedAnimNode: AnimatedStickerNode?
     private var disconnectedAnimNode: AnimatedStickerNode?
+    private var offAnimNode: AnimatedStickerNode?
     private var activeAnimNode: AnimatedStickerNode?
     private var headerTitleNode: ASTextNode?
     private var headerSubtitleNode: ASTextNode?
@@ -173,6 +174,7 @@ public final class LitegramConnectionController: ViewController, UITableViewData
             guard let self = self else { return }
             self.connectedAnimNode?.visibility = true
             self.disconnectedAnimNode?.visibility = true
+            self.offAnimNode?.visibility = true
             self.activeAnimNode?.playOnce()
         }
     }
@@ -192,6 +194,7 @@ public final class LitegramConnectionController: ViewController, UITableViewData
                 guard let self = self else { return }
                 self.connectedAnimNode?.visibility = true
                 self.disconnectedAnimNode?.visibility = true
+                self.offAnimNode?.visibility = true
                 self.activeAnimNode?.playOnce()
             }
         }
@@ -346,6 +349,13 @@ public final class LitegramConnectionController: ViewController, UITableViewData
         discAnim.isHidden = true
         header.addSubnode(discAnim)
         self.disconnectedAnimNode = discAnim
+
+        let offAnim = DefaultAnimatedStickerNodeImpl()
+        offAnim.automaticallyLoadFirstFrame = true
+        offAnim.setup(source: AnimatedStickerNodeLocalFileSource(name: "litegram_disconnected"), width: pixelSize, height: pixelSize, playbackMode: .once, mode: .direct(cachePathPrefix: nil))
+        offAnim.isHidden = true
+        header.addSubnode(offAnim)
+        self.offAnimNode = offAnim
 
         let title = ASTextNode()
         title.textAlignment = .center
@@ -519,6 +529,8 @@ public final class LitegramConnectionController: ViewController, UITableViewData
             self.connectedAnimNode?.updateLayout(size: animLayoutSize)
             self.disconnectedAnimNode?.frame = animFrame
             self.disconnectedAnimNode?.updateLayout(size: animLayoutSize)
+            self.offAnimNode?.frame = animFrame
+            self.offAnimNode?.updateLayout(size: animLayoutSize)
 
             let ty = topPad + animSize + 8
             self.headerTitleNode?.frame = CGRect(x: 0, y: ty, width: cw, height: titleH)
@@ -687,7 +699,7 @@ public final class LitegramConnectionController: ViewController, UITableViewData
             self.isConnecting = false
             titleStr = "Отключено"
             subtitleStr = "Нажмите Подключить для включения прокси"
-            animName = "media_forbidden"
+            animName = "litegram_disconnected"
             btnTitle = "Подключить"
             btnColor = theme.list.itemAccentColor
         }
@@ -716,13 +728,20 @@ public final class LitegramConnectionController: ViewController, UITableViewData
             ])
         }
 
-        let isConnectedAnim = (animName == "change_number")
-        let targetNode = isConnectedAnim ? self.connectedAnimNode : self.disconnectedAnimNode
-        let otherNode = isConnectedAnim ? self.disconnectedAnimNode : self.connectedAnimNode
+        let targetNode: AnimatedStickerNode?
+        if animName == "change_number" {
+            targetNode = self.connectedAnimNode
+        } else if animName == "litegram_disconnected" {
+            targetNode = self.offAnimNode
+        } else {
+            targetNode = self.disconnectedAnimNode
+        }
 
         if self.activeAnimNode !== targetNode || self.lastAnimName != animName {
             self.lastAnimName = animName
-            otherNode?.isHidden = true
+            self.connectedAnimNode?.isHidden = true
+            self.disconnectedAnimNode?.isHidden = true
+            self.offAnimNode?.isHidden = true
             targetNode?.isHidden = false
             self.activeAnimNode = targetNode
             self.animSetupPending = true
