@@ -1383,6 +1383,8 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                 if LitegramChatLocks.shared.isLocked(dialogId) && !LitegramChatLocks.shared.isUnlockedNow(dialogId) {
                     self.chatListDisplayNode.mainContainerNode.currentItemNode.clearHighlightAnimated(true)
                     let pinVC = LitegramPinController(mode: .verify(peerId: dialogId))
+                    pinVC.gradientTop = self.presentationData.theme.passcode.backgroundColors.topColor
+                    pinVC.gradientBottom = self.presentationData.theme.passcode.backgroundColors.bottomColor
                     pinVC.onPinVerified = { [weak self] in
                         guard let self else { return }
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
@@ -1926,7 +1928,12 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
                     } else {
                         var dismissPreviewingImpl: ((Bool) -> (() -> Void))?
                         let source: ContextContentSource
-                        if let location = location {
+                        let lckPeerId = peer.peerId.toInt64()
+                        let lckIsLocked = LitegramChatLocks.shared.isLocked(lckPeerId) && !LitegramChatLocks.shared.isUnlockedNow(lckPeerId)
+                        if lckIsLocked {
+                            let nodePos = node.view.superview?.convert(node.frame.origin, to: nil) ?? .zero
+                            source = .location(ChatListContextLocationContentSource(controller: strongSelf, location: location ?? CGPoint(x: nodePos.x + node.frame.width / 2, y: nodePos.y + node.frame.height / 2)))
+                        } else if let location = location {
                             source = .location(ChatListContextLocationContentSource(controller: strongSelf, location: location))
                         } else {
                             let chatController = strongSelf.context.sharedContext.makeChatController(context: strongSelf.context, chatLocation: .peer(id: peer.peerId), subject: nil, botStart: nil, mode: .standard(.previewing), params: nil)

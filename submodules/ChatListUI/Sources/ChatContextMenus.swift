@@ -534,14 +534,19 @@ func chatContextMenuItems(context: AccountContext, peerId: PeerId, promoInfo: Ch
                         items.append(.action(ContextMenuActionItem(text: litegramIsLocked ? "Снять PIN-код" : "Установить PIN-код", icon: { theme in generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Lock"), color: theme.contextMenu.primaryColor) }, action: { c, f in
                             c?.dismiss(completion: {
                                 guard let chatListController = chatListController else { return }
+                                let pd = context.sharedContext.currentPresentationData.with { $0 }
                                 if litegramIsLocked {
                                     let pinVC = LitegramPinController(mode: .verify(peerId: litegramPeerId))
+                                    pinVC.gradientTop = pd.theme.passcode.backgroundColors.topColor
+                                    pinVC.gradientBottom = pd.theme.passcode.backgroundColors.bottomColor
                                     pinVC.onPinVerified = {
                                         LitegramChatLocks.shared.removeLock(litegramPeerId)
                                     }
                                     chatListController.present(pinVC, animated: true)
                                 } else {
                                     let pinVC = LitegramPinController(mode: .set)
+                                    pinVC.gradientTop = pd.theme.passcode.backgroundColors.topColor
+                                    pinVC.gradientBottom = pd.theme.passcode.backgroundColors.bottomColor
                                     pinVC.onPinSet = { pin in
                                         LitegramChatLocks.shared.setLock(litegramPeerId, pin: pin)
                                     }
