@@ -193,12 +193,12 @@ public final class LitegramProxyController {
     }
 
     private func preferredServer(from servers: [LitegramServerInfo]) -> LitegramServerInfo? {
-        guard let savedHost = LitegramConfig.selectedServerHost else { return nil }
-        if let match = servers.first(where: { $0.host == savedHost }) {
+        if let savedHost = LitegramConfig.selectedServerHost,
+           let match = servers.first(where: { $0.host == savedHost }) {
             return match
         }
         LitegramConfig.selectedServerHost = nil
-        return nil
+        return servers.first(where: { $0.country.uppercased() == "RU" })
     }
 
     private func connectAnonymous() {
