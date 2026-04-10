@@ -59,7 +59,6 @@ import ChatListFilterTabContainerNode
 import HeaderPanelContainerComponent
 import HorizontalTabsComponent
 import GlobalControlPanelsContext
-import Litegram
 
 private final class ContextControllerContentSourceImpl: ContextControllerContentSource {
     let controller: ViewController
@@ -1376,20 +1375,6 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         self.chatListDisplayNode.mainContainerNode.peerSelected = { [weak self] peer, threadId, animated, activateInput, promoInfo in
             Task { @MainActor [weak self] in
                 guard let self else {
-                    return
-                }
-                
-                let dialogId = peer.id.toInt64()
-                if LitegramChatLocks.shared.isLocked(dialogId) && !LitegramChatLocks.shared.isUnlockedNow(dialogId) {
-                    self.chatListDisplayNode.mainContainerNode.currentItemNode.clearHighlightAnimated(true)
-                    let pinVC = LitegramPinController(mode: .verify(dialogId: dialogId), onPinVerified: { [weak self] in
-                        guard let self else { return }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
-                            self.chatListDisplayNode.mainContainerNode.peerSelected?(peer, threadId, animated, activateInput, promoInfo)
-                        }
-                    }, onDismiss: {
-                    })
-                    self.view.window?.rootViewController?.present(pinVC, animated: true)
                     return
                 }
                 
