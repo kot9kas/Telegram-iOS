@@ -11,6 +11,13 @@ public final class LitegramProxyController {
     private var started = false
     public private(set) var lastConnectedServer: LitegramServerInfo?
 
+    private var connectionMonitorDisposable: Disposable?
+    private var connectingTimer: Timer?
+    private var lastReconnectTime: CFAbsoluteTime = 0
+    private let reconnectCooldown: TimeInterval = 15
+    private var consecutiveFailures: Int = 0
+    private let maxConsecutiveFailures = 5
+
     private init() {}
 
     @discardableResult
@@ -262,6 +269,89 @@ public final class LitegramProxyController {
 
     public func applyServer(_ server: LitegramServerInfo) {
         applyProxy(server: server)
+    }
+
+    // MARK: - Connection Monitor
+
+    public func startConnectionMonitor(network: Network) {
+        guard connectionMonitorDisposable == nil else { return }
+
+        connectionMonitorDisposable = (network.connectionStatus
+            |> deliverOnMainQueue).startStrict(next: { [weak self] status in
+                self?.handleConnectionStatus(status)
+            })
+        Logger.shared.log("Litegram", "monitor: started")
+    }
+
+    private func handleConnectionStatus(_ status: ConnectionStatus) {
+        switch status {
+        case .online:
+            connectingTimer?.invalidate()
+            connectingTimer = nil
+            consecutiveFailures = 0
+
+        case let .connecting(_, proxyHasIssues):
+            let timeout: TimeInterval = proxyHasIssues ? 5 : 12
+            if connectingTimer == nil {
+                connectingTimer = Timer.scheduledTimer(withTimeInterval: timeout, repeats: false) { [weak self] _ in
+                    self?.connectingTimer = nil
+                    self?.attemptAutoReconnect()
+                }
+            }
+
+        case .waitingForNetwork:
+            if connectingTimer == nil {
+                connectingTimer = Timer.scheduledTimer(withTimeInterval: 8, repeats: false) { [weak self] _ in
+                    self?.connectingTimer = nil
+                    self?.attemptAutoReconnect()
+                }
+            }
+
+        case .updating:
+            connectingTimer?.invalidate()
+            connectingTimer = nil
+        }
+    }
+
+    private func attemptAutoReconnect() {
+        let now = CFAbsoluteTimeGetCurrent()
+        guard now - lastReconnectTime >= reconnectCooldown else {
+            Logger.shared.log("Litegram", "monitor: cooldown active, skipping reconnect")
+            return
+        }
+        guard consecutiveFailures < maxConsecutiveFailures else {
+            Logger.shared.log("Litegram", "monitor: max failures (\(maxConsecutiveFailures)) reached, stopping auto-reconnect")
+            return
+        }
+
+        lastReconnectTime = now
+        consecutiveFailures += 1
+        Logger.shared.log("Litegram", "monitor: auto-reconnect attempt \(consecutiveFailures)")
+
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            self?.rotateToNextServer()
+        }
+    }
+
+    private func rotateToNextServer() {
+        let cached = LitegramConfig.getCachedServers()
+        guard !cached.isEmpty else {
+            Logger.shared.log("Litegram", "monitor: no cached servers for rotation, fetching")
+            connectProxy()
+            return
+        }
+
+        let currentHost = lastConnectedServer?.host
+        let otherServers = cached.filter { $0.host != currentHost }
+        let candidates = otherServers.isEmpty ? cached : otherServers
+
+        if let reachable = findReachableServer(from: candidates) {
+            Logger.shared.log("Litegram", "monitor: rotating to \(reachable.host):\(reachable.port)")
+            applyProxy(server: reachable)
+        } else {
+            Logger.shared.log("Litegram", "monitor: no reachable servers, refetching from API")
+            connectProxy()
+        }
     }
 
     public func refreshSubscription(completion: (() -> Void)? = nil) {

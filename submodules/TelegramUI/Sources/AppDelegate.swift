@@ -1347,6 +1347,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             }
             self.contextValue = context
             if let context = context {
+                LitegramProxyController.shared.startConnectionMonitor(network: context.context.account.network)
                 setupLegacyComponents(context: context.context)
                 let isReady = context.isReady.get()
                 contextReadyDisposable.set((isReady
