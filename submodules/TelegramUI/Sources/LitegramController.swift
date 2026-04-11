@@ -28,7 +28,6 @@ public final class LitegramConnectionController: ViewController, UITableViewData
     private var headerGradientLayer: CAGradientLayer?
     private var connectedAnimNode: AnimatedStickerNode?
     private var disconnectedAnimNode: AnimatedStickerNode?
-    private var offAnimNode: AnimatedStickerNode?
     private var activeAnimNode: AnimatedStickerNode?
     private var headerTitleNode: ASTextNode?
     private var headerSubtitleNode: ASTextNode?
@@ -52,6 +51,7 @@ public final class LitegramConnectionController: ViewController, UITableViewData
     private var lastAnimName: String?
     private var animSetupPending = false
     private var authObserver: NSObjectProtocol?
+    private var proxyChangeObserver: NSObjectProtocol?
     private var fetchRetryWorkItem: DispatchWorkItem?
     private let serverRowHeight: CGFloat = 48.0
     private static let serverCellReuseId = "LitegramServerCell"
@@ -67,13 +67,13 @@ public final class LitegramConnectionController: ViewController, UITableViewData
     ]
 
     private static let perks: [(icon: String, title: String, subtitle: String)] = [
-        ("Item List/Icons/Speed", "Быстрый и стабильный", "Высокоскоростной прокси без ограничений"),
-        ("Item List/Icons/LockBubble", "Усиленная приватность", "Ваш трафик зашифрован от начала до конца"),
-        ("Item List/Icons/NoAds", "Доступ к заблокированному", "Обход региональных ограничений"),
-        ("Item List/Icons/X2", "Без лимитов скорости", "Безлимитная пропускная способность"),
-        ("Item List/Icons/Chat", "Автопереподключение", "Остаётся на связи даже при нестабильной сети"),
-        ("Item List/Icons/Location", "Множество серверов", "Выбирайте серверы по всему миру"),
-        ("Item List/Icons/Hand", "Простота использования", "Подключение в одно нажатие")
+        ("Premium/Perk/Speed", "Быстрый и стабильный", "Высокоскоростной прокси без ограничений"),
+        ("Premium/Perk/NoForward", "Усиленная приватность", "Ваш трафик зашифрован от начала до конца"),
+        ("Premium/Perk/NoAds", "Доступ к заблокированному", "Обход региональных ограничений"),
+        ("Premium/Perk/Limits", "Без лимитов скорости", "Безлимитная пропускная способность"),
+        ("Premium/Perk/Chat", "Автопереподключение", "Остаётся на связи даже при нестабильной сети"),
+        ("Premium/Perk/Status", "Множество серверов", "Выбирайте серверы по всему миру"),
+        ("Premium/Perk/Translation", "Простота использования", "Подключение в одно нажатие")
     ]
 
     public init(context: AccountContext) {
@@ -119,6 +119,14 @@ public final class LitegramConnectionController: ViewController, UITableViewData
             self?.fetchServersWithToken()
         }
 
+        self.proxyChangeObserver = NotificationCenter.default.addObserver(
+            forName: .litegramProxyDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.syncSelectedServer()
+        }
+
         fetchServers()
     }
 
@@ -132,6 +140,9 @@ public final class LitegramConnectionController: ViewController, UITableViewData
         self.connectionStatusDisposable?.dispose()
         self.fetchRetryWorkItem?.cancel()
         if let observer = self.authObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        if let observer = self.proxyChangeObserver {
             NotificationCenter.default.removeObserver(observer)
         }
     }
@@ -174,12 +185,7 @@ public final class LitegramConnectionController: ViewController, UITableViewData
             guard let self = self else { return }
             self.connectedAnimNode?.visibility = true
             self.disconnectedAnimNode?.visibility = true
-            self.offAnimNode?.visibility = true
-            if self.activeAnimNode === self.offAnimNode {
-                self.activeAnimNode?.playLoop()
-            } else {
-                self.activeAnimNode?.playOnce()
-            }
+            self.activeAnimNode?.playOnce()
         }
     }
 
@@ -198,12 +204,7 @@ public final class LitegramConnectionController: ViewController, UITableViewData
                 guard let self = self else { return }
                 self.connectedAnimNode?.visibility = true
                 self.disconnectedAnimNode?.visibility = true
-                self.offAnimNode?.visibility = true
-                if self.activeAnimNode === self.offAnimNode {
-                    self.activeAnimNode?.playLoop()
-                } else {
-                    self.activeAnimNode?.playOnce()
-                }
+                self.activeAnimNode?.playOnce()
             }
         }
     }
@@ -357,13 +358,6 @@ public final class LitegramConnectionController: ViewController, UITableViewData
         discAnim.isHidden = true
         header.addSubnode(discAnim)
         self.disconnectedAnimNode = discAnim
-
-        let offAnim = DefaultAnimatedStickerNodeImpl()
-        offAnim.automaticallyLoadFirstFrame = true
-        offAnim.setup(source: AnimatedStickerNodeLocalFileSource(name: "litegram_disconnected"), width: pixelSize, height: pixelSize, playbackMode: .loop, mode: .direct(cachePathPrefix: nil))
-        offAnim.isHidden = true
-        header.addSubnode(offAnim)
-        self.offAnimNode = offAnim
 
         let title = ASTextNode()
         title.textAlignment = .center
@@ -537,8 +531,6 @@ public final class LitegramConnectionController: ViewController, UITableViewData
             self.connectedAnimNode?.updateLayout(size: animLayoutSize)
             self.disconnectedAnimNode?.frame = animFrame
             self.disconnectedAnimNode?.updateLayout(size: animLayoutSize)
-            self.offAnimNode?.frame = animFrame
-            self.offAnimNode?.updateLayout(size: animLayoutSize)
 
             let ty = topPad + animSize + 8
             self.headerTitleNode?.frame = CGRect(x: 0, y: ty, width: cw, height: titleH)
@@ -622,11 +614,7 @@ public final class LitegramConnectionController: ViewController, UITableViewData
     // MARK: - Actions
 
     @objc private func headerTapped() {
-        if self.activeAnimNode === self.offAnimNode {
-            self.activeAnimNode?.playLoop()
-        } else {
-            self.activeAnimNode?.playOnce()
-        }
+        self.activeAnimNode?.playOnce()
     }
 
     private func selectServer(at index: Int) {
@@ -636,6 +624,17 @@ public final class LitegramConnectionController: ViewController, UITableViewData
         LitegramConfig.selectedServerHost = server.host
         LitegramProxyController.shared.applyServer(server)
         self.serversTableView?.reloadData()
+    }
+
+    private func syncSelectedServer() {
+        guard let activeHost = LitegramConfig.selectedServerHost else { return }
+        if let idx = availableServers.firstIndex(where: { $0.host == activeHost }) {
+            if selectedServerIndex != idx {
+                selectedServerIndex = idx
+                serversTableView?.reloadData()
+                updateUI()
+            }
+        }
     }
 
     @objc private func actionButtonTapped() {
@@ -711,7 +710,7 @@ public final class LitegramConnectionController: ViewController, UITableViewData
             self.isConnecting = false
             titleStr = "Отключено"
             subtitleStr = "Нажмите Подключить для включения прокси"
-            animName = "litegram_disconnected"
+            animName = "media_forbidden"
             btnTitle = "Подключить"
             btnColor = theme.list.itemAccentColor
         }
@@ -740,29 +739,18 @@ public final class LitegramConnectionController: ViewController, UITableViewData
             ])
         }
 
-        let targetNode: AnimatedStickerNode?
-        if animName == "change_number" {
-            targetNode = self.connectedAnimNode
-        } else if animName == "litegram_disconnected" {
-            targetNode = self.offAnimNode
-        } else {
-            targetNode = self.disconnectedAnimNode
-        }
+        let isConnectedAnim = (animName == "change_number")
+        let targetNode = isConnectedAnim ? self.connectedAnimNode : self.disconnectedAnimNode
+        let otherNode = isConnectedAnim ? self.disconnectedAnimNode : self.connectedAnimNode
 
         if self.activeAnimNode !== targetNode || self.lastAnimName != animName {
             self.lastAnimName = animName
-            self.connectedAnimNode?.isHidden = true
-            self.disconnectedAnimNode?.isHidden = true
-            self.offAnimNode?.isHidden = true
+            otherNode?.isHidden = true
             targetNode?.isHidden = false
             self.activeAnimNode = targetNode
             self.animSetupPending = true
             targetNode?.visibility = true
-            if targetNode === self.offAnimNode {
-                targetNode?.playLoop()
-            } else {
-                targetNode?.playOnce()
-            }
+            targetNode?.playOnce()
         }
 
         self.connectButtonNode?.setTitle(btnTitle, with: UIFont.systemFont(ofSize: 17, weight: .semibold), with: .white, for: .normal)

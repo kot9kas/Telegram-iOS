@@ -334,23 +334,46 @@ public final class LitegramProxyController {
     }
 
     private func rotateToNextServer() {
-        let cached = LitegramConfig.getCachedServers()
-        guard !cached.isEmpty else {
-            Logger.shared.log("Litegram", "monitor: no cached servers for rotation, fetching")
-            connectProxy()
-            return
+        let failedHost = lastConnectedServer?.host
+        Logger.shared.log("Litegram", "monitor: rotating away from \(failedHost ?? "none"), fetching fresh list from API")
+
+        let applyFresh: ([LitegramServerInfo]) -> Void = { [weak self] servers in
+            guard let self = self else { return }
+            let candidates = servers.filter { $0.host != failedHost }
+            let pool = candidates.isEmpty ? servers : candidates
+
+            if let reachable = self.findReachableServer(from: pool) {
+                Logger.shared.log("Litegram", "monitor: rotating to \(reachable.host):\(reachable.port)")
+                self.applyProxy(server: reachable)
+            } else if let first = pool.first {
+                Logger.shared.log("Litegram", "monitor: no reachable, fallback to \(first.host):\(first.port)")
+                self.applyProxy(server: first)
+            }
         }
 
-        let currentHost = lastConnectedServer?.host
-        let otherServers = cached.filter { $0.host != currentHost }
-        let candidates = otherServers.isEmpty ? cached : otherServers
-
-        if let reachable = findReachableServer(from: candidates) {
-            Logger.shared.log("Litegram", "monitor: rotating to \(reachable.host):\(reachable.port)")
-            applyProxy(server: reachable)
+        if LitegramDeviceToken.hasAccessToken {
+            api.getProxyServers { [weak self] result in
+                guard let self = self else { return }
+                switch result {
+                case let .success(servers) where !servers.isEmpty:
+                    LitegramConfig.saveCachedServers(servers)
+                    applyFresh(servers)
+                default:
+                    let cached = LitegramConfig.getCachedServers()
+                    if !cached.isEmpty {
+                        applyFresh(cached)
+                    } else {
+                        self.connectAnonymous()
+                    }
+                }
+            }
         } else {
-            Logger.shared.log("Litegram", "monitor: no reachable servers, refetching from API")
-            connectProxy()
+            let cached = LitegramConfig.getCachedServers()
+            if cached.count > 1 {
+                applyFresh(cached)
+            } else {
+                self.connectAnonymous()
+            }
         }
     }
 
@@ -493,12 +516,17 @@ public final class LitegramProxyController {
         }.start()
 
         self.lastConnectedServer = server
-        Logger.shared.log("Litegram", "proxy applied")
+        LitegramConfig.selectedServerHost = server.host
+        Logger.shared.log("Litegram", "proxy applied: \(server.host):\(server.port)")
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .litegramProxyDidChange, object: nil)
+        }
     }
 }
 
 public extension Notification.Name {
     static let litegramAuthDidUpdate = Notification.Name("litegram.authDidUpdate")
+    static let litegramProxyDidChange = Notification.Name("litegram.proxyDidChange")
 }
 
 private func dataFromHexString(_ hex: String) -> Data? {
