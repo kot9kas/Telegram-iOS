@@ -14,9 +14,9 @@ public final class LitegramProxyController {
     private var connectionMonitorDisposable: Disposable?
     private var connectingTimer: Foundation.Timer?
     private var lastReconnectTime: CFAbsoluteTime = 0
-    private let reconnectCooldown: TimeInterval = 15
+    private let reconnectCooldown: TimeInterval = 5
     private var consecutiveFailures: Int = 0
-    private let maxConsecutiveFailures = 5
+    private let maxConsecutiveFailures = 8
 
     private init() {}
 
@@ -170,7 +170,7 @@ public final class LitegramProxyController {
         }
 
         for server in ordered {
-            if Self.tcpCheck(host: server.host, port: UInt16(server.port), timeout: 2) {
+            if Self.tcpCheck(host: server.host, port: UInt16(server.port), timeout: 1.5) {
                 return server
             }
             Logger.shared.log("Litegram", "start: \(server.host):\(server.port) UNREACHABLE")
@@ -291,7 +291,7 @@ public final class LitegramProxyController {
             consecutiveFailures = 0
 
         case let .connecting(_, proxyHasIssues):
-            let timeout: TimeInterval = proxyHasIssues ? 5 : 12
+            let timeout: TimeInterval = proxyHasIssues ? 3 : 6
             if connectingTimer == nil {
                 connectingTimer = Foundation.Timer.scheduledTimer(withTimeInterval: timeout, repeats: false) { [weak self] _ in
                     self?.connectingTimer = nil
@@ -301,7 +301,7 @@ public final class LitegramProxyController {
 
         case .waitingForNetwork:
             if connectingTimer == nil {
-                connectingTimer = Foundation.Timer.scheduledTimer(withTimeInterval: 8, repeats: false) { [weak self] _ in
+                connectingTimer = Foundation.Timer.scheduledTimer(withTimeInterval: 4, repeats: false) { [weak self] _ in
                     self?.connectingTimer = nil
                     self?.attemptAutoReconnect()
                 }
