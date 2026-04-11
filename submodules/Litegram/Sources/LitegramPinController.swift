@@ -462,11 +462,12 @@ public final class LitegramPinController: UIViewController {
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
             guard let self else { return }
-            markAndNotify()
             UIView.animate(withDuration: 0.2, animations: {
                 self.view.transform = CGAffineTransform(translationX: 0, y: -self.view.bounds.height)
             }) { _ in
-                self.dismiss(animated: false)
+                self.dismiss(animated: false) {
+                    markAndNotify()
+                }
             }
         }
     }

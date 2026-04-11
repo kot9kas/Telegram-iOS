@@ -61,14 +61,14 @@ public final class LitegramController: ViewController, UIDocumentPickerDelegate 
                 action: #selector(chatsTapped)
             ),
             MenuItem(
-                iconName: "Settings/Menu/Proxy",
+                iconName: "Item List/Icons/Proxy",
                 iconBgColor: UIColor(red: 0.25, green: 0.70, blue: 0.42, alpha: 1.0),
                 title: litegramStrings.connectionTitle,
                 subtitle: litegramStrings.connectionSubtitle,
                 action: #selector(protectionTapped)
             ),
             MenuItem(
-                iconName: "Chat/Input/Text/IconMention",
+                iconName: "Item List/Icons/Key",
                 iconBgColor: UIColor(red: 0.60, green: 0.35, blue: 0.85, alpha: 1.0),
                 title: "Перенос сессии",
                 subtitle: "Импорт из Pyrogram",

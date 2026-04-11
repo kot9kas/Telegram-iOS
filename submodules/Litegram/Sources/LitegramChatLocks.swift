@@ -4,6 +4,7 @@ import CryptoKit
 public final class LitegramChatLocks {
     public static let shared = LitegramChatLocks()
     public static let autolockDidExpireNotification = Notification.Name("LitegramChatLocksAutolockExpired")
+    public static let lockStateChangedNotification = Notification.Name("LitegramChatLocksStateChanged")
 
     private var defaults: UserDefaults
     private var unlockTimes: [Int64: Date] = [:]
@@ -105,6 +106,7 @@ public final class LitegramChatLocks {
         if !ids.contains(peerId) { ids.append(peerId) }
         saveIds(ids, "lck_chats")
         defaults.set(hashPin(pin), forKey: "lck_p_\(peerId)")
+        postLockStateChanged()
     }
 
     public func removeLock(_ peerId: Int64) {
@@ -113,6 +115,7 @@ public final class LitegramChatLocks {
         saveIds(ids, "lck_chats")
         defaults.removeObject(forKey: "lck_p_\(peerId)")
         unlockTimes.removeValue(forKey: peerId)
+        postLockStateChanged()
     }
 
     public func checkPin(_ peerId: Int64, pin: String) -> Bool {
@@ -145,6 +148,7 @@ public final class LitegramChatLocks {
         if !ids.contains(filterId) { ids.append(filterId) }
         saveFolderIds(ids)
         defaults.set(hashPin(pin), forKey: "lck_fp_\(filterId)")
+        postLockStateChanged()
     }
 
     public func removeFolderLock(_ filterId: Int32) {
@@ -154,6 +158,7 @@ public final class LitegramChatLocks {
         defaults.removeObject(forKey: "lck_fp_\(filterId)")
         let key = Int64(filterId) | (1 << 40)
         unlockTimes.removeValue(forKey: key)
+        postLockStateChanged()
     }
 
     public func checkFolderPin(_ filterId: Int32, pin: String) -> Bool {
@@ -170,8 +175,9 @@ public final class LitegramChatLocks {
     }
 
     public func isUnlockedNow(_ peerId: Int64) -> Bool {
-        if bypassPeers.remove(peerId) != nil { return true }
+        if bypassPeers.contains(peerId) { return true }
         guard let t = unlockTimes[peerId] else { return false }
+        if autolockSeconds == 0 { return true }
         return Date().timeIntervalSince(t) < Double(autolockSeconds)
     }
 
@@ -184,8 +190,9 @@ public final class LitegramChatLocks {
 
     public func isFolderUnlockedNow(_ filterId: Int32) -> Bool {
         let key = Int64(filterId) | (1 << 40)
-        if bypassPeers.remove(key) != nil { return true }
+        if bypassPeers.contains(key) { return true }
         guard let t = unlockTimes[key] else { return false }
+        if autolockSeconds == 0 { return true }
         return Date().timeIntervalSince(t) < Double(autolockSeconds)
     }
 
@@ -193,19 +200,33 @@ public final class LitegramChatLocks {
         relockTimers[key]?.cancel()
         let seconds = autolockSeconds
         guard seconds > 0 else {
-            DispatchQueue.main.async {
-                NotificationCenter.default.post(name: LitegramChatLocks.autolockDidExpireNotification, object: nil)
-            }
             return
         }
         let work = DispatchWorkItem { [weak self] in
             self?.relockTimers.removeValue(forKey: key)
+            self?.unlockTimes.removeValue(forKey: key)
+            self?.bypassPeers.remove(key)
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: LitegramChatLocks.autolockDidExpireNotification, object: nil)
             }
         }
         relockTimers[key] = work
         DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(seconds), execute: work)
+    }
+
+    public func relockImmediatePeers() {
+        guard autolockSeconds == 0 else { return }
+        unlockTimes.removeAll()
+        bypassPeers.removeAll()
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: LitegramChatLocks.autolockDidExpireNotification, object: nil)
+        }
+    }
+
+    private func postLockStateChanged() {
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: LitegramChatLocks.lockStateChangedNotification, object: nil)
+        }
     }
 
     public func cancelAllRelockTimers() {

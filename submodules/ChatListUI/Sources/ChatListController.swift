@@ -2332,12 +2332,21 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         
         NotificationCenter.default.addObserver(self, selector: #selector(self.litegramAutolockExpired), name: LitegramChatLocks.autolockDidExpireNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(self.litegramAppDidBecomeActive), name: UIApplication.didBecomeActiveNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(self.litegramLockStateChanged), name: LitegramChatLocks.lockStateChangedNotification, object: nil)
         
         Queue.mainQueue().after(1.0) {
             self.context.prefetchManager?.prepareNextGreetingSticker()
         }
     }
     
+    @objc private func litegramLockStateChanged() {
+        self.chatListDisplayNode.mainContainerNode.updateState(onlyCurrent: false) { state in
+            var state = state
+            state.lockVersion += 1
+            return state
+        }
+    }
+
     @objc private func litegramAutolockExpired() {
         if case let .filter(filterId) = self.chatListDisplayNode.mainContainerNode.currentItemFilter,
            LitegramChatLocks.shared.isFolderLocked(filterId),
@@ -2355,6 +2364,8 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     @objc private func litegramAppDidBecomeActive() {
         guard LitegramChatLocks.shared.hasAnyLock else { return }
         
+        LitegramChatLocks.shared.relockImmediatePeers()
+
         if let viewingPeerId = LitegramChatLocks.shared.currentlyViewingLockedPeerId,
            LitegramChatLocks.shared.isLocked(viewingPeerId),
            !LitegramChatLocks.shared.isUnlockedNow(viewingPeerId) {
@@ -2387,6 +2398,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         super.viewDidAppear(animated)
         
         LitegramChatLocks.shared.currentlyViewingLockedPeerId = nil
+        LitegramChatLocks.shared.relockImmediatePeers()
                 
         if self.powerSavingMonitoringDisposable == nil {
             self.powerSavingMonitoringDisposable = (self.context.sharedContext.automaticMediaDownloadSettings
