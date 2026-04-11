@@ -67,13 +67,13 @@ public final class LitegramConnectionController: ViewController, UITableViewData
     ]
 
     private static let perks: [(icon: String, title: String, subtitle: String)] = [
-        ("Premium/Perk/Speed", "Быстрый и стабильный", "Высокоскоростной прокси без ограничений"),
-        ("Premium/Perk/NoForward", "Усиленная приватность", "Ваш трафик зашифрован от начала до конца"),
-        ("Premium/Perk/NoAds", "Доступ к заблокированному", "Обход региональных ограничений"),
-        ("Premium/Perk/Limits", "Без лимитов скорости", "Безлимитная пропускная способность"),
-        ("Premium/Perk/Chat", "Автопереподключение", "Остаётся на связи даже при нестабильной сети"),
-        ("Premium/Perk/Status", "Множество серверов", "Выбирайте серверы по всему миру"),
-        ("Premium/Perk/Translation", "Простота использования", "Подключение в одно нажатие")
+        ("Item List/Icons/Speed", "Быстрый и стабильный", "Высокоскоростной прокси без ограничений"),
+        ("Item List/Icons/LockBubble", "Усиленная приватность", "Ваш трафик зашифрован от начала до конца"),
+        ("Item List/Icons/NoAds", "Доступ к заблокированному", "Обход региональных ограничений"),
+        ("Item List/Icons/X2", "Без лимитов скорости", "Безлимитная пропускная способность"),
+        ("Item List/Icons/Chat", "Автопереподключение", "Остаётся на связи даже при нестабильной сети"),
+        ("Item List/Icons/Location", "Множество серверов", "Выбирайте серверы по всему миру"),
+        ("Item List/Icons/Hand", "Простота использования", "Подключение в одно нажатие")
     ]
 
     public init(context: AccountContext) {
