@@ -104,6 +104,9 @@ public final class LitegramProxyController {
             connection: .mtp(secret: secretData)
         )
 
+        let proxySettings = ProxySettings(enabled: true, servers: [proxyServer], activeServer: proxyServer, useForCalls: false)
+        _litegramProxyOverride = proxySettings
+
         let sem = DispatchSemaphore(value: 0)
         let _ = updateProxySettingsInteractively(accountManager: accountManager) { settings in
             var settings = settings

@@ -463,6 +463,8 @@ public struct NetworkInitializationArguments {
 private let cloudDataContext = Atomic<CloudDataContext?>(value: nil)
 #endif
 
+public var _litegramProxyOverride: ProxySettings?
+
 func initializedNetwork(accountId: AccountRecordId, arguments: NetworkInitializationArguments, supplementary: Bool, datacenterId: Int, keychain: Keychain, basePath: String, testingEnvironment: Bool, languageCode: String?, proxySettings: ProxySettings?, networkSettings: NetworkSettings?, phoneNumber: String?, useRequestTimeoutTimers: Bool, appConfiguration: AppConfiguration) -> Signal<Network, NoError> {
     return Signal { subscriber in
         let queue = Queue()
@@ -478,12 +480,13 @@ func initializedNetwork(accountId: AccountRecordId, arguments: NetworkInitializa
             apiEnvironment.layer = NSNumber(value: Int(serialization.currentLayer()))
             apiEnvironment.disableUpdates = supplementary
             apiEnvironment = apiEnvironment.withUpdatedLangPackCode(languageCode ?? "en")
-            
-            if let effectiveActiveServer = proxySettings?.effectiveActiveServer {
+
+            let effectiveProxy = proxySettings ?? _litegramProxyOverride
+            if let effectiveActiveServer = effectiveProxy?.effectiveActiveServer {
                 apiEnvironment = apiEnvironment.withUpdatedSocksProxySettings(effectiveActiveServer.mtProxySettings)
                 Logger.shared.log("Litegram", "initializedNetwork: proxy SET \(effectiveActiveServer.host):\(effectiveActiveServer.port)")
             } else {
-                Logger.shared.log("Litegram", "initializedNetwork: proxy NIL (enabled=\(proxySettings?.enabled ?? false), server=\(proxySettings?.activeServer?.host ?? "none"))")
+                Logger.shared.log("Litegram", "initializedNetwork: proxy NIL")
             }
             
             apiEnvironment = apiEnvironment.withUpdatedNetworkSettings((networkSettings ?? NetworkSettings.defaultSettings).mtNetworkSettings)
