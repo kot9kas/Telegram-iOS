@@ -67,6 +67,12 @@ public final class LitegramController: ViewController {
                 action: #selector(protectionTapped)
             ),
             MenuItem(
+                icon: renderSettingsIcon(name: "Item List/Icons/Chat", backgroundColors: [UIColor(rgb: 0x007aff)]),
+                title: litegramStrings.sessionTransferTitle,
+                subtitle: litegramStrings.sessionTransferSubtitle,
+                action: #selector(sessionTransferTapped)
+            ),
+            MenuItem(
                 icon: renderSettingsIcon(name: "Item List/Icons/Support", backgroundColors: [UIColor(rgb: 0xff9500)]),
                 title: litegramStrings.supportTitle,
                 subtitle: "support@litegram.io",
@@ -438,6 +444,88 @@ public final class LitegramController: ViewController {
         self.push(connectionController)
     }
 
+    @objc private func sessionTransferTapped() {
+        let actionSheet = ActionSheetController(presentationData: self.presentationData)
+        actionSheet.setItemGroups([
+            ActionSheetItemGroup(items: [
+                ActionSheetButtonItem(title: litegramStrings.sessionImport, color: .accent, action: { [weak self, weak actionSheet] in
+                    actionSheet?.dismissAnimated()
+                    self?.presentImportPicker()
+                }),
+                ActionSheetButtonItem(title: litegramStrings.sessionExport, color: .accent, action: { [weak self, weak actionSheet] in
+                    actionSheet?.dismissAnimated()
+                    self?.exportCurrentSession()
+                })
+            ]),
+            ActionSheetItemGroup(items: [
+                ActionSheetButtonItem(title: self.presentationData.strings.Common_Cancel, color: .accent, font: .bold, action: { [weak actionSheet] in
+                    actionSheet?.dismissAnimated()
+                })
+            ])
+        ])
+        self.present(actionSheet, in: .window(.root))
+    }
+
+    private func presentImportPicker() {
+        let picker: UIDocumentPickerViewController
+        if #available(iOS 14.0, *) {
+            picker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: true)
+        } else {
+            picker = UIDocumentPickerViewController(documentTypes: ["public.item"], in: .import)
+        }
+        picker.delegate = self
+        picker.allowsMultipleSelection = false
+        self.view.window?.rootViewController?.present(picker, animated: true)
+    }
+
+    private func exportCurrentSession() {
+        let _ = (accountBackupData(postbox: self.context.account.postbox)
+        |> deliverOnMainQueue).startStandalone(next: { [weak self] backupData in
+            guard let self else { return }
+            guard let backupData else {
+                let alert = ActionSheetController(presentationData: self.presentationData)
+                alert.setItemGroups([
+                    ActionSheetItemGroup(items: [
+                        ActionSheetTextItem(title: self.litegramStrings.sessionExportNoData)
+                    ]),
+                    ActionSheetItemGroup(items: [
+                        ActionSheetButtonItem(title: self.presentationData.strings.Common_OK, color: .accent, font: .bold, action: { [weak alert] in
+                            alert?.dismissAnimated()
+                        })
+                    ])
+                ])
+                self.present(alert, in: .window(.root))
+                return
+            }
+            do {
+                let fileURL = try LitegramSessionImporter.exportPyrogramSession(backupData: backupData)
+                let activityVC = UIActivityViewController(activityItems: [fileURL], applicationActivities: nil)
+                activityVC.completionWithItemsHandler = { _, _, _, _ in
+                    try? FileManager.default.removeItem(at: fileURL)
+                }
+                if let popover = activityVC.popoverPresentationController {
+                    popover.sourceView = self.view
+                    popover.sourceRect = CGRect(x: self.view.bounds.midX, y: self.view.bounds.midY, width: 0, height: 0)
+                    popover.permittedArrowDirections = []
+                }
+                self.view.window?.rootViewController?.present(activityVC, animated: true)
+            } catch {
+                let alert = ActionSheetController(presentationData: self.presentationData)
+                alert.setItemGroups([
+                    ActionSheetItemGroup(items: [
+                        ActionSheetTextItem(title: "\(self.litegramStrings.sessionExportError): \(error.localizedDescription)")
+                    ]),
+                    ActionSheetItemGroup(items: [
+                        ActionSheetButtonItem(title: self.presentationData.strings.Common_OK, color: .accent, font: .bold, action: { [weak alert] in
+                            alert?.dismissAnimated()
+                        })
+                    ])
+                ])
+                self.present(alert, in: .window(.root))
+            }
+        })
+    }
+
     @objc private func supportTapped() {
         let actionSheet = ActionSheetController(presentationData: self.presentationData)
         actionSheet.setItemGroups([
@@ -634,6 +722,44 @@ public final class LitegramController: ViewController {
 
         if let layout = self.lastLayout {
             layoutNodes(width: layout.size.width, safeLeft: layout.safeInsets.left, safeRight: layout.safeInsets.right, bottomInset: layout.intrinsicInsets.bottom)
+        }
+    }
+}
+
+extension LitegramController: UIDocumentPickerDelegate {
+    public func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+        guard let url = urls.first else { return }
+        do {
+            let sessionData = try LitegramSessionImporter.parsePyrogramSession(at: url)
+            let backupData = LitegramSessionImporter.makeBackupData(from: sessionData)
+            let accountManager = self.context.sharedContext.accountManager
+            let sharedContext = self.context.sharedContext
+
+            let _ = accountManager.transaction({ transaction -> AccountRecordId in
+                let id = transaction.createRecord([
+                    .environment(AccountEnvironmentAttribute(environment: .production)),
+                    .backupData(AccountBackupDataAttribute(data: backupData))
+                ])
+                transaction.setCurrentId(id)
+                return id
+            }).start(next: { id in
+                Queue.mainQueue().async {
+                    sharedContext.switchToAccount(id: id, fromSettingsController: nil, withChatListController: nil)
+                }
+            })
+        } catch {
+            let actionSheet = ActionSheetController(presentationData: self.presentationData)
+            actionSheet.setItemGroups([
+                ActionSheetItemGroup(items: [
+                    ActionSheetTextItem(title: "\(self.litegramStrings.sessionImportError): \(error.localizedDescription)")
+                ]),
+                ActionSheetItemGroup(items: [
+                    ActionSheetButtonItem(title: self.presentationData.strings.Common_OK, color: .accent, font: .bold, action: { [weak actionSheet] in
+                        actionSheet?.dismissAnimated()
+                    })
+                ])
+            ])
+            self.present(actionSheet, in: .window(.root))
         }
     }
 }
