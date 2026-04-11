@@ -102,12 +102,22 @@ public enum LitegramSessionImporter {
         }
         defer { sqlite3_close(db) }
 
-        let createSQL = "CREATE TABLE sessions (dc_id INTEGER, auth_key BLOB, user_id INTEGER)"
+        let createSQL = """
+            CREATE TABLE sessions (
+                dc_id INTEGER PRIMARY KEY,
+                api_id INTEGER,
+                test_mode INTEGER,
+                auth_key BLOB,
+                date INTEGER NOT NULL DEFAULT 0,
+                user_id INTEGER,
+                is_bot INTEGER
+            )
+            """
         guard sqlite3_exec(db, createSQL, nil, nil, nil) == SQLITE_OK else {
             throw SessionExportError.sqliteError(String(cString: sqlite3_errmsg(db)))
         }
 
-        let insertSQL = "INSERT INTO sessions (dc_id, auth_key, user_id) VALUES (?, ?, ?)"
+        let insertSQL = "INSERT INTO sessions (dc_id, api_id, test_mode, auth_key, date, user_id, is_bot) VALUES (?, ?, ?, ?, ?, ?, ?)"
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, insertSQL, -1, &stmt, nil) == SQLITE_OK else {
             throw SessionExportError.sqliteError(String(cString: sqlite3_errmsg(db)))
@@ -115,13 +125,18 @@ public enum LitegramSessionImporter {
         defer { sqlite3_finalize(stmt) }
 
         let userId = PeerId(backupData.peerId).id._internalGetInt64Value()
+        let sqliteTransient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
 
         sqlite3_bind_int(stmt, 1, backupData.masterDatacenterId)
+        sqlite3_bind_int(stmt, 2, 0)
+        sqlite3_bind_int(stmt, 3, 0)
         let keyData = backupData.masterDatacenterKey
         keyData.withUnsafeBytes { ptr in
-            _ = sqlite3_bind_blob(stmt, 2, ptr.baseAddress, Int32(keyData.count), nil)
+            _ = sqlite3_bind_blob(stmt, 4, ptr.baseAddress, Int32(keyData.count), sqliteTransient)
         }
-        sqlite3_bind_int64(stmt, 3, userId)
+        sqlite3_bind_int(stmt, 5, Int32(Date().timeIntervalSince1970))
+        sqlite3_bind_int64(stmt, 6, userId)
+        sqlite3_bind_int(stmt, 7, 0)
 
         guard sqlite3_step(stmt) == SQLITE_DONE else {
             throw SessionExportError.sqliteError(String(cString: sqlite3_errmsg(db)))
