@@ -463,7 +463,7 @@ public final class LitegramController: ViewController, UIDocumentPickerDelegate 
     // MARK: - Actions
 
     @objc private func chatsTapped() {
-        let controller = LitegramChatsController(context: self.context)
+        let controller = litegramChatsController(context: self.context)
         self.push(controller)
     }
 
