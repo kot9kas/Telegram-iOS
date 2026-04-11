@@ -481,6 +481,9 @@ func initializedNetwork(accountId: AccountRecordId, arguments: NetworkInitializa
             
             if let effectiveActiveServer = proxySettings?.effectiveActiveServer {
                 apiEnvironment = apiEnvironment.withUpdatedSocksProxySettings(effectiveActiveServer.mtProxySettings)
+                Logger.shared.log("Litegram", "initializedNetwork: proxy SET \(effectiveActiveServer.host):\(effectiveActiveServer.port)")
+            } else {
+                Logger.shared.log("Litegram", "initializedNetwork: proxy NIL (enabled=\(proxySettings?.enabled ?? false), server=\(proxySettings?.activeServer?.host ?? "none"))")
             }
             
             apiEnvironment = apiEnvironment.withUpdatedNetworkSettings((networkSettings ?? NetworkSettings.defaultSettings).mtNetworkSettings)

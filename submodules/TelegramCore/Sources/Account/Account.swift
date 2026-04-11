@@ -223,6 +223,7 @@ public class UnauthorizedAccount {
         }
         |> distinctUntilChanged).start(next: { [weak self] activeServer in
             guard let self else { return }
+            Logger.shared.log("Litegram", "UnauthorizedAccount proxy observer: server=\(activeServer?.host ?? "nil"):\(activeServer?.port ?? 0)")
             let updated = activeServer.flatMap { activeServer -> MTSocksProxySettings? in
                 return activeServer.mtProxySettings
             }
