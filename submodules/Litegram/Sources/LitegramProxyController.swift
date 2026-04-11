@@ -28,7 +28,7 @@ public final class LitegramProxyController {
         let cached = LitegramConfig.getCachedServers()
         print("[Litegram] start: cached=\(cached.count)")
         for (i, s) in cached.enumerated() {
-            print("[Litegram] start: server[\(i)] = \(s.host):\(s.port) (\(s.country ?? "?"))")
+            print("[Litegram] start: server[\(i)] = \(s.host):\(s.port) (\(s.country.isEmpty ? "?" : s.country))")
         }
 
         let reachableServer = findReachableServer(from: cached)
@@ -116,12 +116,9 @@ public final class LitegramProxyController {
         if connectResult == 0 { return true }
         guard errno == EINPROGRESS else { return false }
 
-        var writeSet = fd_set()
-        __darwin_fd_zero(&writeSet)
-        __darwin_fd_set(Int32(sock), &writeSet)
-        var tv = timeval(tv_sec: Int(timeout), tv_usec: 0)
-        let selectResult = select(sock + 1, nil, &writeSet, nil, &tv)
-        guard selectResult > 0 else { return false }
+        var pfd = pollfd(fd: sock, events: Int16(POLLOUT), revents: 0)
+        let pollResult = poll(&pfd, 1, Int32(timeout * 1000))
+        guard pollResult > 0 else { return false }
 
         var optErr: Int32 = 0
         var optLen = socklen_t(MemoryLayout<Int32>.size)
