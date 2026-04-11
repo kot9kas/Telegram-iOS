@@ -48,9 +48,9 @@ private enum LitegramChatsSection: Int32 {
     case header
     case biometric
     case settings
-    case chats
-    case folders
-}
+        case chats
+        case folders
+    }
 
 private enum LitegramChatsEntryId: Hashable {
     case animationHeader
@@ -269,8 +269,8 @@ private final class LitegramAnimationHeaderItemNode: ListViewItemNode {
         let makeTextLayout = TextNode.asyncLayout(self.textNode)
 
         return { item, params, neighbors in
-            let iconSize: CGFloat = 100.0
-            let topInset: CGFloat = iconSize + 8.0
+            let iconSize: CGFloat = 140.0
+            let topInset: CGFloat = iconSize + 12.0
 
             let sideInset: CGFloat = 32.0 + params.leftInset
             let font = Font.regular(15.0)
@@ -291,7 +291,7 @@ private final class LitegramAnimationHeaderItemNode: ListViewItemNode {
                 insets: UIEdgeInsets()
             ))
 
-            let contentHeight = topInset + textLayout.size.height + 16.0
+            let contentHeight = 8.0 + topInset + textLayout.size.height + 16.0
             let contentSize = CGSize(width: params.width, height: contentHeight)
             let insets = itemListNeighborsGroupedInsets(neighbors, params)
             let layout = ListViewItemNodeLayout(contentSize: contentSize, insets: insets)
@@ -307,14 +307,14 @@ private final class LitegramAnimationHeaderItemNode: ListViewItemNode {
                 }
                 self.item = item
 
-                let iconFrame = CGRect(x: floor((layout.size.width - iconSize) / 2.0), y: -4.0, width: iconSize, height: iconSize)
+                let iconFrame = CGRect(x: floor((layout.size.width - iconSize) / 2.0), y: 8.0, width: iconSize, height: iconSize)
                 self.animationNode.frame = iconFrame
                 self.animationNode.updateLayout(size: CGSize(width: iconSize, height: iconSize))
 
                 let _ = textApply()
                 self.textNode.frame = CGRect(
                     x: floor((layout.size.width - textLayout.size.width) / 2.0),
-                    y: topInset,
+                    y: 8.0 + topInset,
                     width: textLayout.size.width,
                     height: textLayout.size.height
                 )
@@ -431,7 +431,7 @@ public func litegramChatsController(context: AccountContext) -> ViewController {
             let folders: [(filterId: Int32, name: String)] = folderIds.map { fid in
                 let name = filters.compactMap { f -> String? in
                     if case let .filter(id, title, _, _) = f, id == fid { return title.text }
-                    return nil
+                return nil
                 }.first ?? litegramStrings.folderFallback(fid)
                 return (filterId: fid, name: name)
             }
@@ -547,11 +547,11 @@ public func litegramChatsController(context: AccountContext) -> ViewController {
             presentControllerImpl?(sheet, ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
         },
         addPassword: {
-            let sheet = ActionSheetController(presentationData: presentationData)
-            sheet.setItemGroups([
-                ActionSheetItemGroup(items: [
+        let sheet = ActionSheetController(presentationData: presentationData)
+        sheet.setItemGroups([
+            ActionSheetItemGroup(items: [
                     ActionSheetButtonItem(title: litegramStrings.addToChat, color: .accent, action: { [weak sheet] in
-                        sheet?.dismissAnimated()
+                    sheet?.dismissAnimated()
                         let controller = context.sharedContext.makePeerSelectionController(PeerSelectionControllerParams(
                             context: context,
                             filter: [],
@@ -636,31 +636,31 @@ public func litegramChatsController(context: AccountContext) -> ViewController {
                         presentPinVerifyChat(peerId) {
                             presentPinSet { pin in
                                 locks.setLock(peerId, pin: pin)
-                            }
                         }
-                    }),
+                    }
+                }),
                     ActionSheetButtonItem(title: litegramStrings.removeProtection, color: .destructive, action: { [weak sheet] in
-                        sheet?.dismissAnimated()
+                    sheet?.dismissAnimated()
                         presentPinVerifyChat(peerId) {
                             locks.removeLock(peerId)
                             reloadData()
                         }
-                    })
-                ]),
-                ActionSheetItemGroup(items: [
-                    ActionSheetButtonItem(title: presentationData.strings.Common_Cancel, color: .accent, font: .bold, action: { [weak sheet] in
-                        sheet?.dismissAnimated()
-                    })
-                ])
+                })
+            ]),
+            ActionSheetItemGroup(items: [
+                ActionSheetButtonItem(title: presentationData.strings.Common_Cancel, color: .accent, font: .bold, action: { [weak sheet] in
+                    sheet?.dismissAnimated()
+                })
             ])
+        ])
             presentControllerImpl?(sheet, ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
         },
         openFolder: { filterId in
-            let sheet = ActionSheetController(presentationData: presentationData)
-            sheet.setItemGroups([
-                ActionSheetItemGroup(items: [
+        let sheet = ActionSheetController(presentationData: presentationData)
+        sheet.setItemGroups([
+            ActionSheetItemGroup(items: [
                     ActionSheetButtonItem(title: litegramStrings.changePin, color: .accent, action: { [weak sheet] in
-                        sheet?.dismissAnimated()
+                    sheet?.dismissAnimated()
                         presentPinVerifyFolder(filterId) {
                             presentPinSet { pin in
                                 locks.setFolderLock(filterId, pin: pin)
@@ -668,19 +668,19 @@ public func litegramChatsController(context: AccountContext) -> ViewController {
                         }
                     }),
                     ActionSheetButtonItem(title: litegramStrings.removeProtection, color: .destructive, action: { [weak sheet] in
-                        sheet?.dismissAnimated()
+                    sheet?.dismissAnimated()
                         presentPinVerifyFolder(filterId) {
                             locks.removeFolderLock(filterId)
                             reloadData()
                         }
-                    })
-                ]),
-                ActionSheetItemGroup(items: [
-                    ActionSheetButtonItem(title: presentationData.strings.Common_Cancel, color: .accent, font: .bold, action: { [weak sheet] in
-                        sheet?.dismissAnimated()
-                    })
-                ])
+                })
+            ]),
+            ActionSheetItemGroup(items: [
+                ActionSheetButtonItem(title: presentationData.strings.Common_Cancel, color: .accent, font: .bold, action: { [weak sheet] in
+                    sheet?.dismissAnimated()
+                })
             ])
+        ])
             presentControllerImpl?(sheet, ViewControllerPresentationArguments(presentationAnimation: .modalSheet))
         },
         removeChat: { peerId in
