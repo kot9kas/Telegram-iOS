@@ -26,15 +26,15 @@ public final class LitegramProxyController {
 
         let proxyReady: Signal<Void, NoError>
         let cached = LitegramConfig.getCachedServers()
-        print("[Litegram] start: cached=\(cached.count)")
+        Logger.shared.log("Litegram", "start: cached=\(cached.count)")
         for (i, s) in cached.enumerated() {
-            print("[Litegram] start: server[\(i)] = \(s.host):\(s.port) (\(s.country.isEmpty ? "?" : s.country))")
+            Logger.shared.log("Litegram", "start: server[\(i)] = \(s.host):\(s.port) (\(s.country.isEmpty ? "?" : s.country))")
         }
 
         let reachableServer = findReachableServer(from: cached)
 
         if let server = reachableServer, let secretData = dataFromHexString(server.secret) {
-            print("[Litegram] start: using reachable \(server.host):\(server.port)")
+            Logger.shared.log("Litegram", "start: using reachable \(server.host):\(server.port)")
             let proxyServer = ProxyServerSettings(
                 host: server.host,
                 port: Int32(server.port),
@@ -47,11 +47,11 @@ public final class LitegramProxyController {
                 return settings
             }
             |> map { _ in
-                print("[Litegram] start: proxyReady COMPLETED — proxy written to accountManager")
+                Logger.shared.log("Litegram", "start: proxyReady COMPLETED")
             }
             self.lastConnectedServer = server
         } else if !cached.isEmpty, let server = cached.first, let secretData = dataFromHexString(server.secret) {
-            print("[Litegram] start: no reachable server found, fallback to first cached \(server.host):\(server.port)")
+            Logger.shared.log("Litegram", "start: fallback to first cached \(server.host):\(server.port)")
             let proxyServer = ProxyServerSettings(
                 host: server.host,
                 port: Int32(server.port),
@@ -64,19 +64,93 @@ public final class LitegramProxyController {
                 return settings
             }
             |> map { _ in
-                print("[Litegram] start: proxyReady COMPLETED (fallback)")
+                Logger.shared.log("Litegram", "start: proxyReady COMPLETED (fallback)")
             }
             self.lastConnectedServer = server
         } else {
-            print("[Litegram] start: NO cached servers, proxyReady = immediate")
-            proxyReady = .single(())
+            Logger.shared.log("Litegram", "start: no cached servers, fetching from API")
+            proxyReady = self.fetchProxyBeforeStart(accountManager: accountManager)
         }
 
-        DispatchQueue.global(qos: .utility).async { [weak self] in
-            self?.connectProxy()
+        if !cached.isEmpty {
+            DispatchQueue.global(qos: .utility).async { [weak self] in
+                self?.connectProxy()
+            }
         }
 
         return proxyReady
+    }
+
+    private func fetchProxyBeforeStart(accountManager: AccountManager<TelegramAccountManagerTypes>) -> Signal<Void, NoError> {
+        return Signal { subscriber in
+            let fetchBlock = { [weak self] in
+                guard let self = self else {
+                    subscriber.putNext(())
+                    subscriber.putCompletion()
+                    return
+                }
+
+                let done = { (server: LitegramServerInfo?) in
+                    if let server = server, let secretData = dataFromHexString(server.secret) {
+                        Logger.shared.log("Litegram", "start: fetched \(server.host):\(server.port) from API")
+                        LitegramConfig.saveCachedServers([server])
+                        let proxyServer = ProxyServerSettings(
+                            host: server.host,
+                            port: Int32(server.port),
+                            connection: .mtp(secret: secretData)
+                        )
+                        let _ = (updateProxySettingsInteractively(accountManager: accountManager) { settings in
+                            var settings = settings
+                            settings.activeServer = proxyServer
+                            settings.enabled = true
+                            return settings
+                        }
+                        |> deliverOnMainQueue).start(completed: {
+                            Logger.shared.log("Litegram", "start: proxyReady COMPLETED (first launch)")
+                            subscriber.putNext(())
+                            subscriber.putCompletion()
+                        })
+                        self.lastConnectedServer = server
+                    } else {
+                        Logger.shared.log("Litegram", "start: API returned no usable proxy, proceeding without")
+                        subscriber.putNext(())
+                        subscriber.putCompletion()
+                    }
+                }
+
+                if LitegramDeviceToken.hasAccessToken {
+                    self.api.getProxyServers { result in
+                        switch result {
+                        case let .success(servers) where !servers.isEmpty:
+                            LitegramConfig.saveCachedServers(servers)
+                            let server = self.findReachableServer(from: servers) ?? self.preferredServer(from: servers) ?? servers[0]
+                            done(server)
+                        default:
+                            let deviceToken = LitegramDeviceToken.getDeviceToken()
+                            self.api.claimTempProxy(deviceToken: deviceToken) { claimResult in
+                                if case let .success(server) = claimResult {
+                                    done(server)
+                                } else {
+                                    done(nil)
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    let deviceToken = LitegramDeviceToken.getDeviceToken()
+                    self.api.claimTempProxy(deviceToken: deviceToken) { result in
+                        if case let .success(server) = result {
+                            done(server)
+                        } else {
+                            done(nil)
+                        }
+                    }
+                }
+            }
+
+            DispatchQueue.global(qos: .userInitiated).async(execute: fetchBlock)
+            return EmptyDisposable
+        }
     }
 
     private func findReachableServer(from servers: [LitegramServerInfo]) -> LitegramServerInfo? {
@@ -92,7 +166,7 @@ public final class LitegramProxyController {
             if Self.tcpCheck(host: server.host, port: UInt16(server.port), timeout: 2) {
                 return server
             }
-            print("[Litegram] start: \(server.host):\(server.port) UNREACHABLE")
+            Logger.shared.log("Litegram", "start: \(server.host):\(server.port) UNREACHABLE")
         }
         return nil
     }

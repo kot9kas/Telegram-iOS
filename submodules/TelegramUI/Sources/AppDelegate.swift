@@ -1086,7 +1086,6 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         
         let sharedContextSignal = proxyReadySignal
         |> mapToSignal { _ -> Signal<InitialPresentationDataAndSettings, NoError> in
-            print("[Litegram] AppDelegate: proxyReady done, loading presentation data...")
             return currentPresentationDataAndSettings(accountManager: accountManager, systemUserInterfaceStyle: systemUserInterfaceStyle)
         }
         |> map { initialPresentationDataAndSettings -> (AccountManager, InitialPresentationDataAndSettings) in
