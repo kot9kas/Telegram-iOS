@@ -308,7 +308,6 @@ public func litegramChatsController(context: AccountContext) -> ViewController {
     var presentControllerImpl: ((ViewController, ViewControllerPresentationArguments?) -> Void)?
     var pushControllerImpl: ((ViewController) -> Void)?
     var presentInWindowImpl: ((UIViewController) -> Void)?
-    var dismissImpl: (() -> Void)?
 
     func applyPinTheme(to pin: LitegramPinController) {
         pin.strings = litegramStrings
@@ -595,10 +594,6 @@ public func litegramChatsController(context: AccountContext) -> ViewController {
     presentInWindowImpl = { [weak controller] vc in
         controller?.view.window?.rootViewController?.present(vc, animated: true)
     }
-    dismissImpl = { [weak controller] in
-        controller?.dismiss()
-    }
-
     controller.didAppear = { _ in
         reloadData()
     }
