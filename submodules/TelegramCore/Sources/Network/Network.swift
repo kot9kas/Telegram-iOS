@@ -482,11 +482,14 @@ func initializedNetwork(accountId: AccountRecordId, arguments: NetworkInitializa
             apiEnvironment = apiEnvironment.withUpdatedLangPackCode(languageCode ?? "en")
 
             let effectiveProxy = proxySettings ?? _litegramProxyOverride
+            print("[Litegram] initializedNetwork: proxySettings=\(proxySettings != nil), override=\(_litegramProxyOverride != nil), dc=\(datacenterId)")
             if let effectiveActiveServer = effectiveProxy?.effectiveActiveServer {
                 apiEnvironment = apiEnvironment.withUpdatedSocksProxySettings(effectiveActiveServer.mtProxySettings)
                 Logger.shared.log("Litegram", "initializedNetwork: proxy SET \(effectiveActiveServer.host):\(effectiveActiveServer.port)")
+                print("[Litegram] initializedNetwork: proxy SET \(effectiveActiveServer.host):\(effectiveActiveServer.port)")
             } else {
                 Logger.shared.log("Litegram", "initializedNetwork: proxy NIL")
+                print("[Litegram] initializedNetwork: proxy NIL — no proxy at all!")
             }
             
             apiEnvironment = apiEnvironment.withUpdatedNetworkSettings((networkSettings ?? NetworkSettings.defaultSettings).mtNetworkSettings)

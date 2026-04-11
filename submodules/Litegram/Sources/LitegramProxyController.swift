@@ -106,6 +106,7 @@ public final class LitegramProxyController {
 
         let proxySettings = ProxySettings(enabled: true, servers: [proxyServer], activeServer: proxyServer, useForCalls: false)
         _litegramProxyOverride = proxySettings
+        print("[Litegram] applyProxySync: _litegramProxyOverride SET for \(server.host):\(server.port), secret=\(server.secret.prefix(8))...")
 
         let sem = DispatchSemaphore(value: 0)
         let _ = updateProxySettingsInteractively(accountManager: accountManager) { settings in
@@ -120,6 +121,7 @@ public final class LitegramProxyController {
 
         self.lastConnectedServer = server
         Logger.shared.log("Litegram", "applyProxySync: DONE \(server.host):\(server.port)")
+        print("[Litegram] applyProxySync: accountManager updated DONE \(server.host):\(server.port)")
     }
 
     private var lastRegisteredTelegramId: Int64?
