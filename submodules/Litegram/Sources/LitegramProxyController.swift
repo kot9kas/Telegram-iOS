@@ -27,28 +27,46 @@ public final class LitegramProxyController {
         let proxyReady: Signal<Void, NoError>
         let cached = LitegramConfig.getCachedServers()
         print("[Litegram] start: cached=\(cached.count)")
-        if !cached.isEmpty, let server = preferredServer(from: cached) ?? cached.first {
-            print("[Litegram] start: using \(server.host):\(server.port) secret=\(server.secret.prefix(8))...")
-            if let secretData = dataFromHexString(server.secret) {
-                let proxyServer = ProxyServerSettings(
-                    host: server.host,
-                    port: Int32(server.port),
-                    connection: .mtp(secret: secretData)
-                )
-                proxyReady = updateProxySettingsInteractively(accountManager: accountManager) { settings in
-                    var settings = settings
-                    settings.activeServer = proxyServer
-                    settings.enabled = true
-                    return settings
-                }
-                |> map { _ in
-                    print("[Litegram] start: proxyReady signal COMPLETED — proxy written to accountManager")
-                }
-                self.lastConnectedServer = server
-            } else {
-                print("[Litegram] start: FAILED to parse hex secret")
-                proxyReady = .single(())
+        for (i, s) in cached.enumerated() {
+            print("[Litegram] start: server[\(i)] = \(s.host):\(s.port) (\(s.country ?? "?"))")
+        }
+
+        let reachableServer = findReachableServer(from: cached)
+
+        if let server = reachableServer, let secretData = dataFromHexString(server.secret) {
+            print("[Litegram] start: using reachable \(server.host):\(server.port)")
+            let proxyServer = ProxyServerSettings(
+                host: server.host,
+                port: Int32(server.port),
+                connection: .mtp(secret: secretData)
+            )
+            proxyReady = updateProxySettingsInteractively(accountManager: accountManager) { settings in
+                var settings = settings
+                settings.activeServer = proxyServer
+                settings.enabled = true
+                return settings
             }
+            |> map { _ in
+                print("[Litegram] start: proxyReady COMPLETED — proxy written to accountManager")
+            }
+            self.lastConnectedServer = server
+        } else if !cached.isEmpty, let server = cached.first, let secretData = dataFromHexString(server.secret) {
+            print("[Litegram] start: no reachable server found, fallback to first cached \(server.host):\(server.port)")
+            let proxyServer = ProxyServerSettings(
+                host: server.host,
+                port: Int32(server.port),
+                connection: .mtp(secret: secretData)
+            )
+            proxyReady = updateProxySettingsInteractively(accountManager: accountManager) { settings in
+                var settings = settings
+                settings.activeServer = proxyServer
+                settings.enabled = true
+                return settings
+            }
+            |> map { _ in
+                print("[Litegram] start: proxyReady COMPLETED (fallback)")
+            }
+            self.lastConnectedServer = server
         } else {
             print("[Litegram] start: NO cached servers, proxyReady = immediate")
             proxyReady = .single(())
@@ -59,6 +77,56 @@ public final class LitegramProxyController {
         }
 
         return proxyReady
+    }
+
+    private func findReachableServer(from servers: [LitegramServerInfo]) -> LitegramServerInfo? {
+        let preferred = preferredServer(from: servers)
+        let ordered: [LitegramServerInfo]
+        if let preferred = preferred {
+            ordered = [preferred] + servers.filter { $0.host != preferred.host }
+        } else {
+            ordered = servers
+        }
+
+        for server in ordered {
+            if Self.tcpCheck(host: server.host, port: UInt16(server.port), timeout: 2) {
+                return server
+            }
+            print("[Litegram] start: \(server.host):\(server.port) UNREACHABLE")
+        }
+        return nil
+    }
+
+    private static func tcpCheck(host: String, port: UInt16, timeout: TimeInterval) -> Bool {
+        var hints = addrinfo()
+        hints.ai_socktype = SOCK_STREAM
+        hints.ai_family = AF_UNSPEC
+        var res: UnsafeMutablePointer<addrinfo>?
+        guard getaddrinfo(host, "\(port)", &hints, &res) == 0, let info = res else { return false }
+        defer { freeaddrinfo(res) }
+
+        let sock = socket(info.pointee.ai_family, info.pointee.ai_socktype, info.pointee.ai_protocol)
+        guard sock >= 0 else { return false }
+        defer { close(sock) }
+
+        let flags = fcntl(sock, F_GETFL, 0)
+        _ = fcntl(sock, F_SETFL, flags | O_NONBLOCK)
+
+        let connectResult = connect(sock, info.pointee.ai_addr, info.pointee.ai_addrlen)
+        if connectResult == 0 { return true }
+        guard errno == EINPROGRESS else { return false }
+
+        var writeSet = fd_set()
+        __darwin_fd_zero(&writeSet)
+        __darwin_fd_set(Int32(sock), &writeSet)
+        var tv = timeval(tv_sec: Int(timeout), tv_usec: 0)
+        let selectResult = select(sock + 1, nil, &writeSet, nil, &tv)
+        guard selectResult > 0 else { return false }
+
+        var optErr: Int32 = 0
+        var optLen = socklen_t(MemoryLayout<Int32>.size)
+        getsockopt(sock, SOL_SOCKET, SO_ERROR, &optErr, &optLen)
+        return optErr == 0
     }
 
     private var lastRegisteredTelegramId: Int64?
@@ -183,36 +251,40 @@ public final class LitegramProxyController {
 
     private func connectAuthenticated() {
         api.getProxyServers { [weak self] result in
+            guard let self = self else { return }
             switch result {
             case let .success(servers):
                 if !servers.isEmpty {
                     LitegramConfig.saveCachedServers(servers)
-                    let server = self?.preferredServer(from: servers) ?? servers[0]
-                    self?.applyProxy(server: server)
+                    if let server = self.findReachableServer(from: servers) {
+                        self.applyProxy(server: server)
+                    } else {
+                        self.applyProxy(server: self.preferredServer(from: servers) ?? servers[0])
+                    }
                     return
                 }
-                let cached = LitegramConfig.getCachedServers()
-                if !cached.isEmpty {
-                    let server = self?.preferredServer(from: cached) ?? cached[0]
-                    self?.applyProxy(server: server)
-                } else {
-                    self?.connectAnonymous()
-                }
+                self.applyBestCachedOrAnonymous()
             case let .failure(error):
+                Logger.shared.log("Litegram", "getProxyServers failed: \(error.localizedDescription)")
                 if case LitegramApiError.authExpired = error {
-                    self?.reAuthenticate {
-                        self?.connectAuthenticated()
+                    self.reAuthenticate {
+                        self.connectAuthenticated()
                     }
                 } else {
-                    let cached = LitegramConfig.getCachedServers()
-                    if !cached.isEmpty {
-                        let server = self?.preferredServer(from: cached) ?? cached[0]
-                        self?.applyProxy(server: server)
-                    } else {
-                        self?.connectAnonymous()
-                    }
+                    self.applyBestCachedOrAnonymous()
                 }
             }
+        }
+    }
+
+    private func applyBestCachedOrAnonymous() {
+        let cached = LitegramConfig.getCachedServers()
+        if let server = findReachableServer(from: cached) {
+            applyProxy(server: server)
+        } else if !cached.isEmpty {
+            applyProxy(server: preferredServer(from: cached) ?? cached[0])
+        } else {
+            connectAnonymous()
         }
     }
 
