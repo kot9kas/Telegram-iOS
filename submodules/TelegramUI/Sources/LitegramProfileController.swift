@@ -41,6 +41,10 @@ public final class LitegramController: ViewController {
     private var currentSubscription: LitegramSubscriptionStatus = .none
     private var lastLayout: ContainerViewLayout?
 
+    private var litegramStrings: LitegramStrings {
+        LitegramStrings(languageCode: self.presentationData.strings.primaryComponent.languageCode)
+    }
+
     private struct MenuItem {
         let icon: UIImage?
         let title: String
