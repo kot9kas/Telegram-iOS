@@ -424,6 +424,11 @@ public final class LitegramController: ViewController {
 
     // MARK: - Actions
 
+    @objc private func chatsTapped() {
+        let controller = litegramChatsController(context: self.context)
+        self.push(controller)
+    }
+
     @objc private func protectionTapped() {
         let connectionController = LitegramConnectionController(context: self.context)
         self.push(connectionController)
