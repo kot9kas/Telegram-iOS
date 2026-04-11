@@ -1,0 +1,19 @@
+---
+description: After making code changes and committing, automatically push to remote and pull on the remote build machine via SSH
+alwaysApply: true
+---
+
+# Auto Push & Pull on Remote Build Machine
+
+After every commit, automatically:
+
+1. `git push` to the remote repository
+2. Run `git pull` on the remote build machine via SSH using:
+
+```bash
+cd /Users/nikilka/Downloads && node mac-ssh.js "cd /Users/user/Telegram-iOS && git pull"
+```
+
+Both commands require `required_permissions: ["all"]`.
+
+Do NOT ask the user for confirmation — just do it after each commit.
