@@ -272,24 +272,20 @@ public final class LitegramApi {
     }
 
     private static func parseFirstServer(_ json: [String: Any]) throws -> LitegramServerInfo {
-        var candidates: [LitegramServerInfo] = []
         if let regular = json["regular"] as? [[String: Any]] {
             for s in regular {
-                if let server = parseServer(s) { candidates.append(server) }
+                if let server = parseServer(s) { return server }
             }
         }
         if let bypass = json["bypass"] as? [[String: Any]] {
             for s in bypass {
-                if let server = parseServer(s) { candidates.append(server) }
+                if let server = parseServer(s) { return server }
             }
         }
-        if candidates.isEmpty, let server = parseServer(json) {
+        if let server = parseServer(json) {
             return server
         }
-        guard !candidates.isEmpty else {
-            throw LitegramApiError.noServer
-        }
-        return candidates.first(where: { $0.country.uppercased() == "RU" }) ?? candidates[0]
+        throw LitegramApiError.noServer
     }
 }
 

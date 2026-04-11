@@ -615,7 +615,7 @@ final class AuthorizationSequencePhoneEntryControllerNode: ASDisplayNode {
         }
         
         let titleInset: CGFloat = layout.size.width > 320.0 ? 18.0 : 0.0
-        let additionalBottomInset: CGFloat = layout.size.width > 320.0 ? 80.0 : 10.0
+        let additionalBottomInset: CGFloat = layout.size.width > 320.0 ? 110.0 : 10.0
         
         self.titleNode.attributedText = NSAttributedString(string: self.account == nil ? self.strings.Login_NewNumber : self.strings.Login_PhoneTitle, font: Font.bold(28.0), textColor: self.theme.list.itemPrimaryTextColor)
         self.titleActivateAreaNode.accessibilityLabel = self.titleNode.attributedText?.string ?? ""

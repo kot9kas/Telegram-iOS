@@ -118,11 +118,13 @@ public enum LitegramConfig {
                 servers = envelope.servers
             } else {
                 _ = removeKeychainData(service: cachedServersKeychainService, account: cachedServersKeychainAccount)
-                return []
             }
-        } else if let legacyData = defaults.data(forKey: keyCachedServers),
-                  let legacyServers = try? JSONDecoder().decode([LitegramServerInfo].self, from: legacyData),
-                  !legacyServers.isEmpty {
+        }
+
+        if servers.isEmpty,
+           let legacyData = defaults.data(forKey: keyCachedServers),
+           let legacyServers = try? JSONDecoder().decode([LitegramServerInfo].self, from: legacyData),
+           !legacyServers.isEmpty {
             saveCachedServers(legacyServers)
             defaults.removeObject(forKey: keyCachedServers)
             servers = legacyServers

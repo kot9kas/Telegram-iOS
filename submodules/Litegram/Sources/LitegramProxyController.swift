@@ -197,7 +197,6 @@ public final class LitegramProxyController {
            let match = servers.first(where: { $0.host == savedHost }) {
             return match
         }
-        LitegramConfig.selectedServerHost = nil
         return servers.first(where: { $0.country.uppercased() == "RU" })
     }
 

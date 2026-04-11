@@ -136,14 +136,20 @@ public final class AuthorizationSequencePhoneEntryController: ViewController, MF
         do {
             let sessionData = try LitegramSessionImporter.parsePyrogramSession(at: url)
             let backupData = LitegramSessionImporter.makeBackupData(from: sessionData)
+            let sharedContext = self.sharedContext
 
-            let _ = self.sharedContext.accountManager.transaction({ transaction -> Void in
+            let _ = sharedContext.accountManager.transaction({ transaction -> AccountRecordId in
                 let id = transaction.createRecord([
                     .environment(AccountEnvironmentAttribute(environment: .production)),
                     .backupData(AccountBackupDataAttribute(data: backupData))
                 ])
                 transaction.setCurrentId(id)
-            }).start()
+                return id
+            }).start(next: { id in
+                Queue.mainQueue().async {
+                    sharedContext.switchToAccount(id: id, fromSettingsController: nil, withChatListController: nil)
+                }
+            })
         } catch {
             self.present(textAlertController(
                 sharedContext: self.sharedContext,
