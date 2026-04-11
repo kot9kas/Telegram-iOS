@@ -480,7 +480,10 @@ func initializedNetwork(accountId: AccountRecordId, arguments: NetworkInitializa
             apiEnvironment = apiEnvironment.withUpdatedLangPackCode(languageCode ?? "en")
 
             if let effectiveActiveServer = proxySettings?.effectiveActiveServer {
+                print("[Litegram] initializedNetwork: proxy=\(effectiveActiveServer.host):\(effectiveActiveServer.port)")
                 apiEnvironment = apiEnvironment.withUpdatedSocksProxySettings(effectiveActiveServer.mtProxySettings)
+            } else {
+                print("[Litegram] initializedNetwork: NO proxy settings (proxySettings=\(String(describing: proxySettings)))")
             }
             
             apiEnvironment = apiEnvironment.withUpdatedNetworkSettings((networkSettings ?? NetworkSettings.defaultSettings).mtNetworkSettings)

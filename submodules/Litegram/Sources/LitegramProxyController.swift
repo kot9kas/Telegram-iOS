@@ -26,7 +26,9 @@ public final class LitegramProxyController {
 
         let proxyReady: Signal<Void, NoError>
         let cached = LitegramConfig.getCachedServers()
+        print("[Litegram] start: cached=\(cached.count)")
         if !cached.isEmpty, let server = preferredServer(from: cached) ?? cached.first {
+            print("[Litegram] start: using \(server.host):\(server.port) secret=\(server.secret.prefix(8))...")
             if let secretData = dataFromHexString(server.secret) {
                 let proxyServer = ProxyServerSettings(
                     host: server.host,
@@ -39,12 +41,16 @@ public final class LitegramProxyController {
                     settings.enabled = true
                     return settings
                 }
-                |> map { _ in }
+                |> map { _ in
+                    print("[Litegram] start: proxyReady signal COMPLETED — proxy written to accountManager")
+                }
                 self.lastConnectedServer = server
             } else {
+                print("[Litegram] start: FAILED to parse hex secret")
                 proxyReady = .single(())
             }
         } else {
+            print("[Litegram] start: NO cached servers, proxyReady = immediate")
             proxyReady = .single(())
         }
 
