@@ -10,13 +10,11 @@ import AccountContext
 import AppBundle
 import TabBarUI
 import AvatarNode
-import UniformTypeIdentifiers
 import Litegram
 
-public final class LitegramController: ViewController, UIDocumentPickerDelegate {
+public final class LitegramController: ViewController {
     private let context: AccountContext
     private var presentationData: PresentationData
-    private var litegramStrings: LitegramStrings
     private var presentationDataDisposable: Disposable?
     private var peerDisposable: Disposable?
 
@@ -44,8 +42,7 @@ public final class LitegramController: ViewController, UIDocumentPickerDelegate 
     private var lastLayout: ContainerViewLayout?
 
     private struct MenuItem {
-        let iconName: String
-        let iconBgColor: UIColor
+        let icon: UIImage?
         let title: String
         let subtitle: String
         let action: Selector
@@ -54,29 +51,19 @@ public final class LitegramController: ViewController, UIDocumentPickerDelegate 
     private var menuItems: [MenuItem] {
         [
             MenuItem(
-                iconName: "Chat/Context Menu/Lock",
-                iconBgColor: UIColor(red: 0.35, green: 0.55, blue: 0.85, alpha: 1.0),
+                icon: renderSettingsIcon(name: "Item List/Icons/Key", backgroundColors: [UIColor(rgb: 0x5856d6)]),
                 title: litegramStrings.chatsTitle,
                 subtitle: litegramStrings.chatsSubtitle,
                 action: #selector(chatsTapped)
             ),
             MenuItem(
-                iconName: "Item List/Icons/Proxy",
-                iconBgColor: UIColor(red: 0.25, green: 0.70, blue: 0.42, alpha: 1.0),
+                icon: renderSettingsIcon(name: "Settings/Menu/Proxy", backgroundColors: [UIColor(rgb: 0x34c759)]),
                 title: litegramStrings.connectionTitle,
                 subtitle: litegramStrings.connectionSubtitle,
                 action: #selector(protectionTapped)
             ),
             MenuItem(
-                iconName: "Item List/Icons/Key",
-                iconBgColor: UIColor(red: 0.60, green: 0.35, blue: 0.85, alpha: 1.0),
-                title: litegramStrings.sessionTransferTitle,
-                subtitle: litegramStrings.sessionTransferSubtitle,
-                action: #selector(sessionTransferTapped)
-            ),
-            MenuItem(
-                iconName: "Chat/Context Menu/Info",
-                iconBgColor: UIColor(red: 1.0, green: 0.62, blue: 0.07, alpha: 1.0),
+                icon: renderSettingsIcon(name: "Item List/Icons/Support", backgroundColors: [UIColor(rgb: 0xff9500)]),
                 title: litegramStrings.supportTitle,
                 subtitle: "support@litegram.io",
                 action: #selector(supportTapped)
@@ -84,12 +71,11 @@ public final class LitegramController: ViewController, UIDocumentPickerDelegate 
         ]
     }
 
-    private var menuRowNodes: [(container: ASDisplayNode, iconBg: ASDisplayNode, icon: ASImageNode, title: ASTextNode, subtitle: ASTextNode, arrow: ASImageNode, sep: ASDisplayNode?)] = []
+    private var menuRowNodes: [(container: ASDisplayNode, icon: ASImageNode, title: ASTextNode, subtitle: ASTextNode, arrow: ASImageNode, sep: ASDisplayNode?)] = []
 
     public init(context: AccountContext) {
         self.context = context
         self.presentationData = context.sharedContext.currentPresentationData.with { $0 }
-        self.litegramStrings = LitegramStrings(languageCode: presentationData.strings.primaryComponent.languageCode)
 
         super.init(navigationBarPresentationData: NavigationBarPresentationData(presentationData: self.presentationData))
 
@@ -106,7 +92,6 @@ public final class LitegramController: ViewController, UIDocumentPickerDelegate 
                 guard let self = self else { return }
                 let previousTheme = self.presentationData.theme
                 self.presentationData = presentationData
-                self.litegramStrings = LitegramStrings(languageCode: presentationData.strings.primaryComponent.languageCode)
                 if previousTheme !== presentationData.theme {
                     self.updateTheme()
                     self.updateTabBarIcon()
@@ -141,24 +126,10 @@ public final class LitegramController: ViewController, UIDocumentPickerDelegate 
 
     private func updateTabBarIcon() {
         let baseIcon = UIImage(bundleImageName: "Chat List/Tabs/IconLitegram")
-        let iconSize = CGSize(width: 26.0, height: 26.0)
-        let canvasSize = CGSize(width: 30.0, height: 30.0)
-        let scaledIcon: UIImage?
-        if let base = baseIcon {
-            let format = UIGraphicsImageRendererFormat()
-            format.scale = UIScreen.main.scale
-            scaledIcon = UIGraphicsImageRenderer(size: canvasSize, format: format).image { _ in
-                let x = (canvasSize.width - iconSize.width) / 2.0
-                let y = canvasSize.height - iconSize.height
-                base.draw(in: CGRect(x: x, y: y, width: iconSize.width, height: iconSize.height))
-            }
-        } else {
-            scaledIcon = nil
-        }
         let iconColor = self.presentationData.theme.rootController.tabBar.iconColor
         let selectedColor = self.presentationData.theme.rootController.tabBar.selectedIconColor
-        let tinted = generateTintedImage(image: scaledIcon, color: iconColor)?.withRenderingMode(.alwaysOriginal)
-        let selectedTinted = generateTintedImage(image: scaledIcon, color: selectedColor)?.withRenderingMode(.alwaysOriginal)
+        let tinted = generateTintedImage(image: baseIcon, color: iconColor)?.withRenderingMode(.alwaysOriginal)
+        let selectedTinted = generateTintedImage(image: baseIcon, color: selectedColor)?.withRenderingMode(.alwaysOriginal)
         self.tabBarItem.image = tinted
         self.tabBarItem.selectedImage = selectedTinted
     }
@@ -264,7 +235,7 @@ public final class LitegramController: ViewController, UIDocumentPickerDelegate 
         self.saveTrafficSectionNode = saveTrafficSection
 
         let stTitle = ASTextNode()
-        stTitle.attributedText = NSAttributedString(string: litegramStrings.saveTraffic, attributes: [
+        stTitle.attributedText = NSAttributedString(string: "Экономия трафика", attributes: [
             .font: UIFont.systemFont(ofSize: 17),
             .foregroundColor: theme.list.itemPrimaryTextColor
         ])
@@ -272,7 +243,7 @@ public final class LitegramController: ViewController, UIDocumentPickerDelegate 
         self.saveTrafficTitleNode = stTitle
 
         let stSubtitle = ASTextNode()
-        stSubtitle.attributedText = NSAttributedString(string: litegramStrings.saveTrafficSubtitle, attributes: [
+        stSubtitle.attributedText = NSAttributedString(string: "Сжатие изображений и медиа", attributes: [
             .font: UIFont.systemFont(ofSize: 13),
             .foregroundColor: theme.list.itemSecondaryTextColor
         ])
@@ -297,19 +268,11 @@ public final class LitegramController: ViewController, UIDocumentPickerDelegate 
             container.view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: item.action))
             menuSection.addSubnode(container)
 
-            let iconBg = ASDisplayNode()
-            iconBg.backgroundColor = item.iconBgColor
-            iconBg.cornerRadius = 7
-            container.addSubnode(iconBg)
-
             let iconNode = ASImageNode()
             iconNode.displaysAsynchronously = false
-            if let img = UIImage(bundleImageName: item.iconName)?.withRenderingMode(.alwaysTemplate) {
-                iconNode.image = img
-            }
-            iconNode.tintColor = .white
+            iconNode.image = item.icon
             iconNode.contentMode = .scaleAspectFit
-            iconBg.addSubnode(iconNode)
+            container.addSubnode(iconNode)
 
             let titleNode = ASTextNode()
             titleNode.attributedText = NSAttributedString(string: item.title, attributes: [
@@ -339,7 +302,7 @@ public final class LitegramController: ViewController, UIDocumentPickerDelegate 
                 sep = s
             }
 
-            menuRowNodes.append((container: container, iconBg: iconBg, icon: iconNode, title: titleNode, subtitle: subtitleNode, arrow: arrow, sep: sep))
+            menuRowNodes.append((container: container, icon: iconNode, title: titleNode, subtitle: subtitleNode, arrow: arrow, sep: sep))
         }
 
         let tryBtn = ASButtonNode()
@@ -418,7 +381,7 @@ public final class LitegramController: ViewController, UIDocumentPickerDelegate 
             y += rowH + 12
         }
 
-        let iconSize: CGFloat = 29
+        let iconSize: CGFloat = 30
         let rowSideInset: CGFloat = 16
         let textX: CGFloat = rowSideInset + iconSize + 16
 
@@ -428,8 +391,7 @@ public final class LitegramController: ViewController, UIDocumentPickerDelegate 
                 let menuRowH: CGFloat = 56
                 row.container.frame = CGRect(x: 0, y: totalH, width: cw, height: menuRowH)
 
-                row.iconBg.frame = CGRect(x: rowSideInset, y: (menuRowH - iconSize) / 2, width: iconSize, height: iconSize)
-                row.icon.frame = CGRect(x: 4, y: 4, width: iconSize - 8, height: iconSize - 8)
+                row.icon.frame = CGRect(x: rowSideInset, y: (menuRowH - iconSize) / 2, width: iconSize, height: iconSize)
 
                 let titleY: CGFloat = 9
                 row.title.frame = CGRect(x: textX, y: titleY, width: cw - textX - 34, height: 22)
@@ -462,144 +424,20 @@ public final class LitegramController: ViewController, UIDocumentPickerDelegate 
 
     // MARK: - Actions
 
-    @objc private func chatsTapped() {
-        let controller = litegramChatsController(context: self.context)
-        self.push(controller)
-    }
-
     @objc private func protectionTapped() {
         let connectionController = LitegramConnectionController(context: self.context)
         self.push(connectionController)
-    }
-
-    @objc private func sessionTransferTapped() {
-        let actionSheet = ActionSheetController(presentationData: self.presentationData)
-        actionSheet.setItemGroups([
-            ActionSheetItemGroup(items: [
-                ActionSheetButtonItem(title: litegramStrings.sessionImport, color: .accent, action: { [weak self, weak actionSheet] in
-                    actionSheet?.dismissAnimated()
-                    self?.presentImportPicker()
-                }),
-                ActionSheetButtonItem(title: litegramStrings.sessionExport, color: .accent, action: { [weak self, weak actionSheet] in
-                    actionSheet?.dismissAnimated()
-                    self?.exportCurrentSession()
-                })
-            ]),
-            ActionSheetItemGroup(items: [
-                ActionSheetButtonItem(title: self.presentationData.strings.Common_Cancel, color: .accent, font: .bold, action: { [weak actionSheet] in
-                    actionSheet?.dismissAnimated()
-                })
-            ])
-        ])
-        self.present(actionSheet, in: .window(.root))
-    }
-
-    private func presentImportPicker() {
-        let picker: UIDocumentPickerViewController
-        if #available(iOS 14.0, *) {
-            picker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: true)
-        } else {
-            picker = UIDocumentPickerViewController(documentTypes: ["public.item"], in: .import)
-        }
-        picker.delegate = self
-        picker.allowsMultipleSelection = false
-        self.view.window?.rootViewController?.present(picker, animated: true)
-    }
-
-    private func exportCurrentSession() {
-        let _ = (accountBackupData(postbox: self.context.account.postbox)
-        |> deliverOnMainQueue).startStandalone(next: { [weak self] backupData in
-            guard let self else { return }
-            guard let backupData else {
-                let alert = ActionSheetController(presentationData: self.presentationData)
-                alert.setItemGroups([
-                    ActionSheetItemGroup(items: [
-                        ActionSheetTextItem(title: self.litegramStrings.sessionExportNoData)
-                    ]),
-                    ActionSheetItemGroup(items: [
-                        ActionSheetButtonItem(title: self.presentationData.strings.Common_OK, color: .accent, font: .bold, action: { [weak alert] in
-                            alert?.dismissAnimated()
-                        })
-                    ])
-                ])
-                self.present(alert, in: .window(.root))
-                return
-            }
-            do {
-                let fileURL = try LitegramSessionImporter.exportPyrogramSession(backupData: backupData)
-                let activityVC = UIActivityViewController(activityItems: [fileURL], applicationActivities: nil)
-                activityVC.completionWithItemsHandler = { _, _, _, _ in
-                    try? FileManager.default.removeItem(at: fileURL)
-                }
-                if let popover = activityVC.popoverPresentationController {
-                    popover.sourceView = self.view
-                    popover.sourceRect = CGRect(x: self.view.bounds.midX, y: self.view.bounds.midY, width: 0, height: 0)
-                    popover.permittedArrowDirections = []
-                }
-                self.view.window?.rootViewController?.present(activityVC, animated: true)
-            } catch {
-                let alert = ActionSheetController(presentationData: self.presentationData)
-                alert.setItemGroups([
-                    ActionSheetItemGroup(items: [
-                        ActionSheetTextItem(title: "\(self.litegramStrings.sessionExportError): \(error.localizedDescription)")
-                    ]),
-                    ActionSheetItemGroup(items: [
-                        ActionSheetButtonItem(title: self.presentationData.strings.Common_OK, color: .accent, font: .bold, action: { [weak alert] in
-                            alert?.dismissAnimated()
-                        })
-                    ])
-                ])
-                self.present(alert, in: .window(.root))
-            }
-        })
-    }
-
-    public func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-        guard let url = urls.first else { return }
-        do {
-            let sessionData = try LitegramSessionImporter.parsePyrogramSession(at: url)
-            let backupData = LitegramSessionImporter.makeBackupData(from: sessionData)
-            let accountManager = self.context.sharedContext.accountManager
-            let sharedContext = self.context.sharedContext
-
-            let _ = accountManager.transaction({ transaction -> AccountRecordId in
-                let id = transaction.createRecord([
-                    .environment(AccountEnvironmentAttribute(environment: .production)),
-                    .backupData(AccountBackupDataAttribute(data: backupData))
-                ])
-                transaction.setCurrentId(id)
-                return id
-            }).start(next: { id in
-                Queue.mainQueue().async {
-                    sharedContext.switchToAccount(id: id, fromSettingsController: nil, withChatListController: nil)
-                }
-            })
-        } catch {
-            let presentationData = self.presentationData
-            let actionSheet = ActionSheetController(presentationData: presentationData)
-            actionSheet.setItemGroups([
-                ActionSheetItemGroup(items: [
-                    ActionSheetTextItem(title: "Ошибка импорта: \(error.localizedDescription)")
-                ]),
-                ActionSheetItemGroup(items: [
-                    ActionSheetButtonItem(title: presentationData.strings.Common_OK, color: .accent, font: .bold, action: { [weak actionSheet] in
-                        actionSheet?.dismissAnimated()
-                    })
-                ])
-            ])
-            self.present(actionSheet, in: .window(.root))
-        }
     }
 
     @objc private func supportTapped() {
         let actionSheet = ActionSheetController(presentationData: self.presentationData)
         actionSheet.setItemGroups([
             ActionSheetItemGroup(items: [
-                ActionSheetButtonItem(title: litegramStrings.chatSupport, color: .accent, action: { [weak self, weak actionSheet] in
+                ActionSheetButtonItem(title: "Поддержка в чате", color: .accent, action: { [weak self, weak actionSheet] in
                     actionSheet?.dismissAnimated()
                     self?.openSupportChat()
                 }),
-                ActionSheetButtonItem(title: litegramStrings.email, color: .accent, action: { [weak self, weak actionSheet] in
+                ActionSheetButtonItem(title: "Почта", color: .accent, action: { [weak self, weak actionSheet] in
                     actionSheet?.dismissAnimated()
                     self?.openSupportEmail()
                 })
@@ -691,12 +529,12 @@ public final class LitegramController: ViewController, UIDocumentPickerDelegate 
         let alert = UIAlertController(title: ad.title, message: ad.description, preferredStyle: .alert)
 
         if let link = ad.linkUrl, let url = URL(string: link) {
-            alert.addAction(UIAlertAction(title: litegramStrings.adOpen, style: .default) { _ in
+            alert.addAction(UIAlertAction(title: "Открыть", style: .default) { _ in
                 UIApplication.shared.open(url)
             })
         }
 
-        alert.addAction(UIAlertAction(title: litegramStrings.adClose, style: .cancel))
+        alert.addAction(UIAlertAction(title: "Закрыть", style: .cancel))
         self.present(alert, animated: true)
         LitegramAdManager.shared.markAdShown()
     }
@@ -708,11 +546,11 @@ public final class LitegramController: ViewController, UIDocumentPickerDelegate 
         self.saveTrafficSectionNode?.backgroundColor = theme.list.itemBlocksBackgroundColor
         self.menuSectionNode?.backgroundColor = theme.list.itemBlocksBackgroundColor
 
-        self.saveTrafficTitleNode?.attributedText = NSAttributedString(string: litegramStrings.saveTraffic, attributes: [
+        self.saveTrafficTitleNode?.attributedText = NSAttributedString(string: "Экономия трафика", attributes: [
             .font: UIFont.systemFont(ofSize: 17),
             .foregroundColor: theme.list.itemPrimaryTextColor
         ])
-        self.saveTrafficSubtitleNode?.attributedText = NSAttributedString(string: litegramStrings.saveTrafficSubtitle, attributes: [
+        self.saveTrafficSubtitleNode?.attributedText = NSAttributedString(string: "Сжатие изображений и медиа", attributes: [
             .font: UIFont.systemFont(ofSize: 13),
             .foregroundColor: theme.list.itemSecondaryTextColor
         ])
@@ -773,7 +611,7 @@ public final class LitegramController: ViewController, UIDocumentPickerDelegate 
             ])
         } else {
             self.badgeBgNode?.backgroundColor = UIColor.black.withAlphaComponent(0.3)
-            self.badgeNode?.attributedText = NSAttributedString(string: litegramStrings.freeBadge, attributes: [
+            self.badgeNode?.attributedText = NSAttributedString(string: "Бесплатно", attributes: [
                 .font: badgeFont,
                 .foregroundColor: UIColor.white.withAlphaComponent(0.8)
             ])
