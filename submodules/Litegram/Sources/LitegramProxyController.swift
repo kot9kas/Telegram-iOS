@@ -13,8 +13,9 @@ public final class LitegramProxyController {
 
     private init() {}
 
-    public func start(accountManager: AccountManager<TelegramAccountManagerTypes>) {
-        guard !started else { return }
+    @discardableResult
+    public func start(accountManager: AccountManager<TelegramAccountManagerTypes>) -> Signal<Void, NoError> {
+        guard !started else { return .single(()) }
         started = true
         self.accountManager = accountManager
 
@@ -23,9 +24,35 @@ public final class LitegramProxyController {
             NotificationCenter.default.post(name: .litegramAuthDidUpdate, object: nil)
         }
 
+        let proxyReady: Signal<Void, NoError>
+        let cached = LitegramConfig.getCachedServers()
+        if !cached.isEmpty, let server = preferredServer(from: cached) ?? cached.first {
+            if let secretData = dataFromHexString(server.secret) {
+                let proxyServer = ProxyServerSettings(
+                    host: server.host,
+                    port: Int32(server.port),
+                    connection: .mtp(secret: secretData)
+                )
+                proxyReady = updateProxySettingsInteractively(accountManager: accountManager) { settings in
+                    var settings = settings
+                    settings.activeServer = proxyServer
+                    settings.enabled = true
+                    return settings
+                }
+                |> map { _ in }
+                self.lastConnectedServer = server
+            } else {
+                proxyReady = .single(())
+            }
+        } else {
+            proxyReady = .single(())
+        }
+
         DispatchQueue.global(qos: .utility).async { [weak self] in
             self?.connectProxy()
         }
+
+        return proxyReady
     }
 
     private var lastRegisteredTelegramId: Int64?

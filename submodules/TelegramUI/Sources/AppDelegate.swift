@@ -1012,7 +1012,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         let accountManager = AccountManager<TelegramAccountManagerTypes>(basePath: rootPath + "/accounts-metadata", isTemporary: false, isReadOnly: false, useCaches: true, removeDatabaseOnError: true)
         self.accountManager = accountManager
 
-        LitegramProxyController.shared.start(accountManager: accountManager)
+        let proxyReadySignal = LitegramProxyController.shared.start(accountManager: accountManager)
 
         if LitegramConfig.isSaveTrafficEnabled {
             let _ = updateMediaDownloadSettingsInteractively(accountManager: accountManager, { _ in
@@ -1084,7 +1084,10 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             }
         }
         
-        let sharedContextSignal = currentPresentationDataAndSettings(accountManager: accountManager, systemUserInterfaceStyle: systemUserInterfaceStyle)
+        let sharedContextSignal = proxyReadySignal
+        |> mapToSignal { _ in
+            return currentPresentationDataAndSettings(accountManager: accountManager, systemUserInterfaceStyle: systemUserInterfaceStyle)
+        }
         |> map { initialPresentationDataAndSettings -> (AccountManager, InitialPresentationDataAndSettings) in
             return (accountManager, initialPresentationDataAndSettings)
         }
