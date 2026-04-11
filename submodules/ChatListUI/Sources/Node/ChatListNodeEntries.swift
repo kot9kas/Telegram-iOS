@@ -123,6 +123,7 @@ enum ChatListNodeEntry: Comparable, Identifiable {
         var storyState: ChatListNodeState.StoryState?
         var requiresPremiumForMessaging: Bool
         var displayAsTopicList: Bool
+        var lockVersion: Int
         
         init(
             index: EngineChatList.Item.Index,
@@ -151,7 +152,8 @@ enum ChatListNodeEntry: Comparable, Identifiable {
             revealed: Bool,
             storyState: ChatListNodeState.StoryState?,
             requiresPremiumForMessaging: Bool,
-            displayAsTopicList: Bool
+            displayAsTopicList: Bool,
+            lockVersion: Int = 0
         ) {
             self.index = index
             self.presentationData = presentationData
@@ -180,6 +182,7 @@ enum ChatListNodeEntry: Comparable, Identifiable {
             self.storyState = storyState
             self.requiresPremiumForMessaging = requiresPremiumForMessaging
             self.displayAsTopicList = displayAsTopicList
+            self.lockVersion = lockVersion
         }
         
         static func ==(lhs: PeerEntryData, rhs: PeerEntryData) -> Bool {
@@ -302,6 +305,9 @@ enum ChatListNodeEntry: Comparable, Identifiable {
                 return false
             }
             if lhs.displayAsTopicList != rhs.displayAsTopicList {
+                return false
+            }
+            if lhs.lockVersion != rhs.lockVersion {
                 return false
             }
             return true
@@ -757,7 +763,8 @@ func chatListNodeEntriesForView(view: EngineChatList, state: ChatListNodeState, 
                 )
             },
             requiresPremiumForMessaging: entry.isPremiumRequiredToMessage,
-            displayAsTopicList: entry.displayAsTopicList
+            displayAsTopicList: entry.displayAsTopicList,
+            lockVersion: state.lockVersion
         ))
         
         if let threadInfo, threadInfo.isHidden {
@@ -811,7 +818,8 @@ func chatListNodeEntriesForView(view: EngineChatList, state: ChatListNodeState, 
                         revealed: false,
                         storyState: nil,
                         requiresPremiumForMessaging: false,
-                        displayAsTopicList: false
+                        displayAsTopicList: false,
+                        lockVersion: state.lockVersion
                     )))
                     if foundPinningIndex != 0 {
                         foundPinningIndex -= 1
@@ -847,7 +855,8 @@ func chatListNodeEntriesForView(view: EngineChatList, state: ChatListNodeState, 
                 revealed: false,
                 storyState: nil,
                 requiresPremiumForMessaging: false,
-                displayAsTopicList: false
+                displayAsTopicList: false,
+                lockVersion: state.lockVersion
             )))
         } else {
             if !filteredAdditionalItemEntries.isEmpty {
@@ -904,7 +913,8 @@ func chatListNodeEntriesForView(view: EngineChatList, state: ChatListNodeState, 
                         revealed: state.hiddenItemShouldBeTemporaryRevealed || state.editing,
                         storyState: nil,
                         requiresPremiumForMessaging: false,
-                        displayAsTopicList: false
+                        displayAsTopicList: false,
+                        lockVersion: state.lockVersion
                     )))
                     if pinningIndex != 0 {
                         pinningIndex -= 1
