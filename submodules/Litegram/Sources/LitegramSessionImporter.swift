@@ -114,11 +114,12 @@ public enum LitegramSessionImporter {
         }
         defer { sqlite3_finalize(stmt) }
 
-        let userId = PeerId(backupData.peerId).id.rawValue
+        let userId = PeerId(backupData.peerId).id._internalGetInt64Value()
 
         sqlite3_bind_int(stmt, 1, backupData.masterDatacenterId)
-        backupData.masterDatacenterKey.withUnsafeBytes { ptr in
-            sqlite3_bind_blob(stmt, 2, ptr.baseAddress, Int32(backupData.masterDatacenterKey.count), nil)
+        let keyData = backupData.masterDatacenterKey
+        keyData.withUnsafeBytes { ptr in
+            _ = sqlite3_bind_blob(stmt, 2, ptr.baseAddress, Int32(keyData.count), nil)
         }
         sqlite3_bind_int64(stmt, 3, userId)
 
