@@ -463,8 +463,6 @@ public struct NetworkInitializationArguments {
 private let cloudDataContext = Atomic<CloudDataContext?>(value: nil)
 #endif
 
-public var _litegramProxyOverride: ProxySettings?
-
 func initializedNetwork(accountId: AccountRecordId, arguments: NetworkInitializationArguments, supplementary: Bool, datacenterId: Int, keychain: Keychain, basePath: String, testingEnvironment: Bool, languageCode: String?, proxySettings: ProxySettings?, networkSettings: NetworkSettings?, phoneNumber: String?, useRequestTimeoutTimers: Bool, appConfiguration: AppConfiguration) -> Signal<Network, NoError> {
     return Signal { subscriber in
         let queue = Queue()
@@ -481,15 +479,8 @@ func initializedNetwork(accountId: AccountRecordId, arguments: NetworkInitializa
             apiEnvironment.disableUpdates = supplementary
             apiEnvironment = apiEnvironment.withUpdatedLangPackCode(languageCode ?? "en")
 
-            let effectiveProxy = proxySettings ?? _litegramProxyOverride
-            print("[Litegram] initializedNetwork: proxySettings=\(proxySettings != nil), override=\(_litegramProxyOverride != nil), dc=\(datacenterId)")
-            if let effectiveActiveServer = effectiveProxy?.effectiveActiveServer {
+            if let effectiveActiveServer = proxySettings?.effectiveActiveServer {
                 apiEnvironment = apiEnvironment.withUpdatedSocksProxySettings(effectiveActiveServer.mtProxySettings)
-                Logger.shared.log("Litegram", "initializedNetwork: proxy SET \(effectiveActiveServer.host):\(effectiveActiveServer.port)")
-                print("[Litegram] initializedNetwork: proxy SET \(effectiveActiveServer.host):\(effectiveActiveServer.port)")
-            } else {
-                Logger.shared.log("Litegram", "initializedNetwork: proxy NIL")
-                print("[Litegram] initializedNetwork: proxy NIL — no proxy at all!")
             }
             
             apiEnvironment = apiEnvironment.withUpdatedNetworkSettings((networkSettings ?? NetworkSettings.defaultSettings).mtNetworkSettings)

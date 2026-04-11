@@ -75,8 +75,6 @@ public class UnauthorizedAccount {
     public let network: Network
     let stateManager: UnauthorizedAccountStateManager
 
-    private let proxySettingsDisposable = DisposableSet()
-
     private let updateLoginTokenPipe = ValuePipe<Void>()
     public var updateLoginTokenEvents: Signal<Void, NoError> {
         return self.updateLoginTokenPipe.signal()
@@ -212,41 +210,6 @@ public class UnauthorizedAccount {
         })
         
         self.stateManager.reset()
-
-        self.proxySettingsDisposable.add((accountManager.sharedData(keys: [SharedDataKeys.proxySettings])
-        |> map { sharedData -> ProxyServerSettings? in
-            if let settings = sharedData.entries[SharedDataKeys.proxySettings]?.get(ProxySettings.self) {
-                return settings.effectiveActiveServer
-            } else {
-                return nil
-            }
-        }
-        |> distinctUntilChanged).start(next: { [weak self] activeServer in
-            guard let self else { return }
-            Logger.shared.log("Litegram", "UnauthorizedAccount proxy observer: server=\(activeServer?.host ?? "nil"):\(activeServer?.port ?? 0)")
-            let updated = activeServer.flatMap { activeServer -> MTSocksProxySettings? in
-                return activeServer.mtProxySettings
-            }
-            self.network.context.updateApiEnvironment { environment in
-                let current = environment?.socksProxySettings
-                let updateNetwork: Bool
-                if let current = current, let updated = updated {
-                    updateNetwork = !current.isEqual(updated)
-                } else {
-                    updateNetwork = (current != nil) != (updated != nil)
-                }
-                if updateNetwork {
-                    self.network.dropConnectionStatus()
-                    return environment?.withUpdatedSocksProxySettings(updated)
-                } else {
-                    return nil
-                }
-            }
-        }))
-    }
-
-    deinit {
-        self.proxySettingsDisposable.dispose()
     }
     
     public func changedMasterDatacenterId(accountManager: AccountManager<TelegramAccountManagerTypes>, masterDatacenterId: Int32) -> Signal<UnauthorizedAccount, NoError> {
