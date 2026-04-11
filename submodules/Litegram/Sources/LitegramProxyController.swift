@@ -150,16 +150,16 @@ public final class LitegramProxyController {
                         LitegramConfig.saveSubscription(status: status, expiresAt: authResult.subscriptionExpiresAt)
                     }
                     self.api.getProxyServers { [weak self] serversResult in
+                        guard let self = self else { return }
                         if case let .success(servers) = serversResult, !servers.isEmpty {
                             LitegramConfig.saveCachedServers(servers)
-                            let server = self?.preferredServer(from: servers) ?? servers[0]
-                            self?.applyProxy(server: server)
-                        } else {
-                            let cached = LitegramConfig.getCachedServers()
-                            if !cached.isEmpty {
-                                let server = self?.preferredServer(from: cached) ?? cached[0]
-                                self?.applyProxy(server: server)
+                            if let server = self.findReachableServer(from: servers) {
+                                self.applyProxy(server: server)
+                            } else {
+                                self.applyProxy(server: self.preferredServer(from: servers) ?? servers[0])
                             }
+                        } else {
+                            self.applyBestCachedOrAnonymous()
                         }
                     }
                 case let .failure(error):

@@ -238,6 +238,8 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         self.location = location
         self.previewing = previewing
         
+        LitegramChatLocks.shared.setCurrentAccount(id: context.account.id.int64)
+        
         self.presentationData = (context.sharedContext.currentPresentationData.with { $0 })
         self.presentationDataValue.set(.single(self.presentationData))
         

@@ -5,14 +5,27 @@ public final class LitegramChatLocks {
     public static let shared = LitegramChatLocks()
     public static let autolockDidExpireNotification = Notification.Name("LitegramChatLocksAutolockExpired")
 
-    private let defaults: UserDefaults
+    private var defaults: UserDefaults
     private var unlockTimes: [Int64: Date] = [:]
     private var relockTimers: [Int64: DispatchWorkItem] = [:]
     private var bypassPeers = Set<Int64>()
     public var currentlyViewingLockedPeerId: Int64?
+    private var _currentAccountId: Int64?
+    private var _salt: Data?
 
     private init() {
         defaults = UserDefaults(suiteName: "litegram.chatlocks") ?? .standard
+    }
+
+    public func setCurrentAccount(id: Int64) {
+        guard _currentAccountId != id else { return }
+        _currentAccountId = id
+        cancelAllRelockTimers()
+        unlockTimes.removeAll()
+        bypassPeers.removeAll()
+        currentlyViewingLockedPeerId = nil
+        _salt = nil
+        defaults = UserDefaults(suiteName: "litegram.chatlocks.\(id)") ?? .standard
     }
 
     // MARK: - Biometric
@@ -48,16 +61,19 @@ public final class LitegramChatLocks {
 
     // MARK: - Salt
 
-    private lazy var salt: Data = {
+    private var salt: Data {
+        if let s = _salt { return s }
         if let existing = defaults.data(forKey: "lck_salt") {
+            _salt = existing
             return existing
         }
         var bytes = [UInt8](repeating: 0, count: 32)
         _ = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
         let s = Data(bytes)
         defaults.set(s, forKey: "lck_salt")
+        _salt = s
         return s
-    }()
+    }
 
     private func hashPin(_ pin: String) -> String {
         let input = Data((pin + salt.base64EncodedString()).utf8)
