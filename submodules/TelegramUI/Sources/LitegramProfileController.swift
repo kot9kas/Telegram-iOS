@@ -61,13 +61,13 @@ public final class LitegramController: ViewController {
                 action: #selector(chatsTapped)
             ),
             MenuItem(
-                icon: renderSettingsIcon(name: "Settings/Menu/Proxy", backgroundColors: [UIColor(rgb: 0x34c759)]),
+                icon: renderSettingsIcon(name: "Item List/Icons/Proxy", backgroundColors: [UIColor(rgb: 0x34c759)]),
                 title: litegramStrings.connectionTitle,
                 subtitle: litegramStrings.connectionSubtitle,
                 action: #selector(protectionTapped)
             ),
             MenuItem(
-                icon: renderSettingsIcon(name: "Item List/Icons/Chat", backgroundColors: [UIColor(rgb: 0x007aff)]),
+                icon: renderSettingsIcon(name: "Item List/Icons/Member", backgroundColors: [UIColor(rgb: 0x007aff)]),
                 title: litegramStrings.sessionTransferTitle,
                 subtitle: litegramStrings.sessionTransferSubtitle,
                 action: #selector(sessionTransferTapped)
