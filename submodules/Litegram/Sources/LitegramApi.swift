@@ -171,12 +171,6 @@ public final class LitegramApi {
                         }
                     }
                 }
-                servers.sort { a, b in
-                    let aIsRU = a.country.uppercased() == "RU"
-                    let bIsRU = b.country.uppercased() == "RU"
-                    if aIsRU != bIsRU { return aIsRU }
-                    return false
-                }
                 completion(.success(servers))
             case let .failure(error):
                 completion(.failure(error))
@@ -272,15 +266,11 @@ public final class LitegramApi {
     }
 
     private static func parseFirstServer(_ json: [String: Any]) throws -> LitegramServerInfo {
-        if let regular = json["regular"] as? [[String: Any]] {
-            for s in regular {
-                if let server = parseServer(s) { return server }
-            }
+        if let regular = json["regular"] as? [[String: Any]], let first = regular.first, let server = parseServer(first) {
+            return server
         }
-        if let bypass = json["bypass"] as? [[String: Any]] {
-            for s in bypass {
-                if let server = parseServer(s) { return server }
-            }
+        if let bypass = json["bypass"] as? [[String: Any]], let first = bypass.first, let server = parseServer(first) {
+            return server
         }
         if let server = parseServer(json) {
             return server

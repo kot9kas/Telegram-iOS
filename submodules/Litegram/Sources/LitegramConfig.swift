@@ -109,34 +109,27 @@ public enum LitegramConfig {
     }
 
     public static func getCachedServers() -> [LitegramServerInfo] {
-        var servers: [LitegramServerInfo] = []
-
         if let data = getKeychainData(service: cachedServersKeychainService, account: cachedServersKeychainAccount),
            let envelope = try? JSONDecoder().decode(CachedServersEnvelope.self, from: data),
            envelope.version == cachedServersSchemaVersion {
             if Date().timeIntervalSince1970 - envelope.savedAt <= cachedServersTtl {
-                servers = envelope.servers
+                return envelope.servers
             } else {
                 _ = removeKeychainData(service: cachedServersKeychainService, account: cachedServersKeychainAccount)
+                return []
             }
         }
-
-        if servers.isEmpty,
-           let legacyData = defaults.data(forKey: keyCachedServers),
+        
+        // Migration path from previous UserDefaults-based cache.
+        if let legacyData = defaults.data(forKey: keyCachedServers),
            let legacyServers = try? JSONDecoder().decode([LitegramServerInfo].self, from: legacyData),
            !legacyServers.isEmpty {
             saveCachedServers(legacyServers)
             defaults.removeObject(forKey: keyCachedServers)
-            servers = legacyServers
+            return legacyServers
         }
-
-        servers.sort { a, b in
-            let aIsRU = a.country.uppercased() == "RU"
-            let bIsRU = b.country.uppercased() == "RU"
-            if aIsRU != bIsRU { return aIsRU }
-            return false
-        }
-        return servers
+        
+        return []
     }
     
     @discardableResult

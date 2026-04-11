@@ -23,17 +23,52 @@ public final class LitegramProxyController {
             NotificationCenter.default.post(name: .litegramAuthDidUpdate, object: nil)
         }
 
-        self.applyCachedProxySync()
+        ensureProxyReady()
 
         DispatchQueue.global(qos: .utility).async { [weak self] in
             self?.connectProxy()
         }
     }
 
-    private func applyCachedProxySync() {
+    private func ensureProxyReady() {
         let cached = LitegramConfig.getCachedServers()
-        guard !cached.isEmpty, let accountManager = self.accountManager else { return }
-        let server = preferredServer(from: cached) ?? cached[0]
+        if !cached.isEmpty {
+            let server = preferredServer(from: cached) ?? cached[0]
+            applyProxySync(server: server)
+            return
+        }
+
+        let semaphore = DispatchSemaphore(value: 0)
+        var fetched: LitegramServerInfo?
+
+        if LitegramDeviceToken.hasAccessToken {
+            api.getProxyServers { result in
+                if case let .success(servers) = result, let first = servers.first {
+                    LitegramConfig.saveCachedServers(servers)
+                    fetched = first
+                }
+                semaphore.signal()
+            }
+        } else {
+            let deviceToken = LitegramDeviceToken.getDeviceToken()
+            api.claimTempProxy(deviceToken: deviceToken) { result in
+                if case let .success(server) = result {
+                    LitegramConfig.saveCachedServers([server])
+                    fetched = server
+                }
+                semaphore.signal()
+            }
+        }
+
+        _ = semaphore.wait(timeout: .now() + 5.0)
+
+        if let server = fetched {
+            applyProxySync(server: server)
+        }
+    }
+
+    private func applyProxySync(server: LitegramServerInfo) {
+        guard let accountManager = self.accountManager else { return }
         guard let secretData = dataFromHexString(server.secret) else { return }
 
         let proxyServer = ProxyServerSettings(
@@ -42,19 +77,19 @@ public final class LitegramProxyController {
             connection: .mtp(secret: secretData)
         )
 
-        let semaphore = DispatchSemaphore(value: 0)
+        let sem = DispatchSemaphore(value: 0)
         let _ = updateProxySettingsInteractively(accountManager: accountManager) { settings in
             var settings = settings
             settings.activeServer = proxyServer
             settings.enabled = true
             return settings
         }.start(completed: {
-            semaphore.signal()
+            sem.signal()
         })
-        semaphore.wait()
+        sem.wait()
 
         self.lastConnectedServer = server
-        Logger.shared.log("Litegram", "proxy applied (sync)")
+        Logger.shared.log("Litegram", "proxy ready (sync)")
     }
 
     private var lastRegisteredTelegramId: Int64?
@@ -213,11 +248,8 @@ public final class LitegramProxyController {
     }
 
     private func preferredServer(from servers: [LitegramServerInfo]) -> LitegramServerInfo? {
-        if let savedHost = LitegramConfig.selectedServerHost,
-           let match = servers.first(where: { $0.host == savedHost }) {
-            return match
-        }
-        return servers.first(where: { $0.country.uppercased() == "RU" })
+        guard let savedHost = LitegramConfig.selectedServerHost else { return nil }
+        return servers.first(where: { $0.host == savedHost })
     }
 
     private func connectAnonymous() {
