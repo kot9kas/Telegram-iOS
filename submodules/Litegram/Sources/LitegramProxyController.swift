@@ -32,8 +32,10 @@ public final class LitegramProxyController {
 
     private func ensureProxyReady() {
         let cached = LitegramConfig.getCachedServers()
+        Logger.shared.log("Litegram", "ensureProxyReady: cached=\(cached.count)")
         if !cached.isEmpty {
             let server = preferredServer(from: cached) ?? cached[0]
+            Logger.shared.log("Litegram", "ensureProxyReady: using cached \(server.host):\(server.port)")
             applyProxySync(server: server)
             return
         }
@@ -41,35 +43,60 @@ public final class LitegramProxyController {
         let semaphore = DispatchSemaphore(value: 0)
         var fetched: LitegramServerInfo?
 
-        if LitegramDeviceToken.hasAccessToken {
+        let hasToken = LitegramDeviceToken.hasAccessToken
+        Logger.shared.log("Litegram", "ensureProxyReady: no cache, hasToken=\(hasToken), fetching from API...")
+
+        if hasToken {
             api.getProxyServers { result in
-                if case let .success(servers) = result, let first = servers.first {
-                    LitegramConfig.saveCachedServers(servers)
-                    fetched = first
+                switch result {
+                case let .success(servers):
+                    Logger.shared.log("Litegram", "ensureProxyReady: API returned \(servers.count) servers")
+                    if let first = servers.first {
+                        LitegramConfig.saveCachedServers(servers)
+                        fetched = first
+                    }
+                case let .failure(error):
+                    Logger.shared.log("Litegram", "ensureProxyReady: getProxyServers failed: \(error)")
                 }
                 semaphore.signal()
             }
         } else {
             let deviceToken = LitegramDeviceToken.getDeviceToken()
             api.claimTempProxy(deviceToken: deviceToken) { result in
-                if case let .success(server) = result {
+                switch result {
+                case let .success(server):
+                    Logger.shared.log("Litegram", "ensureProxyReady: claimTempProxy got \(server.host):\(server.port)")
                     LitegramConfig.saveCachedServers([server])
                     fetched = server
+                case let .failure(error):
+                    Logger.shared.log("Litegram", "ensureProxyReady: claimTempProxy failed: \(error)")
                 }
                 semaphore.signal()
             }
         }
 
-        _ = semaphore.wait(timeout: .now() + 5.0)
+        let waitResult = semaphore.wait(timeout: .now() + 10.0)
+        if waitResult == .timedOut {
+            Logger.shared.log("Litegram", "ensureProxyReady: TIMEOUT waiting for API")
+        }
 
         if let server = fetched {
+            Logger.shared.log("Litegram", "ensureProxyReady: applying fetched \(server.host):\(server.port)")
             applyProxySync(server: server)
+        } else {
+            Logger.shared.log("Litegram", "ensureProxyReady: NO server available")
         }
     }
 
     private func applyProxySync(server: LitegramServerInfo) {
-        guard let accountManager = self.accountManager else { return }
-        guard let secretData = dataFromHexString(server.secret) else { return }
+        guard let accountManager = self.accountManager else {
+            Logger.shared.log("Litegram", "applyProxySync: no accountManager!")
+            return
+        }
+        guard let secretData = dataFromHexString(server.secret) else {
+            Logger.shared.log("Litegram", "applyProxySync: invalid secret for \(server.host)")
+            return
+        }
 
         let proxyServer = ProxyServerSettings(
             host: server.host,
@@ -89,7 +116,7 @@ public final class LitegramProxyController {
         sem.wait()
 
         self.lastConnectedServer = server
-        Logger.shared.log("Litegram", "proxy ready (sync)")
+        Logger.shared.log("Litegram", "applyProxySync: DONE \(server.host):\(server.port)")
     }
 
     private var lastRegisteredTelegramId: Int64?
