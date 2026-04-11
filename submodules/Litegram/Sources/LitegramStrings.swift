@@ -64,7 +64,7 @@ public struct LitegramStrings {
 
     // MARK: - Chats Controller (Settings)
 
-    public var chatsTitle: String { isRu ? "Чаты" : "Chats" }
+    public var chatsTitle: String { isRu ? "Защита чатов" : "Chat Protection" }
     public var chatsSubtitle: String { isRu ? "PIN-защита чатов и папок" : "PIN protection for chats and folders" }
     public var protectedChats: String { isRu ? "Защищённые чаты" : "Protected Chats" }
     public var protectedFolders: String { isRu ? "Защищённые папки" : "Protected Folders" }
@@ -81,6 +81,11 @@ public struct LitegramStrings {
     public var unlockWithFaceID: String { isRu ? "Разблокировка по Face ID" : "Unlock with Face ID" }
     public var unlockWithTouchID: String { isRu ? "Разблокировка по Touch ID" : "Unlock with Touch ID" }
     public var autoLock: String { isRu ? "Автоблокировка" : "Auto-Lock" }
+    public var autolockFooter: String {
+        isRu
+            ? "Время бездействия, после которого защищённые чаты будут автоматически заблокированы."
+            : "Inactivity time after which protected chats will be automatically locked."
+    }
     public var addPassword: String { isRu ? "Добавить пароль" : "Add Password" }
     public var unlock: String { isRu ? "Разблок." : "Unlock" }
     public var enableBiometrics: String { isRu ? "Включить биометрию для защиты чатов" : "Enable biometrics for chat protection" }

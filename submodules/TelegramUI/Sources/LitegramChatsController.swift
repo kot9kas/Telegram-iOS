@@ -10,6 +10,8 @@ import PresentationDataUtils
 import AccountContext
 import Litegram
 import LocalAuthentication
+import AnimatedStickerNode
+import TelegramAnimatedStickerNode
 
 private final class LitegramChatsArguments {
     let context: AccountContext
@@ -43,19 +45,20 @@ private final class LitegramChatsArguments {
 }
 
 private enum LitegramChatsSection: Int32 {
+    case header
     case biometric
-    case autolock
-    case add
+    case settings
     case chats
     case folders
 }
 
 private enum LitegramChatsEntryId: Hashable {
+    case animationHeader
     case biometric
     case biometricFooter
     case autolock
     case addButton
-    case addFooter
+    case settingsFooter
     case chatsHeader
     case chat(Int64)
     case foldersHeader
@@ -63,11 +66,12 @@ private enum LitegramChatsEntryId: Hashable {
 }
 
 private enum LitegramChatsEntry: ItemListNodeEntry {
+    case animationHeader(PresentationTheme, String, String)
     case biometric(PresentationTheme, String, Bool)
     case biometricFooter(PresentationTheme, String)
     case autolock(PresentationTheme, String, String)
     case addButton(PresentationTheme, String)
-    case addFooter(PresentationTheme, String)
+    case settingsFooter(PresentationTheme, String)
     case chatsHeader(PresentationTheme, String)
     case chat(index: Int, theme: PresentationTheme, peerId: Int64, name: String)
     case foldersHeader(PresentationTheme, String)
@@ -75,12 +79,12 @@ private enum LitegramChatsEntry: ItemListNodeEntry {
 
     var section: ItemListSectionId {
         switch self {
+        case .animationHeader:
+            return LitegramChatsSection.header.rawValue
         case .biometric, .biometricFooter:
             return LitegramChatsSection.biometric.rawValue
-        case .autolock:
-            return LitegramChatsSection.autolock.rawValue
-        case .addButton, .addFooter:
-            return LitegramChatsSection.add.rawValue
+        case .autolock, .addButton, .settingsFooter:
+            return LitegramChatsSection.settings.rawValue
         case .chatsHeader, .chat:
             return LitegramChatsSection.chats.rawValue
         case .foldersHeader, .folder:
@@ -90,11 +94,12 @@ private enum LitegramChatsEntry: ItemListNodeEntry {
 
     var stableId: LitegramChatsEntryId {
         switch self {
+        case .animationHeader: return .animationHeader
         case .biometric: return .biometric
         case .biometricFooter: return .biometricFooter
         case .autolock: return .autolock
         case .addButton: return .addButton
-        case .addFooter: return .addFooter
+        case .settingsFooter: return .settingsFooter
         case .chatsHeader: return .chatsHeader
         case let .chat(_, _, peerId, _): return .chat(peerId)
         case .foldersHeader: return .foldersHeader
@@ -104,6 +109,8 @@ private enum LitegramChatsEntry: ItemListNodeEntry {
 
     static func ==(lhs: LitegramChatsEntry, rhs: LitegramChatsEntry) -> Bool {
         switch (lhs, rhs) {
+        case let (.animationHeader(lt, la, ls), .animationHeader(rt, ra, rs)):
+            return lt === rt && la == ra && ls == rs
         case let (.biometric(lt, ls, lv), .biometric(rt, rs, rv)):
             return lt === rt && ls == rs && lv == rv
         case let (.biometricFooter(lt, ls), .biometricFooter(rt, rs)):
@@ -112,7 +119,7 @@ private enum LitegramChatsEntry: ItemListNodeEntry {
             return lt === rt && ls == rs && lv == rv
         case let (.addButton(lt, ls), .addButton(rt, rs)):
             return lt === rt && ls == rs
-        case let (.addFooter(lt, ls), .addFooter(rt, rs)):
+        case let (.settingsFooter(lt, ls), .settingsFooter(rt, rs)):
             return lt === rt && ls == rs
         case let (.chatsHeader(lt, ls), .chatsHeader(rt, rs)):
             return lt === rt && ls == rs
@@ -133,11 +140,12 @@ private enum LitegramChatsEntry: ItemListNodeEntry {
 
     private var sortIndex: Int {
         switch self {
+        case .animationHeader: return -1
         case .biometric: return 0
         case .biometricFooter: return 1
         case .autolock: return 2
         case .addButton: return 3
-        case .addFooter: return 4
+        case .settingsFooter: return 4
         case .chatsHeader: return 5
         case let .chat(index, _, _, _): return 100 + index
         case .foldersHeader: return 200
@@ -149,6 +157,9 @@ private enum LitegramChatsEntry: ItemListNodeEntry {
         let arguments = arguments as! LitegramChatsArguments
 
         switch self {
+        case let .animationHeader(theme, animationName, text):
+            return LitegramAnimationHeaderItem(theme: theme, animationName: animationName, text: text, sectionId: self.section)
+
         case let .biometric(_, title, value):
             return ItemListSwitchItem(presentationData: presentationData, title: title, value: value, sectionId: self.section, style: .blocks, updated: { value in
                 arguments.toggleBiometric(value)
@@ -167,14 +178,14 @@ private enum LitegramChatsEntry: ItemListNodeEntry {
                 arguments.addPassword()
             })
 
-        case let .addFooter(_, text):
+        case let .settingsFooter(_, text):
             return ItemListTextItem(presentationData: presentationData, text: .plain(text), sectionId: self.section)
 
         case let .chatsHeader(_, text):
             return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
 
         case let .chat(_, _, peerId, name):
-            return ItemListDisclosureItem(presentationData: presentationData, icon: UIImage(bundleImageName: "Chat/Input/Search/Lock"), title: name, label: "", sectionId: self.section, style: .blocks, action: {
+            return ItemListDisclosureItem(presentationData: presentationData, title: name, label: "", sectionId: self.section, style: .blocks, action: {
                 arguments.openChat(peerId)
             })
 
@@ -182,10 +193,141 @@ private enum LitegramChatsEntry: ItemListNodeEntry {
             return ItemListSectionHeaderItem(presentationData: presentationData, text: text, sectionId: self.section)
 
         case let .folder(_, _, filterId, name):
-            return ItemListDisclosureItem(presentationData: presentationData, icon: UIImage(bundleImageName: "Chat/Input/Search/Folder"), title: name, label: "", sectionId: self.section, style: .blocks, action: {
+            return ItemListDisclosureItem(presentationData: presentationData, title: name, label: "", sectionId: self.section, style: .blocks, action: {
                 arguments.openFolder(filterId)
             })
         }
+    }
+}
+
+// MARK: - Animation Header Item
+
+private final class LitegramAnimationHeaderItem: ListViewItem, ItemListItem {
+    let theme: PresentationTheme
+    let animationName: String
+    let text: String
+    let sectionId: ItemListSectionId
+
+    init(theme: PresentationTheme, animationName: String, text: String, sectionId: ItemListSectionId) {
+        self.theme = theme
+        self.animationName = animationName
+        self.text = text
+        self.sectionId = sectionId
+    }
+
+    func nodeConfiguredForParams(async: @escaping (@escaping () -> Void) -> Void, params: ListViewItemLayoutParams, synchronousLoads: Bool, previousItem: ListViewItem?, nextItem: ListViewItem?, completion: @escaping (ListViewItemNode, @escaping () -> (Signal<Void, NoError>?, (ListViewItemApply) -> Void)) -> Void) {
+        async {
+            let node = LitegramAnimationHeaderItemNode()
+            let (layout, apply) = node.asyncLayout()(self, params, itemListNeighbors(item: self, topItem: previousItem as? ItemListItem, bottomItem: nextItem as? ItemListItem))
+            node.contentSize = layout.contentSize
+            node.insets = layout.insets
+            Queue.mainQueue().async {
+                completion(node, {
+                    return (nil, { _ in apply() })
+                })
+            }
+        }
+    }
+
+    func updateNode(async: @escaping (@escaping () -> Void) -> Void, node: @escaping () -> ListViewItemNode, params: ListViewItemLayoutParams, previousItem: ListViewItem?, nextItem: ListViewItem?, animation: ListViewItemUpdateAnimation, completion: @escaping (ListViewItemNodeLayout, @escaping (ListViewItemApply) -> Void) -> Void) {
+        Queue.mainQueue().async {
+            guard let nodeValue = node() as? LitegramAnimationHeaderItemNode else {
+                assertionFailure()
+                return
+            }
+            let makeLayout = nodeValue.asyncLayout()
+            async {
+                let (layout, apply) = makeLayout(self, params, itemListNeighbors(item: self, topItem: previousItem as? ItemListItem, bottomItem: nextItem as? ItemListItem))
+                Queue.mainQueue().async {
+                    completion(layout, { _ in apply() })
+                }
+            }
+        }
+    }
+}
+
+private final class LitegramAnimationHeaderItemNode: ListViewItemNode {
+    private let textNode: TextNode
+    private var animationNode: AnimatedStickerNode
+    private var item: LitegramAnimationHeaderItem?
+
+    init() {
+        self.textNode = TextNode()
+        self.textNode.isUserInteractionEnabled = false
+        self.textNode.contentMode = .left
+        self.textNode.contentsScale = UIScreen.main.scale
+
+        self.animationNode = DefaultAnimatedStickerNodeImpl()
+
+        super.init(layerBacked: false)
+
+        self.addSubnode(self.animationNode)
+        self.addSubnode(self.textNode)
+    }
+
+    func asyncLayout() -> (_ item: LitegramAnimationHeaderItem, _ params: ListViewItemLayoutParams, _ neighbors: ItemListNeighbors) -> (ListViewItemNodeLayout, () -> Void) {
+        let makeTextLayout = TextNode.asyncLayout(self.textNode)
+
+        return { item, params, neighbors in
+            let iconSize: CGFloat = 100.0
+            let topInset: CGFloat = iconSize + 8.0
+
+            let sideInset: CGFloat = 32.0 + params.leftInset
+            let font = Font.regular(15.0)
+
+            let attributedText = NSAttributedString(string: item.text, attributes: [
+                .font: font,
+                .foregroundColor: item.theme.list.freeTextColor
+            ])
+
+            let (textLayout, textApply) = makeTextLayout(TextNodeLayoutArguments(
+                attributedString: attributedText,
+                backgroundColor: nil,
+                maximumNumberOfLines: 0,
+                truncationType: .end,
+                constrainedSize: CGSize(width: params.width - sideInset * 2.0, height: .greatestFiniteMagnitude),
+                alignment: .center,
+                cutout: nil,
+                insets: UIEdgeInsets()
+            ))
+
+            let contentHeight = topInset + textLayout.size.height + 16.0
+            let contentSize = CGSize(width: params.width, height: contentHeight)
+            let insets = itemListNeighborsGroupedInsets(neighbors, params)
+            let layout = ListViewItemNodeLayout(contentSize: contentSize, insets: insets)
+
+            return (layout, { [weak self] in
+                guard let self = self else { return }
+
+                if self.item == nil {
+                    self.animationNode.autoplay = true
+                    let pixelSize = Int(iconSize * UIScreen.main.scale)
+                    self.animationNode.setup(source: AnimatedStickerNodeLocalFileSource(name: item.animationName), width: pixelSize, height: pixelSize, playbackMode: .loop, mode: .direct(cachePathPrefix: nil))
+                    self.animationNode.visibility = true
+                }
+                self.item = item
+
+                let iconFrame = CGRect(x: floor((layout.size.width - iconSize) / 2.0), y: -4.0, width: iconSize, height: iconSize)
+                self.animationNode.frame = iconFrame
+                self.animationNode.updateLayout(size: CGSize(width: iconSize, height: iconSize))
+
+                let _ = textApply()
+                self.textNode.frame = CGRect(
+                    x: floor((layout.size.width - textLayout.size.width) / 2.0),
+                    y: topInset,
+                    width: textLayout.size.width,
+                    height: textLayout.size.height
+                )
+            })
+        }
+    }
+
+    override func animateInsertion(_ currentTimestamp: Double, duration: Double, options: ListViewItemAnimationOptions) {
+        self.layer.animateAlpha(from: 0.0, to: 1.0, duration: 0.4)
+    }
+
+    override func animateRemoved(_ currentTimestamp: Double, duration: Double) {
+        self.layer.animateAlpha(from: 1.0, to: 0.0, duration: 0.15, removeOnCompletion: false)
     }
 }
 
@@ -209,6 +351,8 @@ private func litegramChatsEntries(state: LitegramChatsState, presentationData: P
     let theme = presentationData.theme
     var entries: [LitegramChatsEntry] = []
 
+    entries.append(.animationHeader(theme, "Passcode", strings.chatsSubtitle))
+
     let bioType = detectBiometryType()
     let bioTitle = bioType == .faceID ? strings.unlockWithFaceID : strings.unlockWithTouchID
     entries.append(.biometric(theme, bioTitle, state.biometricEnabled))
@@ -216,12 +360,8 @@ private func litegramChatsEntries(state: LitegramChatsState, presentationData: P
 
     let autolockValue = strings.autolockTitle(for: state.autolockSeconds)
     entries.append(.autolock(theme, strings.autoLock, autolockValue))
-
     entries.append(.addButton(theme, strings.addPassword))
-
-    if state.chats.isEmpty && state.folders.isEmpty {
-        entries.append(.addFooter(theme, strings.pinFooter))
-    }
+    entries.append(.settingsFooter(theme, strings.pinFooter))
 
     if !state.chats.isEmpty {
         entries.append(.chatsHeader(theme, strings.protectedChats.uppercased()))
@@ -585,6 +725,10 @@ public func litegramChatsController(context: AccountContext) -> ViewController {
 
     let controller = ItemListController(context: context, state: signal)
 
+    controller.didAppear = { _ in
+        reloadData()
+    }
+
     presentControllerImpl = { [weak controller] c, a in
         controller?.present(c, in: .window(.root), with: a)
     }
@@ -593,9 +737,6 @@ public func litegramChatsController(context: AccountContext) -> ViewController {
     }
     presentInWindowImpl = { [weak controller] vc in
         controller?.view.window?.rootViewController?.present(vc, animated: true)
-    }
-    controller.didAppear = { _ in
-        reloadData()
     }
 
     reloadData()
