@@ -479,7 +479,7 @@ public final class LiquidLensView: UIView {
             transition.setFrame(view: legacyContentMaskBlobView, frame: effectiveLensFrame)
             transition.setFrame(view: legacyLiftedContentBlobMaskView, frame: effectiveLensFrame)
             
-            legacySelectionView.tintColor = UIColor(white: params.isDark ? 1.0 : 0.0, alpha: params.isDark ? 0.1 : 0.075)
+            legacySelectionView.tintColor = UIColor(white: params.isDark ? 1.0 : 1.0, alpha: params.isDark ? 0.18 : 0.85)
             transition.setFrame(view: legacySelectionView, frame: effectiveLensFrame)
         }
 

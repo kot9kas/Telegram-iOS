@@ -715,7 +715,13 @@ public final class ChatListFilterTabContainerNode: ASDisplayNode {
         let previousContentWidth = self.scrollNode.view.contentSize.width
         
         if self.currentParams?.presentationData.theme !== presentationData.theme {
-            self.selectedBackgroundNode.image = generateStretchableFilledCircleImage(diameter: 36.0, color: presentationData.theme.chatList.itemHighlightedBackgroundColor)
+            let selectionColor: UIColor
+            if presentationData.theme.overallDarkAppearance {
+                selectionColor = UIColor(white: 1.0, alpha: 0.18)
+            } else {
+                selectionColor = UIColor(white: 1.0, alpha: 0.9)
+            }
+            self.selectedBackgroundNode.image = generateStretchableFilledCircleImage(diameter: 36.0, color: selectionColor)
         }
         
         if isReordering {
