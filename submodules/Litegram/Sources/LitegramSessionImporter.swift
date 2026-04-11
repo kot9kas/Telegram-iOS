@@ -79,6 +79,56 @@ public enum LitegramSessionImporter {
         )
     }
 
+    public enum SessionExportError: LocalizedError {
+        case cannotCreateFile
+        case sqliteError(String)
+
+        public var errorDescription: String? {
+            switch self {
+            case .cannotCreateFile: return "Не удалось создать файл сессии"
+            case .sqliteError(let msg): return "Ошибка SQLite: \(msg)"
+            }
+        }
+    }
+
+    public static func exportPyrogramSession(backupData: AccountBackupData) throws -> URL {
+        let fileName = "litegram_\(abs(backupData.peerId)).session"
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+        try? FileManager.default.removeItem(at: url)
+
+        var db: OpaquePointer?
+        guard sqlite3_open_v2(url.path, &db, SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX, nil) == SQLITE_OK else {
+            throw SessionExportError.cannotCreateFile
+        }
+        defer { sqlite3_close(db) }
+
+        let createSQL = "CREATE TABLE sessions (dc_id INTEGER, auth_key BLOB, user_id INTEGER)"
+        guard sqlite3_exec(db, createSQL, nil, nil, nil) == SQLITE_OK else {
+            throw SessionExportError.sqliteError(String(cString: sqlite3_errmsg(db)))
+        }
+
+        let insertSQL = "INSERT INTO sessions (dc_id, auth_key, user_id) VALUES (?, ?, ?)"
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, insertSQL, -1, &stmt, nil) == SQLITE_OK else {
+            throw SessionExportError.sqliteError(String(cString: sqlite3_errmsg(db)))
+        }
+        defer { sqlite3_finalize(stmt) }
+
+        let userId = PeerId(backupData.peerId).id.rawValue
+
+        sqlite3_bind_int(stmt, 1, backupData.masterDatacenterId)
+        backupData.masterDatacenterKey.withUnsafeBytes { ptr in
+            sqlite3_bind_blob(stmt, 2, ptr.baseAddress, Int32(backupData.masterDatacenterKey.count), nil)
+        }
+        sqlite3_bind_int64(stmt, 3, userId)
+
+        guard sqlite3_step(stmt) == SQLITE_DONE else {
+            throw SessionExportError.sqliteError(String(cString: sqlite3_errmsg(db)))
+        }
+
+        return url
+    }
+
     private static func computeAuthKeyId(authKey: Data) -> Int64 {
         let digest = Insecure.SHA1.hash(data: authKey)
         let hashBytes = Array(digest)

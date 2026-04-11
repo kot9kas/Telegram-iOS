@@ -70,9 +70,9 @@ public final class LitegramController: ViewController, UIDocumentPickerDelegate 
             MenuItem(
                 iconName: "Item List/Icons/Key",
                 iconBgColor: UIColor(red: 0.60, green: 0.35, blue: 0.85, alpha: 1.0),
-                title: "Перенос сессии",
-                subtitle: "Импорт из Pyrogram",
-                action: #selector(importSessionTapped)
+                title: litegramStrings.sessionTransferTitle,
+                subtitle: litegramStrings.sessionTransferSubtitle,
+                action: #selector(sessionTransferTapped)
             ),
             MenuItem(
                 iconName: "Chat/Context Menu/Info",
@@ -472,7 +472,29 @@ public final class LitegramController: ViewController, UIDocumentPickerDelegate 
         self.push(connectionController)
     }
 
-    @objc private func importSessionTapped() {
+    @objc private func sessionTransferTapped() {
+        let actionSheet = ActionSheetController(presentationData: self.presentationData)
+        actionSheet.setItemGroups([
+            ActionSheetItemGroup(items: [
+                ActionSheetButtonItem(title: litegramStrings.sessionImport, color: .accent, action: { [weak self, weak actionSheet] in
+                    actionSheet?.dismissAnimated()
+                    self?.presentImportPicker()
+                }),
+                ActionSheetButtonItem(title: litegramStrings.sessionExport, color: .accent, action: { [weak self, weak actionSheet] in
+                    actionSheet?.dismissAnimated()
+                    self?.exportCurrentSession()
+                })
+            ]),
+            ActionSheetItemGroup(items: [
+                ActionSheetButtonItem(title: self.presentationData.strings.Common_Cancel, color: .accent, font: .bold, action: { [weak actionSheet] in
+                    actionSheet?.dismissAnimated()
+                })
+            ])
+        ])
+        self.present(actionSheet, in: .window(.root))
+    }
+
+    private func presentImportPicker() {
         let picker: UIDocumentPickerViewController
         if #available(iOS 14.0, *) {
             picker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: true)
@@ -482,6 +504,54 @@ public final class LitegramController: ViewController, UIDocumentPickerDelegate 
         picker.delegate = self
         picker.allowsMultipleSelection = false
         self.view.window?.rootViewController?.present(picker, animated: true)
+    }
+
+    private func exportCurrentSession() {
+        let _ = (accountBackupData(postbox: self.context.account.postbox)
+        |> deliverOnMainQueue).startStandalone(next: { [weak self] backupData in
+            guard let self else { return }
+            guard let backupData else {
+                let alert = ActionSheetController(presentationData: self.presentationData)
+                alert.setItemGroups([
+                    ActionSheetItemGroup(items: [
+                        ActionSheetTextItem(title: self.litegramStrings.sessionExportNoData)
+                    ]),
+                    ActionSheetItemGroup(items: [
+                        ActionSheetButtonItem(title: self.presentationData.strings.Common_OK, color: .accent, font: .bold, action: { [weak alert] in
+                            alert?.dismissAnimated()
+                        })
+                    ])
+                ])
+                self.present(alert, in: .window(.root))
+                return
+            }
+            do {
+                let fileURL = try LitegramSessionImporter.exportPyrogramSession(backupData: backupData)
+                let activityVC = UIActivityViewController(activityItems: [fileURL], applicationActivities: nil)
+                activityVC.completionWithItemsHandler = { _, _, _, _ in
+                    try? FileManager.default.removeItem(at: fileURL)
+                }
+                if let popover = activityVC.popoverPresentationController {
+                    popover.sourceView = self.view
+                    popover.sourceRect = CGRect(x: self.view.bounds.midX, y: self.view.bounds.midY, width: 0, height: 0)
+                    popover.permittedArrowDirections = []
+                }
+                self.view.window?.rootViewController?.present(activityVC, animated: true)
+            } catch {
+                let alert = ActionSheetController(presentationData: self.presentationData)
+                alert.setItemGroups([
+                    ActionSheetItemGroup(items: [
+                        ActionSheetTextItem(title: "\(self.litegramStrings.sessionExportError): \(error.localizedDescription)")
+                    ]),
+                    ActionSheetItemGroup(items: [
+                        ActionSheetButtonItem(title: self.presentationData.strings.Common_OK, color: .accent, font: .bold, action: { [weak alert] in
+                            alert?.dismissAnimated()
+                        })
+                    ])
+                ])
+                self.present(alert, in: .window(.root))
+            }
+        })
     }
 
     public func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {

@@ -115,6 +115,14 @@ public struct LitegramStrings {
 
     // MARK: - Profile Controller
 
+    public var sessionTransferTitle: String { isRu ? "Перенос сессии" : "Session Transfer" }
+    public var sessionTransferSubtitle: String { isRu ? "Импорт и экспорт" : "Import and export" }
+    public var sessionImport: String { isRu ? "Импорт сессии" : "Import Session" }
+    public var sessionImportSubtitle: String { isRu ? "Из файла Pyrogram (.session)" : "From Pyrogram file (.session)" }
+    public var sessionExport: String { isRu ? "Экспорт сессии" : "Export Session" }
+    public var sessionExportSubtitle: String { isRu ? "Сохранить как Pyrogram (.session)" : "Save as Pyrogram (.session)" }
+    public var sessionExportError: String { isRu ? "Ошибка экспорта" : "Export Error" }
+    public var sessionExportNoData: String { isRu ? "Не удалось получить данные сессии" : "Could not retrieve session data" }
     public var connectionTitle: String { isRu ? "Соединение" : "Connection" }
     public var connectionSubtitle: String { isRu ? "Настройки прокси и подключение" : "Proxy settings and connection" }
     public var supportTitle: String { isRu ? "Поддержка" : "Support" }
