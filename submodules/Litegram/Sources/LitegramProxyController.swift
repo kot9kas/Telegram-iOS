@@ -12,7 +12,7 @@ public final class LitegramProxyController {
     public private(set) var lastConnectedServer: LitegramServerInfo?
 
     private var connectionMonitorDisposable: Disposable?
-    private var connectingTimer: Timer?
+    private var connectingTimer: Foundation.Timer?
     private var lastReconnectTime: CFAbsoluteTime = 0
     private let reconnectCooldown: TimeInterval = 15
     private var consecutiveFailures: Int = 0
@@ -293,7 +293,7 @@ public final class LitegramProxyController {
         case let .connecting(_, proxyHasIssues):
             let timeout: TimeInterval = proxyHasIssues ? 5 : 12
             if connectingTimer == nil {
-                connectingTimer = Timer.scheduledTimer(withTimeInterval: timeout, repeats: false) { [weak self] _ in
+                connectingTimer = Foundation.Timer.scheduledTimer(withTimeInterval: timeout, repeats: false) { [weak self] _ in
                     self?.connectingTimer = nil
                     self?.attemptAutoReconnect()
                 }
@@ -301,7 +301,7 @@ public final class LitegramProxyController {
 
         case .waitingForNetwork:
             if connectingTimer == nil {
-                connectingTimer = Timer.scheduledTimer(withTimeInterval: 8, repeats: false) { [weak self] _ in
+                connectingTimer = Foundation.Timer.scheduledTimer(withTimeInterval: 8, repeats: false) { [weak self] _ in
                     self?.connectingTimer = nil
                     self?.attemptAutoReconnect()
                 }
