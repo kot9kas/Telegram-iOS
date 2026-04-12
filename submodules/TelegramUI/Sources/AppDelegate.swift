@@ -225,7 +225,11 @@ private final class LitegramSplashCoveringView: WindowCoveringView {
         
         super.init(frame: frame)
         
-        self.backgroundColor = .white
+        if #available(iOS 13.0, *) {
+            self.backgroundColor = UIColor.systemBackground
+        } else {
+            self.backgroundColor = .white
+        }
         self.addSubview(self.animationNode.view)
         self.animationNode.visibility = true
     }
