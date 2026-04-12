@@ -4,12 +4,11 @@ import Display
 import AsyncDisplayKit
 import Postbox
 import TelegramCore
-import SSignalKit
 import SwiftSignalKit
 import TelegramPresentationData
-import LegacyComponents
 import SolidRoundedButtonNode
-import RMIntro
+import AnimatedStickerNode
+import TelegramAnimatedStickerNode
 
 public final class AuthorizationSequenceSplashController: ViewController {
     private var controllerNode: AuthorizationSequenceSplashControllerNode {
@@ -20,8 +19,6 @@ public final class AuthorizationSequenceSplashController: ViewController {
     private let account: UnauthorizedAccount
     private let theme: PresentationTheme
     
-    private let controller: RMIntroViewController
-    
     private var validLayout: ContainerViewLayout?
     
     var nextPressed: ((PresentationStrings?) -> Void)?
@@ -29,6 +26,7 @@ public final class AuthorizationSequenceSplashController: ViewController {
     private let suggestedLocalization = Promise<SuggestedLocalizationInfo?>()
     private let activateLocalizationDisposable = MetaDisposable()
     
+    private let animationNode: AnimatedStickerNode
     private let startButton: SolidRoundedButtonNode
     
     init(accountManager: AccountManager<TelegramAccountManagerTypes>, account: UnauthorizedAccount, theme: PresentationTheme) {
@@ -38,40 +36,9 @@ public final class AuthorizationSequenceSplashController: ViewController {
         
         self.suggestedLocalization.set(.single(nil)
         |> then(TelegramEngineUnauthorized(account: self.account).localization.currentlySuggestedLocalization(extractKeys: ["Login.ContinueWithLocalization"])))
-        let suggestedLocalization = self.suggestedLocalization
         
-        let localizationSignal = SSignal(generator: { subscriber in
-            let disposable = suggestedLocalization.get().start(next: { localization in
-                guard let localization = localization else {
-                    return
-                }
-                
-                var continueWithLanguageString: String = "Continue"
-                for entry in localization.extractedEntries {
-                    switch entry {
-                        case let .string(key, value):
-                            if key == "Login.ContinueWithLocalization" {
-                                continueWithLanguageString = value
-                            }
-                        default:
-                            break
-                    }
-                }
-                
-                if let available = localization.availableLocalizations.first, available.languageCode != "en" {
-                    let value = TGSuggestedLocalization(info: TGAvailableLocalization(title: available.title, localizedTitle: available.localizedTitle, code: available.languageCode), continueWithLanguageString: continueWithLanguageString, chooseLanguageString: "Choose Language", chooseLanguageOtherString: "Choose Language", englishLanguageNameString: "English")
-                    subscriber.putNext(value)
-                }
-            }, completed: {
-                subscriber.putCompletion()
-            })
-            
-            return SBlockDisposable(block: {
-                disposable.dispose()
-            })
-        })
-        
-        self.controller = RMIntroViewController(backgroundColor: theme.list.plainBackgroundColor, primaryColor: theme.list.itemPrimaryTextColor, buttonColor: theme.intro.startButtonColor, accentColor: theme.list.itemAccentColor, regularDotColor: theme.intro.dotColor, highlightedDotColor: theme.list.itemAccentColor, suggestedLocalizationSignal: localizationSignal)
+        self.animationNode = DefaultAnimatedStickerNodeImpl()
+        self.animationNode.setup(source: AnimatedStickerNodeLocalFileSource(name: "IntroSplash"), width: 512, height: 512, playbackMode: .loop, mode: .direct(cachePathPrefix: nil))
         
         self.startButton = SolidRoundedButtonNode(title: "Start Messaging", theme: SolidRoundedButtonTheme(theme: theme), glass: false, height: 50.0, cornerRadius: 50.0 * 0.5, isShimmering: true)
         self.startButton.accessibilityIdentifier = "Auth.Welcome.StartButton"
@@ -84,22 +51,8 @@ public final class AuthorizationSequenceSplashController: ViewController {
         
         self.statusBar.statusBarStyle = theme.intro.statusBarStyle.style
         
-        self.controller.startMessaging = { [weak self] in
-            self?.activateLocalization("en")
-        }
-        self.controller.startMessagingInAlternativeLanguage = { [weak self] code in
-            if let code = code {
-                self?.activateLocalization(code)
-            }
-        }
-        
         self.startButton.pressed = { [weak self] in
             self?.activateLocalization("en")
-        }
-        
-        self.controller.createStartButton = { [weak self] width in
-            let _ = self?.startButton.updateLayout(width: width, transition: .immediate)
-            return self?.startButton.view
         }
     }
     
@@ -114,10 +67,20 @@ public final class AuthorizationSequenceSplashController: ViewController {
     public override func loadDisplayNode() {
         self.displayNode = AuthorizationSequenceSplashControllerNode(theme: self.theme)
         self.displayNodeDidLoad()
+        
+        self.displayNode.addSubnode(self.animationNode)
+        self.displayNode.addSubnode(self.startButton)
+        
+        self.animationNode.visibility = true
     }
     
     func animateIn() {
-        self.controller.animateIn()
+        self.animationNode.alpha = 0.0
+        self.startButton.alpha = 0.0
+        UIView.animate(withDuration: 0.4) {
+            self.animationNode.alpha = 1.0
+            self.startButton.alpha = 1.0
+        }
     }
     
     var buttonFrame: CGRect {
@@ -129,64 +92,61 @@ public final class AuthorizationSequenceSplashController: ViewController {
     }
     
     var animationSnapshot: UIView? {
-        return self.controller.createAnimationSnapshot()
+        return self.animationNode.view.snapshotView(afterScreenUpdates: false)
     }
     
     var textSnaphot: UIView? {
-        return self.controller.createTextSnapshot()
-    }
-    
-    private func addControllerIfNeeded() {
-        if !self.controller.isViewLoaded || self.controller.view.superview == nil {
-            self.displayNode.view.addSubview(self.controller.view)
-            if let layout = self.validLayout {
-                controller.view.frame = CGRect(origin: CGPoint(), size: layout.size)
-            }
-            self.controller.viewDidAppear(false)
-        }
+        return UIView(frame: CGRect(origin: .zero, size: CGSize(width: 1.0, height: 1.0)))
     }
     
     public override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        self.addControllerIfNeeded()
-        self.controller.viewWillAppear(false)
     }
     
     public override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        
-        controller.viewDidAppear(animated)
     }
     
     public override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        
-        controller.viewWillDisappear(animated)
     }
     
     public override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
-        
-        controller.viewDidDisappear(animated)
     }
     
     public override func containerLayoutUpdated(_ layout: ContainerViewLayout, transition: ContainedViewLayoutTransition) {
         super.containerLayoutUpdated(layout, transition: transition)
         
         self.validLayout = layout
-        let controllerFrame = CGRect(origin: CGPoint(), size: layout.size)
-        self.controller.defaultFrame = controllerFrame
         
         self.controllerNode.containerLayoutUpdated(layout, navigationBarHeight: 0.0, transition: transition)
         
-        self.addControllerIfNeeded()
-        if case .immediate = transition {
-            self.controller.view.frame = controllerFrame
-        } else {
-            UIView.animate(withDuration: 0.3, animations: {
-                self.controller.view.frame = controllerFrame
-            })
-        }
+        let animationSize = CGSize(width: 256.0, height: 256.0)
+        let buttonWidth = min(layout.size.width - 48.0, 320.0)
+        let _ = self.startButton.updateLayout(width: buttonWidth, transition: transition)
+        
+        let totalHeight = animationSize.height + 60.0 + 50.0
+        let topOffset = floorToScreenPixels((layout.size.height - totalHeight) / 2.0) - layout.safeInsets.top * 0.3
+        
+        let animationFrame = CGRect(
+            origin: CGPoint(
+                x: floorToScreenPixels((layout.size.width - animationSize.width) / 2.0),
+                y: topOffset
+            ),
+            size: animationSize
+        )
+        transition.updateFrame(node: self.animationNode, frame: animationFrame)
+        self.animationNode.updateLayout(size: animationSize)
+        
+        let buttonFrame = CGRect(
+            origin: CGPoint(
+                x: floorToScreenPixels((layout.size.width - buttonWidth) / 2.0),
+                y: layout.size.height - layout.intrinsicInsets.bottom - 50.0 - 48.0
+            ),
+            size: CGSize(width: buttonWidth, height: 50.0)
+        )
+        transition.updateFrame(node: self.startButton, frame: buttonFrame)
     }
     
     private func activateLocalization(_ code: String) {
@@ -218,7 +178,6 @@ public final class AuthorizationSequenceSplashController: ViewController {
                 return
             }
             
-            strongSelf.controller.isEnabled = false
             strongSelf.startButton.alpha = 0.6
             let accountManager = strongSelf.accountManager
             
@@ -239,7 +198,6 @@ public final class AuthorizationSequenceSplashController: ViewController {
                     return stringsValue
                 }
                 |> deliverOnMainQueue).start(next: { strings in
-                    self?.controller.isEnabled = true
                     self?.startButton.alpha = 1.0
                     self?.pressNext(strings: strings)
                 })

@@ -31,7 +31,6 @@ swift_library(
         "//submodules/TelegramAnimatedStickerNode:TelegramAnimatedStickerNode",
         "//submodules/SolidRoundedButtonNode:SolidRoundedButtonNode",
         "//submodules/ImageCompression:ImageCompression",
-        "//submodules/RMIntro:RMIntro",
         "//submodules/QrCode:QrCode",
         "//submodules/PhoneInputNode:PhoneInputNode",
         "//submodules/CodeInputView:CodeInputView",
