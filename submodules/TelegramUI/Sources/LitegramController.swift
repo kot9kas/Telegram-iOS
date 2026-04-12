@@ -354,7 +354,7 @@ public final class LitegramConnectionController: ViewController, UITableViewData
 
         let discAnim = DefaultAnimatedStickerNodeImpl()
         discAnim.automaticallyLoadFirstFrame = true
-        discAnim.setup(source: AnimatedStickerNodeLocalFileSource(name: "media_forbidden"), width: pixelSize, height: pixelSize, playbackMode: .once, mode: .direct(cachePathPrefix: nil))
+        discAnim.setup(source: AnimatedStickerNodeLocalFileSource(name: "LitegramDisconnected"), width: pixelSize, height: pixelSize, playbackMode: .loop, mode: .direct(cachePathPrefix: nil))
         discAnim.isHidden = true
         header.addSubnode(discAnim)
         self.disconnectedAnimNode = discAnim
