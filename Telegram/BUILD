@@ -1152,6 +1152,8 @@ plist_fragment(
         <key>NSExtensionPointIdentifier</key>
         <string>com.apple.widgetkit-extension</string>
     </dict>
+    <key>NSSupportsLiveActivities</key>
+    <true/>
     <key>UIRequiredDeviceCapabilities</key>
     <array>
         <string>arm64</string>
@@ -1172,6 +1174,7 @@ swift_library(
     module_name = "WidgetExtensionLib",
     srcs = glob([
         "WidgetKitWidget/**/*.swift",
+        "LitegramLiveActivity/**/*.swift",
     ]),
     copts = [
         "-warnings-as-errors",
@@ -1189,6 +1192,7 @@ swift_library(
         "//submodules/TelegramCore:TelegramCore",
         "//submodules/OpenSSLEncryptionProvider:OpenSSLEncryptionProvider",
         "//Telegram:GeneratedSources",
+        "//submodules/Litegram:Litegram",
     ],
 )
 
@@ -1562,6 +1566,8 @@ plist_fragment(
     <string>????</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
+    <key>NSSupportsLiveActivities</key>
+    <true/>
     <key>LSApplicationQueriesSchemes</key>
     <array>
         <string>instagram</string>

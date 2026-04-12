@@ -16,6 +16,7 @@ import DeviceProximity
 import MediaResources
 import PhotoResources
 import PeerMessagesMediaPlaylist
+import Litegram
 
 enum SharedMediaPlayerGroup: Int {
     case music = 0
@@ -190,6 +191,7 @@ public final class MediaManagerImpl: NSObject, MediaManager {
 
     private var musicListenTracker: MusicListenTracker?
     private let musicListenTrackingDisposable = MetaDisposable()
+    private let liveActivityDisposable = MetaDisposable()
 
     public let universalVideoManager: UniversalVideoManager = UniversalVideoManagerImpl()
     
@@ -439,6 +441,73 @@ public final class MediaManagerImpl: NSObject, MediaManager {
             self?.musicListenTracker?.update(with: stateAndType)
         }))
 
+        if #available(iOS 16.2, *) {
+            self.liveActivityDisposable.set((self.globalMediaPlayerState
+            |> deliverOnMainQueue).startStrict(next: { stateAndType in
+                guard let (_, stateOrLoading, type) = stateAndType else {
+                    LitegramAudioActivityManager.shared.endActivity()
+                    return
+                }
+                guard type == .music || type == .voice else {
+                    LitegramAudioActivityManager.shared.endActivity()
+                    return
+                }
+                guard case let .state(state) = stateOrLoading else { return }
+                
+                let title: String
+                let artist: String
+                let audioType: LitegramAudioActivityAttributes.AudioType
+                
+                if let displayData = state.item.displayData {
+                    switch displayData {
+                    case let .music(t, p, _, _, _):
+                        title = t ?? "Unknown Track"
+                        artist = p ?? "Unknown Artist"
+                        audioType = .music
+                    case let .voice(author, _):
+                        title = "Voice Message"
+                        artist = author?.debugDisplayTitle ?? ""
+                        audioType = .voice
+                    case let .instantVideo(author, _, _):
+                        title = "Video Message"
+                        artist = author?.debugDisplayTitle ?? ""
+                        audioType = .voice
+                    }
+                } else {
+                    return
+                }
+                
+                var isPlaying = false
+                switch state.status.status {
+                case .playing:
+                    isPlaying = true
+                case .buffering(_, true, _, _):
+                    isPlaying = true
+                default:
+                    break
+                }
+                
+                let manager = LitegramAudioActivityManager.shared
+                if !manager.isActive {
+                    manager.startActivity(
+                        audioType: audioType,
+                        title: title,
+                        artist: artist,
+                        duration: state.status.duration
+                    )
+                } else {
+                    manager.updateActivity(
+                        title: title,
+                        artist: artist,
+                        isPlaying: isPlaying,
+                        elapsed: state.status.timestamp,
+                        duration: state.status.duration,
+                        playbackRate: Double(state.status.baseRate)
+                    )
+                }
+            }))
+        }
+
         self.globalAudioSessionForegroundDisposable.set((shouldKeepAudioSession |> deliverOnMainQueue).startStrict(next: { [weak self] value in
             guard let strongSelf = self else {
                 return
@@ -456,6 +525,7 @@ public final class MediaManagerImpl: NSObject, MediaManager {
         self.setPlaylistByTypeDisposables.dispose()
         self.mediaPlaybackStateDisposable.dispose()
         self.musicListenTrackingDisposable.dispose()
+        self.liveActivityDisposable.dispose()
         self.globalAudioSessionForegroundDisposable.dispose()
         self.voiceMediaPlayerStateDisposable.dispose()
     }
