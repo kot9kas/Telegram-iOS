@@ -453,7 +453,6 @@ private final class LitegramSplashCoveringView: WindowCoveringView {
         self.nativeWindow = window
         
         let splash = LitegramSplashCoveringView(frame: CGRect(origin: .zero, size: window.bounds.size))
-        splash.backgroundColor = hostView.containerView.backgroundColor
         self.splashCoveringView = splash
         self.mainWindow.coveringView = splash
         
