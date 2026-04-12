@@ -38,7 +38,7 @@ public final class AuthorizationSequenceSplashController: ViewController {
         |> then(TelegramEngineUnauthorized(account: self.account).localization.currentlySuggestedLocalization(extractKeys: ["Login.ContinueWithLocalization"])))
         
         self.animationNode = DefaultAnimatedStickerNodeImpl()
-        self.animationNode.setup(source: AnimatedStickerNodeLocalFileSource(name: "IntroSplash"), width: 512, height: 512, playbackMode: .loop, mode: .direct(cachePathPrefix: nil))
+        self.animationNode.setup(source: AnimatedStickerNodeLocalFileSource(name: "IntroSplash"), width: 640, height: 640, playbackMode: .loop, mode: .direct(cachePathPrefix: nil))
         
         self.startButton = SolidRoundedButtonNode(title: "Start Messaging", theme: SolidRoundedButtonTheme(theme: theme), glass: false, height: 50.0, cornerRadius: 50.0 * 0.5, isShimmering: true)
         self.startButton.accessibilityIdentifier = "Auth.Welcome.StartButton"
@@ -122,7 +122,7 @@ public final class AuthorizationSequenceSplashController: ViewController {
         
         self.controllerNode.containerLayoutUpdated(layout, navigationBarHeight: 0.0, transition: transition)
         
-        let animationSize = CGSize(width: 256.0, height: 256.0)
+        let animationSize = CGSize(width: 333.0, height: 333.0)
         let buttonWidth = min(layout.size.width - 48.0, 320.0)
         let _ = self.startButton.updateLayout(width: buttonWidth, transition: transition)
         

@@ -221,7 +221,7 @@ private final class LitegramSplashCoveringView: WindowCoveringView {
     
     override init(frame: CGRect) {
         self.animationNode = DefaultAnimatedStickerNodeImpl()
-        self.animationNode.setup(source: AnimatedStickerNodeLocalFileSource(name: "IntroSplash"), width: 512, height: 512, playbackMode: .loop, mode: .direct(cachePathPrefix: nil))
+        self.animationNode.setup(source: AnimatedStickerNodeLocalFileSource(name: "IntroSplash"), width: 640, height: 640, playbackMode: .loop, mode: .direct(cachePathPrefix: nil))
         
         super.init(frame: frame)
         
@@ -235,7 +235,7 @@ private final class LitegramSplashCoveringView: WindowCoveringView {
     }
     
     override func updateLayout(_ size: CGSize) {
-        let animSize = CGSize(width: 200.0, height: 200.0)
+        let animSize = CGSize(width: 260.0, height: 260.0)
         self.animationNode.frame = CGRect(
             origin: CGPoint(
                 x: (size.width - animSize.width) / 2.0,
