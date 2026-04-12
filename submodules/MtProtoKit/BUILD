@@ -9,6 +9,7 @@ objc_library(
     ]),
     copts = [
         "-Werror",
+        "-Wno-deprecated-declarations",
     ],
     hdrs = glob([
         "PublicHeaders/**/*.h",
