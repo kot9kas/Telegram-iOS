@@ -1251,13 +1251,10 @@ public final class AuthorizationSequenceController: NavigationController, ASAuth
             switch state {
                 case .empty:
                     if let _ = self.viewControllers.last as? AuthorizationSequenceSplashController {
+                    } else if let _ = self.viewControllers.last as? AuthorizationSequencePhoneEntryController {
                     } else {
                         var controllers: [ViewController] = []
-                        if self.otherAccountPhoneNumbers.1.isEmpty {
-                            controllers.append(self.splashController())
-                        } else {
-                            controllers.append(self.phoneEntryController(countryCode: AuthorizationSequenceCountrySelectionController.defaultCountryCode(), number: "", splashController: nil))
-                        }
+                        controllers.append(self.phoneEntryController(countryCode: AuthorizationSequenceCountrySelectionController.defaultCountryCode(), number: "", splashController: nil))
                         self.setViewControllers(controllers, animated: !self.viewControllers.isEmpty)
                     }
                 case let .phoneEntry(countryCode, number):
