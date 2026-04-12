@@ -22,6 +22,8 @@ import LegacyUI
 import PassportUI
 import SettingsUI
 import AppBundle
+import AnimatedStickerNode
+import TelegramAnimatedStickerNode
 import UrlHandling
 import OpenSSLEncryptionProvider
 import AppLock
@@ -214,11 +216,43 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
     )
 }
 
+private final class LitegramSplashCoveringView: WindowCoveringView {
+    private let animationNode: AnimatedStickerNode
+    
+    override init(frame: CGRect) {
+        self.animationNode = DefaultAnimatedStickerNodeImpl()
+        self.animationNode.setup(source: AnimatedStickerNodeLocalFileSource(name: "IntroSplash"), width: 512, height: 512, playbackMode: .loop, mode: .direct(cachePathPrefix: nil))
+        
+        super.init(frame: frame)
+        
+        self.backgroundColor = .white
+        self.addSubview(self.animationNode.view)
+        self.animationNode.visibility = true
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    override func updateLayout(_ size: CGSize) {
+        let animSize = CGSize(width: 200.0, height: 200.0)
+        self.animationNode.frame = CGRect(
+            origin: CGPoint(
+                x: (size.width - animSize.width) / 2.0,
+                y: (size.height - animSize.height) / 2.0
+            ),
+            size: animSize
+        )
+        self.animationNode.updateLayout(size: animSize)
+    }
+}
+
 @objc(AppDelegate) class AppDelegate: UIResponder, UIApplicationDelegate, PKPushRegistryDelegate, UNUserNotificationCenterDelegate, URLSessionDelegate, URLSessionTaskDelegate {
     @objc var window: UIWindow?
     var nativeWindow: (UIWindow & WindowHost)?
     var mainWindow: Window1!
     private var dataImportSplash: LegacyDataImportSplash?
+    private var splashCoveringView: LitegramSplashCoveringView?
     private var memoryUsageOverlayView: UILabel?
     
     private var buildConfig: BuildConfig?
@@ -413,6 +447,11 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         }
         self.window = window
         self.nativeWindow = window
+        
+        let splash = LitegramSplashCoveringView(frame: CGRect(origin: .zero, size: window.bounds.size))
+        splash.backgroundColor = hostView.containerView.backgroundColor
+        self.splashCoveringView = splash
+        self.mainWindow.coveringView = splash
         
         hostView.containerView.layer.addSublayer(MetalEngine.shared.rootLayer)
         
@@ -1363,6 +1402,11 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                     self.mainWindow.debugAction = nil
                     self.mainWindow.viewController = context.rootController
                     
+                    if self.splashCoveringView != nil {
+                        self.splashCoveringView = nil
+                        self.mainWindow.coveringView = nil
+                    }
+                    
                     if firstTime {
                         let layer = context.rootController.view.layer
                         layer.allowsGroupOpacity = true
@@ -1450,6 +1494,10 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                 |> take(1)
                 |> deliverOnMainQueue).start(next: { _ in
                     progressDisposable.dispose()
+                    if self.splashCoveringView != nil {
+                        self.splashCoveringView = nil
+                        self.mainWindow.coveringView = nil
+                    }
                     self.mainWindow.present(context.rootController, on: .root)
                 }))
             } else {
