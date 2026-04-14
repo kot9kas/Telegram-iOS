@@ -999,6 +999,7 @@ private final class LitegramSplashCoveringView: WindowCoveringView {
                 
                 icons.append(PresentationAppIcon(name: "BlackIcon", imageName: "BlackIcon"))
                 icons.append(PresentationAppIcon(name: "BlackClassicIcon", imageName: "BlackClassicIcon"))
+                icons.append(PresentationAppIcon(name: "BlackFilledIcon", imageName: "BlackFilledIcon"))
                 
                 icons.append(PresentationAppIcon(name: "Premium", imageName: "Premium", isPremium: true))
                 icons.append(PresentationAppIcon(name: "PremiumTurbo", imageName: "PremiumTurbo", isPremium: true))
