@@ -1078,7 +1078,28 @@ private class ChatThemeScreenNode: ViewControllerTracingNode, ASScrollViewDelega
             }
             
             if uniqueGiftChatThemesState.themes.count == 0 || uniqueGiftChatThemesState.dataState == .ready(canLoadMore: false) {
-                for theme in themes {
+                let hiddenTitles: Set<String> = ["Amethyst Glow A", "Blue Rhapsody", "Amethyst Hazedd"]
+                let priorityTitles = ["Amethyst Glow", "Rose Cream", "Peachy Dark", "Peachy White"]
+                
+                let filteredThemes = themes.filter { theme in
+                    !hiddenTitles.contains(where: { theme.title.hasPrefix($0) })
+                }
+                
+                var prioritized: [TelegramTheme] = []
+                var rest: [TelegramTheme] = []
+                for title in priorityTitles {
+                    if let match = filteredThemes.first(where: { $0.title == title }) {
+                        prioritized.append(match)
+                    }
+                }
+                for theme in filteredThemes {
+                    if !prioritized.contains(where: { $0.id == theme.id }) {
+                        rest.append(theme)
+                    }
+                }
+                let orderedThemes = prioritized + rest
+                
+                for theme in orderedThemes {
                     guard let emoticon = theme.emoticon else {
                         continue
                     }
