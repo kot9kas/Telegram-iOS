@@ -1036,7 +1036,7 @@ public func themePickerController(context: AccountContext, focusOnItemTag: Theme
         availableThemes.append(contentsOf: prioritized)
         availableThemes.append(contentsOf: rest)
         
-        let chatThemes = cloudThemes
+        let chatThemes = prioritized + rest
         
         let nightMode = nightModePreview || presentationData.autoNightModeTriggered
         
