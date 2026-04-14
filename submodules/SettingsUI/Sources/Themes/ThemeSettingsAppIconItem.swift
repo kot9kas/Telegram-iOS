@@ -383,7 +383,7 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                                 case "BlueClassicIcon":
                                     name = item.strings.Appearance_AppIconClassic
                                 case "BlackClassicIcon":
-                                    name = "Black & White"
+                                    name = "White"
                                 case "BlueFilledIcon":
                                     name = item.strings.Appearance_AppIconFilled
                                     bordered = false
