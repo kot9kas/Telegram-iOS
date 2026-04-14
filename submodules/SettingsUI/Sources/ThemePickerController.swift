@@ -1003,11 +1003,38 @@ public func themePickerController(context: AccountContext, focusOnItemTag: Theme
         
         let cloudThemes: [PresentationThemeReference] = cloudThemes.map { .cloud(PresentationCloudTheme(theme: $0, resolvedWallpaper: nil, creatorAccountId: $0.isCreator ? context.account.id : nil)) }.filter { !removedThemeIndexes.contains($0.index) }
         
+        let hiddenTitles: Set<String> = ["Amethyst Glow A", "Blue Rhapsody", "Amethyst Hazedd"]
+        let priorityTitles = ["Amethyst Glow", "Rose Cream", "Peachy Dark", "Peachy White"]
+        
+        let filteredThemes = cloudThemes.filter { ref in
+            if case let .cloud(theme) = ref {
+                return !hiddenTitles.contains(where: { theme.theme.title.hasPrefix($0) })
+            }
+            return true
+        }
+        
+        var prioritized: [PresentationThemeReference] = []
+        var rest: [PresentationThemeReference] = []
+        for title in priorityTitles {
+            if let match = filteredThemes.first(where: {
+                if case let .cloud(theme) = $0 { return theme.theme.title == title }
+                return false
+            }) {
+                prioritized.append(match)
+            }
+        }
+        for theme in filteredThemes {
+            if !prioritized.contains(where: { $0.index == theme.index }) {
+                rest.append(theme)
+            }
+        }
+        
         var availableThemes: [PresentationThemeReference] = []
-        if cloudThemes.first(where: { $0.index == themeReference.index }) == nil {
+        if (prioritized + rest).first(where: { $0.index == themeReference.index }) == nil {
             availableThemes.append(themeReference)
         }
-        availableThemes.append(contentsOf: cloudThemes)
+        availableThemes.append(contentsOf: prioritized)
+        availableThemes.append(contentsOf: rest)
         
         let chatThemes = cloudThemes
         
