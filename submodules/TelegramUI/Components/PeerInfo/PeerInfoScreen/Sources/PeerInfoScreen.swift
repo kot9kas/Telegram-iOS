@@ -6515,7 +6515,7 @@ public final class PeerInfoScreenImpl: ViewController, PeerInfoScreen, KeyShortc
             
             let accountTabBarAvatar: Signal<(UIImage, UIImage)?, NoError> = combineLatest(self.accountsAndPeers.get(), context.sharedContext.presentationData)
             |> map { primaryAndOther, presentationData -> (Account, EnginePeer, PresentationTheme)? in
-                if let primary = primaryAndOther.0, !primaryAndOther.1.isEmpty {
+                if let primary = primaryAndOther.0 {
                     return (primary.0.account, primary.1, presentationData.theme)
                 } else {
                     return nil
