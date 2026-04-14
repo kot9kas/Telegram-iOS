@@ -216,47 +216,13 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
     )
 }
 
-private final class LitegramSplashCoveringView: WindowCoveringView {
-    private let animationNode: AnimatedStickerNode
-    
-    override init(frame: CGRect) {
-        self.animationNode = DefaultAnimatedStickerNodeImpl()
-        self.animationNode.setup(source: AnimatedStickerNodeLocalFileSource(name: "IntroSplash"), width: 640, height: 640, playbackMode: .loop, mode: .direct(cachePathPrefix: nil))
-        
-        super.init(frame: frame)
-        
-        if #available(iOS 13.0, *) {
-            self.backgroundColor = UIColor.systemBackground
-        } else {
-            self.backgroundColor = .white
-        }
-        self.addSubview(self.animationNode.view)
-        self.animationNode.visibility = true
-    }
-    
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-    
-    override func updateLayout(_ size: CGSize) {
-        let animSize = CGSize(width: 260.0, height: 260.0)
-        self.animationNode.frame = CGRect(
-            origin: CGPoint(
-                x: (size.width - animSize.width) / 2.0,
-                y: (size.height - animSize.height) / 2.0
-            ),
-            size: animSize
-        )
-        self.animationNode.updateLayout(size: animSize)
-    }
-}
 
 @objc(AppDelegate) class AppDelegate: UIResponder, UIApplicationDelegate, PKPushRegistryDelegate, UNUserNotificationCenterDelegate, URLSessionDelegate, URLSessionTaskDelegate {
     @objc var window: UIWindow?
     var nativeWindow: (UIWindow & WindowHost)?
     var mainWindow: Window1!
     private var dataImportSplash: LegacyDataImportSplash?
-    private var splashCoveringView: LitegramSplashCoveringView?
+    private var splashCoveringView: WindowCoveringView?
     private var memoryUsageOverlayView: UILabel?
     
     private var buildConfig: BuildConfig?
@@ -452,9 +418,7 @@ private final class LitegramSplashCoveringView: WindowCoveringView {
         self.window = window
         self.nativeWindow = window
         
-        let splash = LitegramSplashCoveringView(frame: CGRect(origin: .zero, size: window.bounds.size))
-        self.splashCoveringView = splash
-        self.mainWindow.coveringView = splash
+        self.splashCoveringView = nil
         
         hostView.containerView.layer.addSublayer(MetalEngine.shared.rootLayer)
         
