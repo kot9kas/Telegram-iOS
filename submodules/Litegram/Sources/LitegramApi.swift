@@ -178,6 +178,25 @@ public final class LitegramApi {
         }
     }
 
+    public func reportConnection(nodeId: String, status: String, latencyMs: Int?, completion: ((Result<Void, Error>) -> Void)? = nil) {
+        var body: [String: Any] = [
+            "nodeId": nodeId,
+            "status": status,
+            "platform": "ios"
+        ]
+        if let latencyMs = latencyMs {
+            body["latencyMs"] = latencyMs
+        }
+        httpPost(path: "/analytics/connection", body: body) { result in
+            switch result {
+            case .success:
+                completion?(.success(()))
+            case let .failure(error):
+                completion?(.failure(error))
+            }
+        }
+    }
+
     public func getActiveAd(completion: @escaping (Result<LitegramAdInfo?, Error>) -> Void) {
         httpGet(path: "/advertising/active") { result in
             switch result {

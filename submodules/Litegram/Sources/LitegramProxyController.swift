@@ -17,6 +17,9 @@ public final class LitegramProxyController {
     private let reconnectCooldown: TimeInterval = 5
     private var consecutiveFailures: Int = 0
     private let maxConsecutiveFailures = 8
+    private var isUserDisconnected = false
+    private var lastReportedNodeId: String?
+    private var connectionStartTime: CFAbsoluteTime = 0
 
     private init() {}
 
@@ -251,6 +254,7 @@ public final class LitegramProxyController {
     }
 
     public func reconnect() {
+        isUserDisconnected = false
         DispatchQueue.global(qos: .utility).async { [weak self] in
             self?.connectProxy()
         }
@@ -258,6 +262,7 @@ public final class LitegramProxyController {
 
     public func disconnect() {
         guard let accountManager = self.accountManager else { return }
+        isUserDisconnected = true
         self.lastConnectedServer = nil
         let _ = updateProxySettingsInteractively(accountManager: accountManager) { settings in
             var settings = settings
@@ -265,9 +270,11 @@ public final class LitegramProxyController {
             settings.enabled = false
             return settings
         }.start()
+        Logger.shared.log("Litegram", "disconnect: user-initiated, auto-reconnect disabled")
     }
 
     public func applyServer(_ server: LitegramServerInfo) {
+        isUserDisconnected = false
         applyProxy(server: server)
     }
 
@@ -288,9 +295,16 @@ public final class LitegramProxyController {
         case .online:
             connectingTimer?.invalidate()
             connectingTimer = nil
+            let latencyMs = connectionStartTime > 0 ? Int((CFAbsoluteTimeGetCurrent() - connectionStartTime) * 1000) : nil
+            connectionStartTime = 0
             consecutiveFailures = 0
+            reportAnalytics(status: "success", latencyMs: latencyMs)
 
         case let .connecting(_, proxyHasIssues):
+            if connectionStartTime == 0 {
+                connectionStartTime = CFAbsoluteTimeGetCurrent()
+            }
+            guard !isUserDisconnected else { return }
             let timeout: TimeInterval = proxyHasIssues ? 3 : 6
             if connectingTimer == nil {
                 connectingTimer = Foundation.Timer.scheduledTimer(withTimeInterval: timeout, repeats: false) { [weak self] _ in
@@ -300,6 +314,7 @@ public final class LitegramProxyController {
             }
 
         case .waitingForNetwork:
+            guard !isUserDisconnected else { return }
             if connectingTimer == nil {
                 connectingTimer = Foundation.Timer.scheduledTimer(withTimeInterval: 4, repeats: false) { [weak self] _ in
                     self?.connectingTimer = nil
@@ -313,7 +328,19 @@ public final class LitegramProxyController {
         }
     }
 
+    private func reportAnalytics(status: String, latencyMs: Int? = nil) {
+        guard let server = lastConnectedServer, LitegramDeviceToken.hasAccessToken else { return }
+        let nodeId = server.host
+        guard nodeId != lastReportedNodeId || status == "fail" else { return }
+        lastReportedNodeId = (status == "success") ? nodeId : nil
+        api.reportConnection(nodeId: nodeId, status: status, latencyMs: latencyMs)
+    }
+
     private func attemptAutoReconnect() {
+        guard !isUserDisconnected else {
+            Logger.shared.log("Litegram", "monitor: user disconnected, skipping auto-reconnect")
+            return
+        }
         let now = CFAbsoluteTimeGetCurrent()
         guard now - lastReconnectTime >= reconnectCooldown else {
             Logger.shared.log("Litegram", "monitor: cooldown active, skipping reconnect")
@@ -321,6 +348,7 @@ public final class LitegramProxyController {
         }
         guard consecutiveFailures < maxConsecutiveFailures else {
             Logger.shared.log("Litegram", "monitor: max failures (\(maxConsecutiveFailures)) reached, stopping auto-reconnect")
+            reportAnalytics(status: "fail")
             return
         }
 
