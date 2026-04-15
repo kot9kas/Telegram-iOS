@@ -268,7 +268,12 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
         |> take(1)
         |> mapToSignal { savedThemesList -> Signal<Void, NoError> in
             let savedTitles = Set(savedThemesList.map { $0.title })
+            let savedSlugs = Set(savedThemesList.map { $0.slug })
+            let configuredSlugs = LitegramConfig.chatAppearanceThemeSlugs.filter { !$0.isEmpty }
             if requiredTitles.isSubset(of: savedTitles) {
+                return .complete()
+            }
+            if configuredSlugs.count == 4, Set(configuredSlugs).isSubset(of: savedSlugs) {
                 return .complete()
             }
             let savedIds = Set(savedThemesList.map { $0.id })

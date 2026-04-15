@@ -76,12 +76,16 @@ public enum LitegramConfig {
     }
 
     private static let keyThemeApplied = "default_theme_applied_v2"
-    // Keep a stable primary default theme. Do not reorder the first slug (default app theme uses `first`).
-    // Chat appearance bundle (Amethyst Glow, Rose Cream, Peachy Dark, Peachy White): three are loaded by slug; the fourth may come from account.getChatThemes by title.
-    // Peachy White: https://t.me/addtheme/J5if4oa5U3jcEmRQ
-    public static let defaultThemeSlugs = ["CnQmN19GGAm7hJRg", "UVfCBD0qw76lPMyM", "J5if4oa5U3jcEmRQ"]
-    /// Subset of published themes auto-saved so they appear under Settings → Appearance for every account (see `TelegramRootController.ensureLitegramThemesSaved`).
-    public static let chatAppearanceThemeSlugs: [String] = defaultThemeSlugs
+    /// Primary app theme slug (`AppDelegate.applyDefaultLitegramThemeIfNeeded` uses `first` only).
+    public static let defaultThemeSlugs = ["CnQmN19GGAm7hJRg"]
+    /// Published themes for chat appearance, fixed order: Amethyst Glow, Rose Cream, Peachy Dark, Peachy White.
+    /// Use the `…` segment from `https://t.me/addtheme/…` per theme. Empty string = resolve by title via API only until you paste the slug.
+    public static let chatAppearanceThemeSlugs: [String] = [
+        "CnQmN19GGAm7hJRg",
+        "UVfCBD0qw76lPMyM",
+        "",
+        "J5if4oa5U3jcEmRQ"
+    ]
 
     public static var hasAppliedDefaultTheme: Bool {
         get { defaults.bool(forKey: keyThemeApplied) }

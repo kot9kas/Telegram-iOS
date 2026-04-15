@@ -15,6 +15,7 @@ import MediaResources
 import WallpaperResources
 
 import AccountContext
+import Litegram
 import ContextUI
 import UndoUI
 import PremiumUI
@@ -1130,6 +1131,7 @@ public func themeSettingsController(context: AccountContext, focusOnItemTag: The
         
         let hiddenTitles: Set<String> = ["Amethyst Glow A", "Blue Rhapsody", "Amethyst Hazedd"]
         let priorityTitles = ["Amethyst Glow", "Rose Cream", "Peachy Dark", "Peachy White"]
+        let prioritySlugs = LitegramConfig.chatAppearanceThemeSlugs
         
         let filteredThemes = cloudThemes.filter { ref in
             if case let .cloud(theme) = ref {
@@ -1140,11 +1142,23 @@ public func themeSettingsController(context: AccountContext, focusOnItemTag: The
         
         var prioritized: [PresentationThemeReference] = []
         var rest: [PresentationThemeReference] = []
-        for title in priorityTitles {
-            if let match = filteredThemes.first(where: {
-                if case let .cloud(theme) = $0 { return theme.theme.title == title }
-                return false
-            }) {
+        let slotCount = min(prioritySlugs.count, priorityTitles.count)
+        for i in 0 ..< slotCount {
+            let slug = prioritySlugs[i]
+            let title = priorityTitles[i]
+            let match: PresentationThemeReference? = {
+                if !slug.isEmpty, let m = filteredThemes.first(where: {
+                    if case let .cloud(t) = $0 { return t.theme.slug == slug }
+                    return false
+                }) {
+                    return m
+                }
+                return filteredThemes.first(where: {
+                    if case let .cloud(t) = $0 { return t.theme.title == title }
+                    return false
+                })
+            }()
+            if let match = match, !prioritized.contains(where: { $0.index == match.index }) {
                 prioritized.append(match)
             }
         }

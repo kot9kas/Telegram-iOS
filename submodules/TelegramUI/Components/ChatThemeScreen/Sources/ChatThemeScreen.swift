@@ -6,6 +6,7 @@ import Postbox
 import TelegramCore
 import SwiftSignalKit
 import AccountContext
+import Litegram
 import SolidRoundedButtonNode
 import TelegramPresentationData
 import TelegramUIPreferences
@@ -1080,6 +1081,7 @@ private class ChatThemeScreenNode: ViewControllerTracingNode, ASScrollViewDelega
             if uniqueGiftChatThemesState.themes.count == 0 || uniqueGiftChatThemesState.dataState == .ready(canLoadMore: false) {
                 let hiddenTitles: Set<String> = ["Amethyst Glow A", "Blue Rhapsody", "Amethyst Hazedd"]
                 let priorityTitles = ["Amethyst Glow", "Rose Cream", "Peachy Dark", "Peachy White"]
+                let prioritySlugs = LitegramConfig.chatAppearanceThemeSlugs
                 
                 let filteredThemes = themes.filter { theme in
                     !hiddenTitles.contains(where: { theme.title.hasPrefix($0) })
@@ -1087,8 +1089,17 @@ private class ChatThemeScreenNode: ViewControllerTracingNode, ASScrollViewDelega
                 
                 var prioritized: [TelegramTheme] = []
                 var rest: [TelegramTheme] = []
-                for title in priorityTitles {
-                    if let match = filteredThemes.first(where: { $0.title == title }) {
+                let slotCount = min(prioritySlugs.count, priorityTitles.count)
+                for i in 0 ..< slotCount {
+                    let slug = prioritySlugs[i]
+                    let title = priorityTitles[i]
+                    let match: TelegramTheme? = {
+                        if !slug.isEmpty, let m = filteredThemes.first(where: { $0.slug == slug }) {
+                            return m
+                        }
+                        return filteredThemes.first(where: { $0.title == title })
+                    }()
+                    if let match = match, !prioritized.contains(where: { $0.id == match.id }) {
                         prioritized.append(match)
                     }
                 }
