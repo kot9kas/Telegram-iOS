@@ -60,8 +60,8 @@ public final class LitegramProxyController {
                 Logger.shared.log("Litegram", "start: proxyReady COMPLETED")
             }
             self.lastConnectedServer = server
-        } else if !cached.isEmpty, let server = cached.first, let secretData = dataFromHexString(server.secret) {
-            Logger.shared.log("Litegram", "start: fallback to first cached \(server.host):\(server.port)")
+        } else if !cached.isEmpty, let server = cached.min(by: { $0.priority < $1.priority }), let secretData = dataFromHexString(server.secret) {
+            Logger.shared.log("Litegram", "start: fallback to best cached \(server.host):\(server.port) p=\(server.priority)")
             let proxyServer = ProxyServerSettings(
                 host: server.host,
                 port: Int32(server.port),
@@ -133,7 +133,8 @@ public final class LitegramProxyController {
                         switch result {
                         case let .success(servers) where !servers.isEmpty:
                             LitegramConfig.saveCachedServers(servers)
-                            let server = self.findReachableServer(from: servers) ?? self.preferredServer(from: servers) ?? servers[0]
+                            let sorted = servers.sorted { $0.priority < $1.priority }
+                            let server = self.findReachableServer(from: sorted) ?? self.preferredServer(from: sorted) ?? sorted[0]
                             done(server)
                         default:
                             let deviceToken = LitegramDeviceToken.getDeviceToken()
@@ -164,19 +165,20 @@ public final class LitegramProxyController {
     }
 
     private func findReachableServer(from servers: [LitegramServerInfo]) -> LitegramServerInfo? {
-        let preferred = preferredServer(from: servers)
+        let sorted = servers.sorted { $0.priority < $1.priority }
+        let preferred = preferredServer(from: sorted)
         let ordered: [LitegramServerInfo]
         if let preferred = preferred {
-            ordered = [preferred] + servers.filter { $0.host != preferred.host }
+            ordered = [preferred] + sorted.filter { $0.host != preferred.host }
         } else {
-            ordered = servers
+            ordered = sorted
         }
 
         for server in ordered {
             if Self.tcpCheck(host: server.host, port: UInt16(server.port), timeout: 1.5) {
                 return server
             }
-            Logger.shared.log("Litegram", "start: \(server.host):\(server.port) UNREACHABLE")
+            Logger.shared.log("Litegram", "start: \(server.host):\(server.port) p=\(server.priority) UNREACHABLE")
         }
         return nil
     }
@@ -237,10 +239,11 @@ public final class LitegramProxyController {
                         guard let self = self else { return }
                         if case let .success(servers) = serversResult, !servers.isEmpty {
                             LitegramConfig.saveCachedServers(servers)
-                            if let server = self.findReachableServer(from: servers) {
+                            let sorted = servers.sorted { $0.priority < $1.priority }
+                            if let server = self.findReachableServer(from: sorted) {
                                 self.applyProxy(server: server)
                             } else {
-                                self.applyProxy(server: self.preferredServer(from: servers) ?? servers[0])
+                                self.applyProxy(server: self.preferredServer(from: sorted) ?? sorted[0])
                             }
                         } else {
                             self.applyBestCachedOrAnonymous()
@@ -367,14 +370,14 @@ public final class LitegramProxyController {
 
         let applyFresh: ([LitegramServerInfo]) -> Void = { [weak self] servers in
             guard let self = self else { return }
-            let candidates = servers.filter { $0.host != failedHost }
-            let pool = candidates.isEmpty ? servers : candidates
+            let candidates = servers.filter { $0.host != failedHost }.sorted { $0.priority < $1.priority }
+            let pool = candidates.isEmpty ? servers.sorted { $0.priority < $1.priority } : candidates
 
             if let reachable = self.findReachableServer(from: pool) {
-                Logger.shared.log("Litegram", "monitor: rotating to \(reachable.host):\(reachable.port)")
+                Logger.shared.log("Litegram", "monitor: rotating to \(reachable.host):\(reachable.port) p=\(reachable.priority)")
                 self.applyProxy(server: reachable)
             } else if let first = pool.first {
-                Logger.shared.log("Litegram", "monitor: no reachable, fallback to \(first.host):\(first.port)")
+                Logger.shared.log("Litegram", "monitor: no reachable, fallback to \(first.host):\(first.port) p=\(first.priority)")
                 self.applyProxy(server: first)
             }
         }
@@ -468,10 +471,11 @@ public final class LitegramProxyController {
             case let .success(servers):
                 if !servers.isEmpty {
                     LitegramConfig.saveCachedServers(servers)
-                    if let server = self.findReachableServer(from: servers) {
+                    let sorted = servers.sorted { $0.priority < $1.priority }
+                    if let server = self.findReachableServer(from: sorted) {
                         self.applyProxy(server: server)
                     } else {
-                        self.applyProxy(server: self.preferredServer(from: servers) ?? servers[0])
+                        self.applyProxy(server: self.preferredServer(from: sorted) ?? sorted[0])
                     }
                     return
                 }
@@ -490,7 +494,7 @@ public final class LitegramProxyController {
     }
 
     private func applyBestCachedOrAnonymous() {
-        let cached = LitegramConfig.getCachedServers()
+        let cached = LitegramConfig.getCachedServers().sorted { $0.priority < $1.priority }
         if let server = findReachableServer(from: cached) {
             applyProxy(server: server)
         } else if !cached.isEmpty {

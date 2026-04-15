@@ -6,13 +6,29 @@ public struct LitegramServerInfo: Codable, Equatable {
     public let secret: String
     public let name: String
     public let country: String
+    public let priority: Int
 
-    public init(host: String, port: Int, secret: String, name: String = "", country: String = "") {
+    public init(host: String, port: Int, secret: String, name: String = "", country: String = "", priority: Int = 0) {
         self.host = host
         self.port = port
         self.secret = secret
         self.name = name
         self.country = country
+        self.priority = priority
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case host, port, secret, name, country, priority
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        host = try container.decode(String.self, forKey: .host)
+        port = try container.decode(Int.self, forKey: .port)
+        secret = try container.decode(String.self, forKey: .secret)
+        name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+        country = try container.decodeIfPresent(String.self, forKey: .country) ?? ""
+        priority = try container.decodeIfPresent(Int.self, forKey: .priority) ?? 0
     }
 }
 
