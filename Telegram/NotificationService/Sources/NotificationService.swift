@@ -653,8 +653,16 @@ private struct NotificationContent: CustomStringConvertible {
             }
         }
         
+        var shouldHideForLitegramLock = false
+        if let _ = self.isLockedMessage,
+           let peerIdValue = self.userInfo["peerId"] as? String,
+           let accountIdValue = self.userInfo["accountId"] as? String,
+           let peerId = Int64(peerIdValue),
+           let accountId = Int64(accountIdValue) {
+            shouldHideForLitegramLock = isLitegramChatLocked(accountId: accountId, peerId: peerId)
+        }
         if !content.title.isEmpty || !content.subtitle.isEmpty || !content.body.isEmpty {
-            if let isLockedMessage = self.isLockedMessage {
+            if shouldHideForLitegramLock, let isLockedMessage = self.isLockedMessage {
                 content.body = isLockedMessage
             }
         }
@@ -674,14 +682,14 @@ private struct NotificationContent: CustomStringConvertible {
         if !self.userInfo.isEmpty {
             content.userInfo = self.userInfo
         }
-        if self.isLockedMessage == nil {
+        if !shouldHideForLitegramLock {
             if !self.attachments.isEmpty {
                 content.attachments = self.attachments
             }
         }
 
         if #available(iOS 15.0, *) {
-            if self.isLockedMessage == nil, let senderPerson = self.senderPerson, let customIdentifier = senderPerson.customIdentifier {
+            if !shouldHideForLitegramLock, let senderPerson = self.senderPerson, let customIdentifier = senderPerson.customIdentifier {
                 let mePerson = INPerson(
                     personHandle: INPersonHandle(value: "0", type: .unknown),
                     nameComponents: nil,
