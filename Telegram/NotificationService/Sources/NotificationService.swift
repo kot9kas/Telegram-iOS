@@ -46,6 +46,26 @@ private func rootPathForBasePath(_ appGroupPath: String) -> String {
     return appGroupPath + "/telegram-data"
 }
 
+private func litegramChatLocksDefaults(accountId: Int64) -> UserDefaults? {
+    if let accountScoped = UserDefaults(suiteName: "litegram.chatlocks.\(accountId)") {
+        return accountScoped
+    }
+    return UserDefaults(suiteName: "litegram.chatlocks")
+}
+
+private func isLitegramChatLocked(accountId: Int64, peerId: Int64) -> Bool {
+    guard let defaults = litegramChatLocksDefaults(accountId: accountId) else {
+        return false
+    }
+    guard let data = defaults.data(forKey: "lck_chats") else {
+        return false
+    }
+    guard let lockedIds = try? JSONDecoder().decode([Int64].self, from: data) else {
+        return false
+    }
+    return lockedIds.contains(peerId)
+}
+
 private let deviceColorSpace: CGColorSpace = {
     if #available(iOSApplicationExtension 9.3, iOS 9.3, *) {
         if let colorSpace = CGColorSpace(name: CGColorSpace.displayP3) {
@@ -1152,7 +1172,9 @@ private final class NotificationServiceHandler {
                         }
                     } else {
                         if let aps = payloadJson["aps"] as? [String: Any], var peerId = peerId {
-                            var content: NotificationContent = NotificationContent(isLockedMessage: isLockedMessage)
+                            let peerIdInt64 = peerId.toInt64()
+                            let isPeerLocked = isLockedMessage != nil && isLitegramChatLocked(accountId: recordId.int64, peerId: peerIdInt64)
+                            var content: NotificationContent = NotificationContent(isLockedMessage: isPeerLocked ? isLockedMessage : nil)
                             if let alert = aps["alert"] as? [String: Any] {
                                 if let topicTitleValue = payloadJson["topic_title"] as? String {
                                     topicTitle = topicTitleValue
@@ -1220,7 +1242,7 @@ private final class NotificationServiceHandler {
                                 content.userInfo["channel_id"] = "\(peerId.id._internalGetInt64Value())"
                             }
 
-                            content.userInfo["peerId"] = "\(peerId.toInt64())"
+                            content.userInfo["peerId"] = "\(peerIdInt64)"
                             content.userInfo["accountId"] = "\(recordId.int64)"
                             
                             if let silentString = payloadJson["silent"] as? String {
@@ -1442,7 +1464,8 @@ private final class NotificationServiceHandler {
 
                                     queue.async {
                                         guard let strongSelf = self, let stateManager = strongSelf.stateManager else {
-                                            let content = NotificationContent(isLockedMessage: isLockedMessage)
+                                            let isPeerLocked = isLockedMessage != nil && isLitegramChatLocked(accountId: recordId.int64, peerId: peerId.toInt64())
+                                            let content = NotificationContent(isLockedMessage: isPeerLocked ? isLockedMessage : nil)
                                             updateCurrentContent(content)
                                             completed()
                                             return
@@ -2065,7 +2088,8 @@ private final class NotificationServiceHandler {
 
                                     queue.async {
                                         guard let strongSelf = self, let stateManager = strongSelf.stateManager else {
-                                            let content = NotificationContent(isLockedMessage: isLockedMessage)
+                                            let isPeerLocked = isLockedMessage != nil && isLitegramChatLocked(accountId: recordId.int64, peerId: peerId.toInt64())
+                                            let content = NotificationContent(isLockedMessage: isPeerLocked ? isLockedMessage : nil)
                                             updateCurrentContent(content)
                                             completed()
                                             return
