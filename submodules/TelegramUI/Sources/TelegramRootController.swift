@@ -84,6 +84,7 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
     
     private var permissionsDisposable: Disposable?
     private var presentationDataDisposable: Disposable?
+    private var autoSaveThemesDisposable: Disposable?
     private var presentationData: PresentationData
     
     private var detailsPlaceholderNode: DetailsChatPlaceholderNode?
@@ -148,6 +149,7 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
         self.presentationDataDisposable?.dispose()
         self.applicationInFocusDisposable?.dispose()
         self.storyUploadEventsDisposable?.dispose()
+        self.autoSaveThemesDisposable?.dispose()
     }
     
     public func getContactsController() -> ViewController? {
@@ -253,7 +255,42 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
         self.accountSettingsController = accountSettingsController
         self.rootTabController = tabBarController
         self.pushViewController(tabBarController, animated: false)
+        
+        self.ensureLitegramThemesSaved()
     }
+    
+    private func ensureLitegramThemesSaved() {
+        let key = "litegramThemesAutoSaved_v1"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        
+        let requiredTitles: Set<String> = ["Amethyst Glow", "Rose Cream", "Peachy Dark", "Peachy White"]
+        let account = self.context.account
+        let accountManager = self.context.sharedContext.accountManager
+        
+        let chatThemes = self.context.engine.themes.getChatThemes(accountManager: accountManager)
+        let savedThemes = telegramThemes(postbox: account.postbox, network: account.network, accountManager: accountManager)
+        
+        self.autoSaveThemesDisposable = (combineLatest(chatThemes, savedThemes)
+        |> take(1)
+        |> deliverOnMainQueue).start(next: { chatThemesList, savedThemesList in
+            let savedIds = Set(savedThemesList.map { $0.id })
+            let themesToSave = chatThemesList.filter { requiredTitles.contains($0.title) && !savedIds.contains($0.id) }
+            
+            guard !themesToSave.isEmpty else {
+                UserDefaults.standard.set(true, forKey: key)
+                return
+            }
+            
+            var signals: [Signal<Void, NoError>] = []
+            for theme in themesToSave {
+                signals.append(saveThemeInteractively(account: account, accountManager: accountManager, theme: theme))
+            }
+            
+            let _ = (combineLatest(signals)
+            |> deliverOnMainQueue).start(completed: {
+                UserDefaults.standard.set(true, forKey: key)
+            })
+        })
         
     public func updateRootControllers(showCallsTab: Bool) {
         guard let rootTabController = self.rootTabController as? TabBarControllerImpl else {
