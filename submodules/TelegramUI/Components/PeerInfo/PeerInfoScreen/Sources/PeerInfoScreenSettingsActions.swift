@@ -219,21 +219,13 @@ extension PeerInfoScreenNode {
                 guard let strongSelf = self else {
                     return
                 }
-                var maximumAvailableAccounts: Int = 3
-                if accountAndPeer?.1.isPremium == true && !strongSelf.context.account.testingEnvironment {
-                    maximumAvailableAccounts = 4
-                }
                 var count: Int = 1
-                for (accountContext, peer, _) in accountsAndPeers {
+                for (accountContext, _, _) in accountsAndPeers {
                     if !accountContext.account.testingEnvironment {
-                        if peer.isPremium {
-                            maximumAvailableAccounts = 4
-                        }
                         count += 1
                     }
                 }
-                
-                if count >= maximumAvailableAccounts {
+                if count >= maximumNumberOfAccounts {
                     var replaceImpl: ((ViewController) -> Void)?
                     let controller = PremiumLimitScreen(context: strongSelf.context, subject: .accounts, count: Int32(count), action: {
                         let controller = PremiumIntroScreen(context: strongSelf.context, source: .accounts)

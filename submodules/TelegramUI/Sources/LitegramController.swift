@@ -380,34 +380,9 @@ public final class LitegramConnectionController: ViewController, UITableViewData
         hBadgeBg.addSubnode(hBadge)
         self.headerBadgeNode = hBadge
 
-        let serverSection = ASDisplayNode()
-        serverSection.backgroundColor = theme.list.itemBlocksBackgroundColor
-        serverSection.cornerRadius = 11
-        serverSection.clipsToBounds = true
-        scrollNode?.addSubnode(serverSection)
-        self.serverSectionNode = serverSection
-
-        let serversTable = UITableView(frame: .zero, style: .plain)
-        serversTable.backgroundColor = .clear
-        serversTable.separatorStyle = .none
-        serversTable.showsVerticalScrollIndicator = false
-        serversTable.alwaysBounceVertical = false
-        serversTable.dataSource = self
-        serversTable.delegate = self
-        serversTable.rowHeight = self.serverRowHeight
-        serversTable.estimatedRowHeight = self.serverRowHeight
-        serversTable.register(UITableViewCell.self, forCellReuseIdentifier: Self.serverCellReuseId)
-        serverSection.view.addSubview(serversTable)
-        self.serversTableView = serversTable
-
-        let serverHeader = ASTextNode()
-        serverHeader.attributedText = NSAttributedString(string: "SERVERS", attributes: [
-            .font: UIFont.systemFont(ofSize: 13, weight: .medium),
-            .foregroundColor: theme.list.itemSecondaryTextColor,
-            .kern: 0.5 as NSNumber
-        ])
-        scrollNode?.addSubnode(serverHeader)
-        self.serverHeaderNode = serverHeader
+        self.serverSectionNode = nil
+        self.serversTableView = nil
+        self.serverHeaderNode = nil
 
         let button = ASButtonNode()
         button.cornerRadius = 11
@@ -548,21 +523,6 @@ public final class LitegramConnectionController: ViewController, UITableViewData
             )
 
             y += headerH + 12
-        }
-
-        if !availableServers.isEmpty {
-            self.serverHeaderNode?.frame = CGRect(x: sideInset + 16, y: y, width: cw, height: 18)
-            y += 18 + 7
-
-            let sepH = 1.0 / UIScreen.main.scale
-            let totalH = CGFloat(availableServers.count) * self.serverRowHeight + CGFloat(max(0, availableServers.count - 1)) * sepH
-            self.serverSectionNode?.frame = CGRect(x: sideInset, y: y, width: cw, height: totalH)
-            self.serversTableView?.frame = CGRect(x: 0, y: 0, width: cw, height: totalH)
-            y += totalH + 16
-        } else {
-            self.serverHeaderNode?.frame = .zero
-            self.serverSectionNode?.frame = CGRect(x: sideInset, y: y, width: cw, height: 0)
-            self.serversTableView?.frame = .zero
         }
 
         if let btn = self.connectButtonNode {
