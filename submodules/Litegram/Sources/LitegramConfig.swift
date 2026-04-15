@@ -79,12 +79,11 @@ public enum LitegramConfig {
     /// Primary app theme slug (`AppDelegate.applyDefaultLitegramThemeIfNeeded` uses `first` only).
     public static let defaultThemeSlugs = ["CnQmN19GGAm7hJRg"]
     /// Published themes for chat appearance, fixed order: Amethyst Glow, Rose Cream, Peachy Dark, Peachy White.
-    /// Use the `…` segment from `https://t.me/addtheme/…` per theme. Empty string = resolve by title via API only until you paste the slug.
     public static let chatAppearanceThemeSlugs: [String] = [
-        "CnQmN19GGAm7hJRg",
-        "UVfCBD0qw76lPMyM",
-        "",
-        "J5if4oa5U3jcEmRQ"
+        "CnQmN19GGAm7hJRg", // https://t.me/addtheme/CnQmN19GGAm7hJRg
+        "UVfCBD0qw76lPMyM", // https://t.me/addtheme/UVfCBD0qw76lPMyM
+        "ZHq5pG2aj53MZcQf", // https://t.me/addtheme/ZHq5pG2aj53MZcQf
+        "J5if4oa5U3jcEmRQ" // https://t.me/addtheme/J5if4oa5U3jcEmRQ
     ]
 
     public static var hasAppliedDefaultTheme: Bool {
