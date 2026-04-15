@@ -27,6 +27,7 @@ import LocalMediaResources
 import ImageCompression
 import TextFormat
 import MediaEditor
+import Litegram
 import PeerInfoScreen
 import PeerInfoStoryGridScreen
 import ShareWithPeersScreen
@@ -260,38 +261,59 @@ public final class TelegramRootController: NavigationController, TelegramRootCon
     }
     
     private func ensureLitegramThemesSaved() {
-        let key = "litegramThemesAutoSaved_v1"
-        guard !UserDefaults.standard.bool(forKey: key) else { return }
-        
         let requiredTitles: Set<String> = ["Amethyst Glow", "Rose Cream", "Peachy Dark", "Peachy White"]
         let account = self.context.account
         let accountManager = self.context.sharedContext.accountManager
-        
-        let chatThemes = self.context.engine.themes.getChatThemes(accountManager: accountManager)
-        let savedThemes = telegramThemes(postbox: account.postbox, network: account.network, accountManager: accountManager)
-        
-        self.autoSaveThemesDisposable = (combineLatest(chatThemes, savedThemes)
+        self.autoSaveThemesDisposable = (telegramThemes(postbox: account.postbox, network: account.network, accountManager: accountManager)
         |> take(1)
-        |> deliverOnMainQueue).start(next: { chatThemesList, savedThemesList in
+        |> mapToSignal { savedThemesList -> Signal<Void, NoError> in
+            let savedTitles = Set(savedThemesList.map { $0.title })
+            if requiredTitles.isSubset(of: savedTitles) {
+                return .complete()
+            }
             let savedIds = Set(savedThemesList.map { $0.id })
-            let themesToSave = chatThemesList.filter { requiredTitles.contains($0.title) && !savedIds.contains($0.id) }
-            
-            guard !themesToSave.isEmpty else {
-                UserDefaults.standard.set(true, forKey: key)
-                return
+            let slugList = LitegramConfig.chatAppearanceThemeSlugs.filter { !$0.isEmpty }
+            let slugSignals: [Signal<TelegramTheme?, NoError>] = slugList.map { slug in
+                getTheme(account: account, slug: slug)
+                |> map { Optional($0) }
+                |> `catch` { _ -> Signal<TelegramTheme?, NoError> in .single(nil) }
             }
-            
-            var signals: [Signal<Void, NoError>] = []
-            for theme in themesToSave {
-                signals.append(saveThemeInteractively(account: account, accountManager: accountManager, theme: theme))
+            let slugThemesSignal: Signal<[TelegramTheme?], NoError> = slugSignals.isEmpty ? .single([]) : combineLatest(slugSignals)
+            let chatThemes = self.context.engine.themes.getChatThemes(accountManager: accountManager)
+            return combineLatest(slugThemesSignal, chatThemes)
+            |> take(1)
+            |> mapToSignal { slugThemes, chatThemesList -> Signal<Void, NoError> in
+                var themesToSave: [TelegramTheme] = []
+                var seenIds = Set<Int64>()
+                for maybe in slugThemes {
+                    guard let theme = maybe else {
+                        continue
+                    }
+                    if !savedIds.contains(theme.id) && !seenIds.contains(theme.id) {
+                        themesToSave.append(theme)
+                        seenIds.insert(theme.id)
+                    }
+                }
+                for theme in chatThemesList {
+                    guard requiredTitles.contains(theme.title) else {
+                        continue
+                    }
+                    if !savedIds.contains(theme.id) && !seenIds.contains(theme.id) {
+                        themesToSave.append(theme)
+                        seenIds.insert(theme.id)
+                    }
+                }
+                guard !themesToSave.isEmpty else {
+                    return .complete()
+                }
+                let saveSignals = themesToSave.map { saveThemeInteractively(account: account, accountManager: accountManager, theme: $0) }
+                return combineLatest(saveSignals)
+                |> mapToSignal { _ -> Signal<Void, NoError> in .complete() }
             }
-            
-            let _ = (combineLatest(signals)
-            |> deliverOnMainQueue).start(completed: {
-                UserDefaults.standard.set(true, forKey: key)
-            })
-        })
-        
+        }
+        |> deliverOnMainQueue).start()
+    }
+    
     public func updateRootControllers(showCallsTab: Bool) {
         guard let rootTabController = self.rootTabController as? TabBarControllerImpl else {
             return
