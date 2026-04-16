@@ -315,15 +315,6 @@ public final class LitegramController: ViewController {
             menuRowNodes.append((container: container, icon: iconNode, title: titleNode, subtitle: subtitleNode, arrow: arrow, sep: sep))
         }
 
-        let tryBtn = ASButtonNode()
-        tryBtn.cornerRadius = 11
-        tryBtn.clipsToBounds = true
-        tryBtn.setTitle("⭐ Try all features", with: UIFont.systemFont(ofSize: 17, weight: .semibold), with: .white, for: .normal)
-        tryBtn.backgroundColor = theme.list.itemAccentColor
-        tryBtn.addTarget(self, action: #selector(tryAllFeaturesTapped), forControlEvents: .touchUpInside)
-        scrollNode?.addSubnode(tryBtn)
-        self.tryButtonNode = tryBtn
-
         updateProfile()
     }
 
