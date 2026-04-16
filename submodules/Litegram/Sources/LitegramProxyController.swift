@@ -13,6 +13,7 @@ public final class LitegramProxyController {
 
     private var connectionMonitorDisposable: Disposable?
     private var connectingTimer: Foundation.Timer?
+    private var updatingTimer: Foundation.Timer?
     private var lastReconnectTime: CFAbsoluteTime = 0
     private let reconnectCooldown: TimeInterval = 5
     private var consecutiveFailures: Int = 0
@@ -298,12 +299,16 @@ public final class LitegramProxyController {
         case .online:
             connectingTimer?.invalidate()
             connectingTimer = nil
+            updatingTimer?.invalidate()
+            updatingTimer = nil
             let latencyMs = connectionStartTime > 0 ? Int((CFAbsoluteTimeGetCurrent() - connectionStartTime) * 1000) : nil
             connectionStartTime = 0
             consecutiveFailures = 0
             reportAnalytics(status: "success", latencyMs: latencyMs)
 
         case let .connecting(_, proxyHasIssues):
+            updatingTimer?.invalidate()
+            updatingTimer = nil
             if connectionStartTime == 0 {
                 connectionStartTime = CFAbsoluteTimeGetCurrent()
             }
@@ -317,6 +322,8 @@ public final class LitegramProxyController {
             }
 
         case .waitingForNetwork:
+            updatingTimer?.invalidate()
+            updatingTimer = nil
             guard !isUserDisconnected else { return }
             if connectingTimer == nil {
                 connectingTimer = Foundation.Timer.scheduledTimer(withTimeInterval: 4, repeats: false) { [weak self] _ in
@@ -328,6 +335,14 @@ public final class LitegramProxyController {
         case .updating:
             connectingTimer?.invalidate()
             connectingTimer = nil
+            guard !isUserDisconnected else { return }
+            if updatingTimer == nil {
+                updatingTimer = Foundation.Timer.scheduledTimer(withTimeInterval: 15, repeats: false) { [weak self] _ in
+                    self?.updatingTimer = nil
+                    Logger.shared.log("Litegram", "monitor: stuck in .updating for 15s, rotating server")
+                    self?.attemptAutoReconnect()
+                }
+            }
         }
     }
 
