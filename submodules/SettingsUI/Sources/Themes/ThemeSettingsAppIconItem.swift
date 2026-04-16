@@ -402,6 +402,11 @@ class ThemeSettingsAppIconItemNode: ListViewItemNode, ItemListItemNode {
                                     name = item.strings.Appearance_AppIconBlack
                                 case "PremiumTurbo":
                                     name = item.strings.Appearance_AppIconTurbo
+                                case "Peach":
+                                    name = "Peach"
+                                case "PeachX":
+                                    name = "Peach X"
+                                    bordered = false
                                 default:
                                     name = icon.name
                             }
