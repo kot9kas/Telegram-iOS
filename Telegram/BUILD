@@ -309,6 +309,8 @@ alternate_icon_folders = [
     "WhiteFilledIcon",
     "New1",
     "New2",
+    "Peach",
+    "PeachX",
     "Premium",
     "PremiumBlack",
     "PremiumTurbo",
