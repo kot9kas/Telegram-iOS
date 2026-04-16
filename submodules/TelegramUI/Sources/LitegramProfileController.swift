@@ -35,7 +35,6 @@ public final class LitegramController: ViewController {
     private var saveTrafficSepNode: ASDisplayNode?
 
     private var menuSectionNode: ASDisplayNode?
-    private var tryButtonNode: ASButtonNode?
 
     private var currentPeer: EnginePeer?
     private var currentSubscription: LitegramSubscriptionStatus = .none
@@ -150,7 +149,6 @@ public final class LitegramController: ViewController {
             let theme = self.presentationData.theme
             self.displayNode.backgroundColor = theme.list.blocksBackgroundColor
             self.profileGradientLayer?.colors = Self.gradientColors(from: theme.list.itemAccentColor)
-            self.tryButtonNode?.backgroundColor = theme.list.itemAccentColor
             self.rebuildMenuColors()
             self.updateProfile()
         }
@@ -414,12 +412,6 @@ public final class LitegramController: ViewController {
             y += totalH + 16
         }
 
-        if let tryBtn = self.tryButtonNode {
-            let btnH: CGFloat = 50
-            tryBtn.frame = CGRect(x: sideInset, y: y, width: cw, height: btnH)
-            y += btnH + 24
-        }
-
         self.scrollNode?.view.contentSize = CGSize(width: width, height: y + bottomInset + 20)
     }
 
@@ -578,18 +570,6 @@ public final class LitegramController: ViewController {
         }).start()
     }
 
-    @objc private func tryAllFeaturesTapped() {
-        self.context.sharedContext.openExternalUrl(
-            context: self.context,
-            urlContext: .generic,
-            url: "https://t.me/Litegram_robot?start=start",
-            forceExternal: false,
-            presentationData: self.presentationData,
-            navigationController: self.navigationController as? NavigationController,
-            dismissInput: { }
-        )
-    }
-
     private func fetchSubscriptionStatus() {
         LitegramProxyController.shared.refreshSubscription { [weak self] in
             DispatchQueue.main.async {
@@ -703,12 +683,6 @@ public final class LitegramController: ViewController {
                 .font: badgeFont,
                 .foregroundColor: UIColor.white.withAlphaComponent(0.8)
             ])
-        }
-
-        if sub.isActive {
-            self.tryButtonNode?.isHidden = true
-        } else {
-            self.tryButtonNode?.isHidden = false
         }
 
         if let layout = self.lastLayout {
